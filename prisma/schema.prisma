@@ -1,0 +1,271 @@
+// ============================================================================
+// Nexus Talent System — schéma Prisma
+// Dérivé fidèlement de src/types.ts + server.ts (modèle de données existant).
+// Phase 1 : SCHÉMA UNIQUEMENT. À valider avant `prisma migrate dev`.
+//
+// Décisions actées :
+//  - Multi-tenant : toutes les entités métier référencent Company (companyId), relation obligatoire.
+//  - Compétences normalisées (référentiel Skill partagé candidats ↔ offres) pour le matching IA.
+//  - Scores en table 1-1 (CandidateScore) pour évoluer sans toucher à Candidate.
+//  - analysis / recommendation en Json (affichés en bloc, non filtrés transversalement).
+//  - SkillCategory portée par Skill (nature intrinsèque).
+//  - JobSkill porte `weight` (matching pondéré) + `required`.
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS  (valeurs = celles de src/types.ts, à l'identique)
+// ============================================================================
+
+enum UserRole {
+  AdminPlateforme
+  AdminEntreprise
+  RH
+  Manager
+  ConsultantRecrutement
+}
+
+enum ContractType {
+  CDI
+  CDD
+  Freelance
+  Alternance
+  Stage
+}
+
+enum JobStatus {
+  Active
+  Archived
+  Draft
+}
+
+enum PipelineStage {
+  Received
+  Analyzed
+  Preselected
+  HRInterview
+  TechTest
+  FinalInterview
+  OfferSent
+  Hired
+  Rejected
+}
+
+enum EmailStatus {
+  Pending
+  Imported
+  Ignored
+}
+
+enum SkillCategory {
+  Language
+  Framework
+  Database
+  Tool
+  Cloud
+  SoftSkill
+}
+
+// ============================================================================
+// TENANT
+// ============================================================================
+
+model Company {
+  id        String   @id @default(uuid())
+  name      String
+  domain    String
+  logoUrl   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  jobs       Job[]
+  candidates Candidate[]
+  emails     Email[]
+  auditLogs  AuditLog[]
+
+  @@index([domain])
+}
+
+model User {
+  id           String   @id @default(uuid())
+  companyId    String
+  name         String
+  email        String   @unique
+  role         UserRole
+  avatarUrl    String?
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  auditLogs AuditLog[]
+
+  @@index([companyId])
+}
+
+// ============================================================================
+// JOBS
+// ============================================================================
+
+model Job {
+  id                 String       @id @default(uuid())
+  companyId          String
+  title              String
+  description        String
+  missions           String[] // texte libre — reste tableau
+  educationRequired  String
+  languagesRequired  String[] // ex. "Anglais (Technique)" — texte libre, PAS des Skill
+  minExperienceYears Int
+  salaryRange        String?
+  location           String
+  contractType       ContractType
+  status             JobStatus    @default(Draft)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  candidates Candidate[]
+  skills     JobSkill[] // skillsRequired[] normalisé via le référentiel Skill
+
+  @@index([companyId])
+  @@index([status])
+}
+
+// ============================================================================
+// CANDIDATS
+// ============================================================================
+
+model Candidate {
+  id          String        @id @default(uuid())
+  companyId   String
+  jobId       String? // optionnel : vivier de talents / candidature spontanée / import massif
+  name        String
+  // Pas de @@unique([companyId, email]) en MVP : jobId étant optionnel, un même
+  // candidat peut légitimement exister plusieurs fois (vivier + candidatures).
+  // Évolution identifiée : séparer Candidate (personne) et Application (candidature)
+  // le jour où une fiche-personne unique par tenant devient un besoin produit.
+  email       String
+  phone       String
+  location    String
+  linkedinUrl String?
+  stage       PipelineStage @default(Received)
+  cvText      String?
+  letterText  String?
+  appliedAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Blocs affichés en bloc, non filtrés transversalement → JSON
+  analysis       Json?
+  recommendation Json?
+
+  company Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  job     Job?             @relation(fields: [jobId], references: [id], onDelete: SetNull)
+  score   CandidateScore? // 1-1, créé après analyse IA
+  skills  CandidateSkill[]
+
+  @@index([companyId])
+  @@index([jobId])
+  @@index([stage])
+}
+
+model CandidateScore {
+  candidateId     String   @id
+  skillsScore     Float
+  experienceScore Float
+  educationScore  Float
+  softSkillsScore Float
+  languagesScore  Float
+  globalScore     Float
+  updatedAt       DateTime @updatedAt
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([globalScore])
+}
+
+// ============================================================================
+// RÉFÉRENTIEL COMPÉTENCES (partagé candidats ↔ offres)
+// ============================================================================
+
+model Skill {
+  id        String        @id @default(uuid())
+  name      String        @unique
+  category  SkillCategory
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  candidates CandidateSkill[]
+  jobs       JobSkill[]
+}
+
+model CandidateSkill {
+  candidateId String
+  skillId     String
+
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  skill     Skill     @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([candidateId, skillId])
+  @@index([skillId])
+}
+
+model JobSkill {
+  jobId    String
+  skillId  String
+  required Boolean @default(true)
+  weight   Int? // pondération pour le matching (ex. React 40, Docker 10)
+
+  job   Job   @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  skill Skill @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@id([jobId, skillId])
+  @@index([skillId])
+}
+
+// ============================================================================
+// MÉTIER
+// ============================================================================
+
+model Email {
+  id                String      @id @default(uuid())
+  companyId         String
+  from              String
+  subject           String
+  body              String
+  date              DateTime
+  attachmentName    String?
+  attachmentContent String?
+  status            EmailStatus @default(Pending)
+  updatedAt         DateTime    @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([status])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  companyId String
+  userId    String? // nullable : le log survit à la suppression de l'utilisateur
+  userName  String // dénormalisé : reste lisible même si l'user est supprimé
+  userRole  UserRole
+  action    String
+  details   String
+  timestamp DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([userId])
+}

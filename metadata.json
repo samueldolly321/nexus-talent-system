@@ -1,0 +1,6 @@
+{
+  "name": "Nexus Talent System",
+  "description": "An intelligent SaaS Applicant Tracking System (ATS) with server-side Gemini-powered resume parsing, candidate scoring, natural language talent search, and multi-tenant recruiter workspaces.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

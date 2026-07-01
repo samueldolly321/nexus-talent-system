@@ -1,0 +1,240 @@
+import React, { useState } from "react";
+import { 
+  BarChart3, 
+  FileSpreadsheet, 
+  FileDown, 
+  TrendingUp, 
+  Users, 
+  CheckCircle2, 
+  PieChart as LucidePieChart, 
+  Target,
+  Clock,
+  Sparkles,
+  Download
+} from "lucide-react";
+import { 
+  ResponsiveContainer, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  Legend, 
+  LineChart, 
+  Line,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart
+} from "recharts";
+
+interface ReportsViewProps {
+  stats: any;
+  companyName: string;
+}
+
+export default function ReportsView({ stats, companyName }: ReportsViewProps) {
+  const [exporting, setExporting] = useState<string | null>(null);
+
+  const funnelData = [
+    { name: "Candidatures Reçues", valeur: 100 },
+    { name: "Pré-sélectionnés", valeur: 65 },
+    { name: "Entretiens RH", valeur: 32 },
+    { name: "Tests Techniques", valeur: 18 },
+    { name: "Entretiens Finaux", valeur: 8 },
+    { name: "Offres Envoyées", valeur: 4 },
+    { name: "Embauches", valeur: 3 }
+  ];
+
+  const channelDistribution = [
+    { name: "LinkedIn Recruiter", pourcentage: 54 },
+    { name: "Cooptation Interne", pourcentage: 22 },
+    { name: "Sourcing Email", pourcentage: 14 },
+    { name: "Indeed / Monster", pourcentage: 10 }
+  ];
+
+  const handleExport = (type: "excel" | "pdf") => {
+    setExporting(type);
+    setTimeout(() => {
+      setExporting(null);
+      alert(`[Nexus Talent] Le rapport ${type.toUpperCase()} pour "${companyName}" a été généré et téléchargé avec succès.`);
+    }, 1500);
+  };
+
+  return (
+    <div className="flex-1 bg-background min-h-screen p-8 overflow-y-auto font-sans">
+      {/* Header */}
+      <div className="mb-8 flex justify-between items-start">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight text-on-surface flex items-center gap-2">
+            <BarChart3 className="text-secondary shrink-0" />
+            Statistiques & Rapports RH
+          </h2>
+          <p className="text-sm text-on-surface-variant mt-1">
+            Analyse complète de la performance de sourcing, de la vélocité du pipeline de recrutement et exports de données.
+          </p>
+        </div>
+      </div>
+
+      {/* KPI Performance Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-secondary-container/20 text-secondary rounded-lg shrink-0">
+            <Clock size={22} />
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider font-semibold">Temps Moyen de Recrutement</span>
+            <span className="text-xl font-bold text-on-surface block mt-0.5 font-sans">18.5 Jours</span>
+            <span className="text-[10px] font-mono text-emerald-600 font-semibold flex items-center gap-0.5 mt-0.5">
+              <TrendingUp size={12} />
+              -2.4 jours vs l'an dernier
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
+            <Target size={22} />
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider font-semibold">Taux de Conversion Final</span>
+            <span className="text-xl font-bold text-on-surface block mt-0.5 font-sans">24.6%</span>
+            <span className="text-[10px] text-on-surface-variant block mt-0.5">Des candidats retenus en entretien</span>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm flex items-center gap-4">
+          <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg shrink-0">
+            <CheckCircle2 size={22} />
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider font-semibold">Sourcing ROI par IA</span>
+            <span className="text-xl font-bold text-on-surface block mt-0.5 font-sans">86% d'exactitude</span>
+            <span className="text-[10px] text-on-secondary-container font-semibold block mt-0.5">Précision du scoring sémantique</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Charts Layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        {/* Recruitment Funnel Conversion Bar chart */}
+        <div className="lg:col-span-2 bg-white rounded-xl border border-outline-variant p-6 shadow-sm">
+          <h3 className="font-sans font-bold text-on-surface text-sm mb-4">Entonnoir de Recrutement (Fidélité de conversion)</h3>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={funnelData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} className="font-mono" />
+                <YAxis stroke="#94a3b8" fontSize={11} className="font-mono" />
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                <Bar dataKey="valeur" fill="#0ea5e9" radius={[4, 4, 0, 0]} barSize={24} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Acquisition channels pie chart representation */}
+        <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 className="font-sans font-bold text-on-surface text-sm mb-1">Canaux de Sourcing</h3>
+            <p className="text-xs text-on-surface-variant mb-6">Répartition par origine des candidatures reçues.</p>
+          </div>
+
+          <div className="space-y-4">
+            {channelDistribution.map((ch, i) => (
+              <div key={ch.name}>
+                <div className="flex justify-between text-xs text-on-surface-variant font-medium mb-1.5">
+                  <span className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: i === 0 ? "#06b6d4" : i === 1 ? "#3b82f6" : i === 2 ? "#6366f1" : "#94a3b8" }}></span>
+                    {ch.name}
+                  </span>
+                  <span className="font-mono font-bold text-on-surface">{ch.pourcentage}%</span>
+                </div>
+                <div className="w-full bg-surface-container h-2 rounded-full overflow-hidden">
+                  <div className="h-full rounded-full" style={{ 
+                    width: `${ch.pourcentage}%`,
+                    backgroundColor: i === 0 ? "#06b6d4" : i === 1 ? "#3b82f6" : i === 2 ? "#6366f1" : "#94a3b8"
+                  }}></div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="text-[10px] text-on-surface-variant font-mono mt-6 border-t border-outline-variant pt-3">
+            Source : Analyse d'acquisition Nexus Talent
+          </div>
+        </div>
+      </div>
+
+      {/* Export Reports Panel */}
+      <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm">
+        <h3 className="font-sans font-bold text-on-surface text-sm mb-1">Génération de Rapports Officiels</h3>
+        <p className="text-xs text-on-surface-variant mb-6">Exportez le registre complet des candidatures, les analyses et les décisions recommandées par le moteur IA.</p>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Excel Export Card */}
+          <div className="border border-outline-variant rounded-xl p-5 hover:border-outline-variant hover:bg-background/20 transition-all text-left">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg shrink-0">
+                <FileSpreadsheet size={24} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-bold text-on-surface">Rapport de Sourcing Excel (.xlsx)</h4>
+                <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                  Contient les informations de contact, les coordonnées sémantiques, les notations IA détaillées et les statuts du pipeline de recrutement.
+                </p>
+                
+                <button
+                  onClick={() => handleExport("excel")}
+                  disabled={exporting !== null}
+                  className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+                >
+                  {exporting === "excel" ? (
+                    <RefreshCw className="animate-spin" size={13} />
+                  ) : (
+                    <Download size={13} />
+                  )}
+                  Générer le rapport Excel
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* PDF Export Card */}
+          <div className="border border-outline-variant rounded-xl p-5 hover:border-outline-variant hover:bg-background/20 transition-all text-left">
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-red-50 text-red-600 rounded-lg shrink-0">
+                <FileDown size={24} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-bold text-on-surface">Registre RH PDF (.pdf)</h4>
+                <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                  Registre de recrutement à en-tête officiel de l'entreprise contenant l'historique d'audit, les graphiques analytiques clés et le récapitulatif des postes.
+                </p>
+
+                <button
+                  onClick={() => handleExport("pdf")}
+                  disabled={exporting !== null}
+                  className="mt-4 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
+                >
+                  {exporting === "pdf" ? (
+                    <RefreshCw className="animate-spin" size={13} />
+                  ) : (
+                    <Download size={13} />
+                  )}
+                  Générer le registre PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RefreshCw({ className, size }: { className?: string; size?: number }) {
+  return <div className={`animate-spin inline-block rounded-full border-2 border-t-transparent border-white ${className}`} style={{ width: size, height: size }}></div>;
+}
