@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import { Sparkles, X, Download, LayoutGrid, ArrowUpDown, Plus, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
 import TopBar from "./TopBar";
 import { Candidate, Job, User, PipelineStage } from "../types";
@@ -112,6 +113,29 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
     return counts;
   }, [candidates]);
 
+  const handleExportListe = () => {
+    if (filtered.length === 0) return;
+
+    const rows = filtered.map(c => ({
+      Nom: c.name,
+      Email: c.email,
+      Téléphone: c.phone ?? "",
+      Localisation: c.location ?? "",
+      Offre: jobs.find(j => j.id === c.jobId)?.title ?? "",
+      Stage: c.stage,
+      "Score Global": c.scores?.globalScore ?? "N/A",
+      "Score Compétences": c.scores?.skillsScore ?? "N/A",
+      "Score Expérience": c.scores?.experienceScore ?? "N/A",
+      "Décision IA": c.recommendation?.suggestedDecision ?? "Non analysé",
+      "Date candidature": new Date(c.appliedAt).toLocaleDateString("fr-FR"),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Candidats");
+    XLSX.writeFile(wb, `nexus-candidats-${new Date().toISOString().slice(0, 10)}.xlsx`);
+  };
+
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -136,7 +160,11 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
               <Plus size={16} />
               Ajouter un candidat
             </button>
-            <button className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all">
+            <button
+              onClick={handleExportListe}
+              disabled={filtered.length === 0}
+              className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Download size={15} />
               Exporter la liste
             </button>
