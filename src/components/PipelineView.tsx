@@ -31,14 +31,14 @@ export default function PipelineView({ candidates, jobs, activeUser, onSelectCan
 
   return (
     <div className="flex-1 bg-background min-h-screen flex flex-col">
-      <TopBar activeUser={activeUser} searchPlaceholder="Search candidates, roles, or scores..." />
+      <TopBar activeUser={activeUser} searchPlaceholder="Rechercher candidats, postes ou scores..." />
 
       <main className="flex-1 p-6 overflow-hidden flex flex-col min-h-0">
         <div className="flex justify-between items-start mb-6 flex-wrap gap-4">
           <div>
-            <h2 className="font-sans text-[32px] font-semibold text-primary tracking-tight leading-tight">Recruitment Pipeline</h2>
+            <h2 className="font-sans text-[32px] font-semibold text-primary tracking-tight leading-tight">Pipeline de recrutement</h2>
             <div className="flex items-center gap-2 mt-2">
-              <span className="px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-[10px] font-mono uppercase rounded-full font-bold">Active Role</span>
+              <span className="px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-[10px] font-mono uppercase rounded-full font-bold">Poste actif</span>
               <select
                 value={filterJobId}
                 onChange={e => setFilterJobId(e.target.value)}
@@ -47,15 +47,15 @@ export default function PipelineView({ candidates, jobs, activeUser, onSelectCan
                 <option value="all">Toutes les offres</option>
                 {jobs.map(j => <option key={j.id} value={j.id}>{j.title}</option>)}
               </select>
-              <span className="text-secondary text-sm font-bold">— {filtered.length} Candidates</span>
+              <span className="text-secondary text-sm font-bold">— {filtered.length} candidats</span>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <button className="px-3 py-2 border border-outline-variant rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-surface-container-low">
-              <Filter size={14} />Filter
+              <Filter size={14} />Filtrer
             </button>
             <button className="px-3 py-2 border border-outline-variant rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-surface-container-low">
-              <Share2 size={14} />Share Board
+              <Share2 size={14} />Partager
             </button>
             <div className="flex border border-outline-variant rounded-lg overflow-hidden">
               <button className="p-2 bg-surface-container-high text-secondary"><LayoutGrid size={16} /></button>

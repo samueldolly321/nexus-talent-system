@@ -27,17 +27,17 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
           </div>
           <div>
             <h1 className="font-sans font-bold text-lg text-primary leading-tight">Nexus Talent</h1>
-            <p className="font-mono text-[10px] text-on-surface-variant tracking-widest uppercase">Recruiter Workspace</p>
+            <p className="font-mono text-[10px] text-on-surface-variant tracking-widest uppercase">Espace Recruteur</p>
           </div>
         </div>
 
         <div className="max-w-sm w-full mx-auto md:mx-0 flex-1 flex flex-col justify-center">
-          <h2 className="font-sans text-[32px] font-semibold text-primary tracking-tight mb-2">Welcome Back</h2>
-          <p className="text-on-surface-variant mb-8">Access your prescient recruitment insights.</p>
+          <h2 className="font-sans text-[32px] font-semibold text-primary tracking-tight mb-2">Bon retour</h2>
+          <p className="text-on-surface-variant mb-8">Accédez à vos insights de recrutement prédictifs.</p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5 font-semibold">Work Email</label>
+              <label className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5 font-semibold">Email professionnel</label>
               <div className="relative">
                 <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
                 <input
@@ -53,8 +53,8 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
 
             <div>
               <div className="flex justify-between items-center mb-1.5">
-                <label className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">Password</label>
-                <a href="#" className="font-mono text-[10px] uppercase tracking-wider text-secondary font-semibold hover:underline">Forgot Password?</a>
+                <label className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold">Mot de passe</label>
+                <a href="#" className="font-mono text-[10px] uppercase tracking-wider text-secondary font-semibold hover:underline">Mot de passe oublié ?</a>
               </div>
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
@@ -71,7 +71,7 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
 
             <label className="flex items-center gap-2 text-sm text-on-surface-variant cursor-pointer select-none">
               <input type="checkbox" checked={remember} onChange={e => setRemember(e.target.checked)} className="rounded border-outline-variant text-secondary focus:ring-secondary" />
-              Remember this device for 30 days
+              Se souvenir de cet appareil pendant 30 jours
             </label>
 
             {error && (
@@ -83,14 +83,14 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
               disabled={loading}
               className="w-full bg-secondary text-white py-3 rounded-lg font-bold text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              {loading ? "Connexion..." : "Login to Workspace"}
+              {loading ? "Connexion..." : "Se connecter"}
               {!loading && <ArrowRight size={16} />}
             </button>
           </form>
 
           <div className="flex items-center gap-3 my-8">
             <div className="flex-1 h-px bg-outline-variant" />
-            <span className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">Or sign in with</span>
+            <span className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">Ou se connecter avec</span>
             <div className="flex-1 h-px bg-outline-variant" />
           </div>
 
@@ -111,7 +111,7 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
         <div className="pt-8 mt-8 border-t border-outline-variant flex justify-between items-center max-w-sm w-full mx-auto md:mx-0">
           <p className="font-mono text-[10px] text-on-surface-variant">© 2026 Nexus Talent. v1.0.0</p>
           <div className="flex gap-4">
-            <a href="#" className="font-mono text-[10px] text-on-surface-variant hover:text-secondary">Privacy</a>
+            <a href="#" className="font-mono text-[10px] text-on-surface-variant hover:text-secondary">Confidentialité</a>
             <a href="#" className="font-mono text-[10px] text-on-surface-variant hover:text-secondary">Support</a>
           </div>
         </div>
@@ -137,7 +137,7 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
             </div>
             <div className="absolute bottom-2 left-0 glass-ai rounded-xl px-4 py-2 flex items-center gap-2">
               <Users2 size={16} className="text-secondary-fixed-dim" />
-              <span className="font-mono text-xs text-white font-bold">Pipeline Sync</span>
+              <span className="font-mono text-xs text-white font-bold">Synchro Pipeline</span>
             </div>
           </div>
 
@@ -146,18 +146,18 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
               <div className="w-9 h-9 rounded-lg bg-secondary-fixed-dim/20 flex items-center justify-center mb-3">
                 <Radar size={18} className="text-secondary-fixed-dim" />
               </div>
-              <h3 className="font-sans font-semibold text-white mb-1.5">Predictive Sourcing</h3>
+              <h3 className="font-sans font-semibold text-white mb-1.5">Sourcing prédictif</h3>
               <p className="text-xs text-inverse-on-surface/70 leading-relaxed">
-                Our prescient AI identifies top candidates before they even hit the open market using multi-signal behavior analysis.
+                Notre IA presciente identifie les meilleurs candidats avant même leur arrivée sur le marché, grâce à une analyse comportementale multi-signaux.
               </p>
             </div>
             <div className="bg-white/10 rounded-xl p-5">
               <div className="w-9 h-9 rounded-lg bg-secondary-fixed-dim/20 flex items-center justify-center mb-3">
                 <Target size={18} className="text-secondary-fixed-dim" />
               </div>
-              <h3 className="font-sans font-semibold text-white mb-1.5">High-Fidelity Matching</h3>
+              <h3 className="font-sans font-semibold text-white mb-1.5">Matching haute-fidélité</h3>
               <p className="text-xs text-inverse-on-surface/70 leading-relaxed">
-                Go beyond keywords. We analyze psychographic data and soft-skill alignment for long-term organizational success.
+                Au-delà des mots-clés. Nous analysons les données psychographiques et l'adéquation des savoir-être pour une réussite durable de l'organisation.
               </p>
             </div>
           </div>

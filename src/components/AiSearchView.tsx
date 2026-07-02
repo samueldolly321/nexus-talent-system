@@ -15,9 +15,10 @@ import { apiFetch } from "../lib/api";
 interface AiSearchViewProps {
   candidates: Candidate[];
   jobs: Job[];
+  onSelectCandidate: (candidate: Candidate) => void;
 }
 
-export default function AiSearchView({ candidates, jobs }: AiSearchViewProps) {
+export default function AiSearchView({ candidates, jobs, onSelectCandidate }: AiSearchViewProps) {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<{ matchedIds: string[]; explanation: string } | null>(null);
@@ -161,7 +162,7 @@ export default function AiSearchView({ candidates, jobs }: AiSearchViewProps) {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {matchedCandidates.map(cand => (
-                  <div key={cand.id} className="bg-white rounded-xl border border-outline-variant p-5 shadow-sm hover:shadow-md transition-shadow">
+                  <div key={cand.id} onClick={() => onSelectCandidate(cand)} className="bg-white rounded-xl border border-outline-variant p-5 shadow-sm hover:shadow-md hover:border-secondary transition-all cursor-pointer">
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-surface-container text-on-surface-variant uppercase tracking-wider">

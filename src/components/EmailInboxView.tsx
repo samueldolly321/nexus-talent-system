@@ -192,7 +192,7 @@ export default function EmailInboxView({
                     onClick={() => onNavigateToView("candidates")}
                     className="text-xs font-semibold text-secondary hover:text-on-secondary-container flex items-center gap-1 group"
                   >
-                    Aller au Pipeline Candidats
+                    Voir le candidat
                     <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                   </button>
                 </div>

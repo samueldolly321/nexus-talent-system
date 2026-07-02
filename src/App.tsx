@@ -323,6 +323,15 @@ export default function App() {
     setShowRecommendation(false);
   };
 
+  // Ouvre la fiche candidat depuis une autre vue (Dashboard, Recherche IA...).
+  // Bascule d'abord sur "candidates" PUIS sélectionne — l'ordre importe car
+  // navigateTo réinitialise la sélection ; ici on ne passe pas par navigateTo.
+  const openCandidateFromView = (candidate: Candidate) => {
+    setActiveView("candidates");
+    setSelectedCandidateId(candidate.id);
+    setShowRecommendation(false);
+  };
+
   const renderMainContent = () => {
     // Candidate detail / recommendation drilldown takes over candidates & pipeline views
     if (selectedCandidate && (activeView === "candidates" || activeView === "pipeline")) {
@@ -352,7 +361,7 @@ export default function App() {
 
     switch (activeView) {
       case "dashboard":
-        return <DashboardView stats={dashboardStats} onNavigateToView={navigateTo} loading={loading} activeUser={activeUser} />;
+        return <DashboardView stats={dashboardStats} onNavigateToView={navigateTo} onSelectCandidate={openCandidateFromView} onRefresh={fetchData} loading={loading} activeUser={activeUser} searchQuery={searchQuery} onSearchChange={setSearchQuery} />;
       case "jobs":
         return (
           <JobsView
@@ -395,7 +404,7 @@ export default function App() {
           />
         );
       case "ai-search":
-        return <AiSearchView candidates={candidates} jobs={jobs} />;
+        return <AiSearchView candidates={candidates} jobs={jobs} onSelectCandidate={openCandidateFromView} />;
       case "emails":
         return (
           <EmailInboxView
@@ -407,8 +416,12 @@ export default function App() {
           />
         );
       case "reports":
-        return <ReportsView stats={dashboardStats} companyName={activeCompany?.name || "Nexus Client"} />;
-      case "users":
+        return <ReportsView stats={dashboardStats} companyName={activeCompany?.name || "Nexus Client"} onNavigateToView={navigateTo} />;
+      case "users": {
+        const usersQuery = searchQuery.trim().toLowerCase();
+        const visibleUsers = allUsers
+          .filter(u => u.companyId === activeCompany?.id)
+          .filter(u => !usersQuery || u.name.toLowerCase().includes(usersQuery) || u.email.toLowerCase().includes(usersQuery));
         return (
           <div className="flex-1 bg-background min-h-screen flex flex-col">
             <TopBar activeUser={activeUser} searchValue={searchQuery} onSearchChange={setSearchQuery} />
@@ -424,26 +437,25 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant">
-                    {allUsers
-                      .filter(u => u.companyId === activeCompany?.id)
-                      .filter(u => {
-                        const q = searchQuery.trim().toLowerCase();
-                        if (!q) return true;
-                        return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
-                      })
-                      .map(u => (
+                    {visibleUsers.map(u => (
                       <tr key={u.id} className="hover:bg-surface-container-low">
                         <td className="px-6 py-3 text-sm font-bold text-on-surface">{u.name}</td>
                         <td className="px-6 py-3 text-sm text-on-surface-variant">{u.email}</td>
                         <td className="px-6 py-3 text-sm text-on-surface-variant">{u.role}</td>
                       </tr>
                     ))}
+                    {visibleUsers.length === 0 && (
+                      <tr>
+                        <td colSpan={3} className="px-6 py-8 text-center text-sm text-on-surface-variant">Aucun utilisateur trouvé.</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
             </main>
           </div>
         );
+      }
       case "settings":
         return (
           <div className="flex-1 bg-background min-h-screen flex flex-col">
@@ -466,7 +478,7 @@ export default function App() {
       case "dev-center":
         return <DevCenterView />;
       default:
-        return <DashboardView stats={dashboardStats} onNavigateToView={navigateTo} loading={loading} activeUser={activeUser} />;
+        return <DashboardView stats={dashboardStats} onNavigateToView={navigateTo} onSelectCandidate={openCandidateFromView} onRefresh={fetchData} loading={loading} activeUser={activeUser} searchQuery={searchQuery} onSearchChange={setSearchQuery} />;
     }
   };
 

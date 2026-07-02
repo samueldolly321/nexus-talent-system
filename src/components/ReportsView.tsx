@@ -34,9 +34,10 @@ import {
 interface ReportsViewProps {
   stats: any;
   companyName: string;
+  onNavigateToView: (view: string) => void;
 }
 
-export default function ReportsView({ stats, companyName }: ReportsViewProps) {
+export default function ReportsView({ stats, companyName, onNavigateToView }: ReportsViewProps) {
   const [exporting, setExporting] = useState<string | null>(null);
 
   const funnelData = [
@@ -181,7 +182,7 @@ export default function ReportsView({ stats, companyName }: ReportsViewProps) {
   return (
     <div className="flex-1 bg-background min-h-screen p-8 overflow-y-auto font-sans">
       {/* Header */}
-      <div className="mb-8 flex justify-between items-start">
+      <div className="mb-8 flex justify-between items-start gap-4 flex-wrap">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-on-surface flex items-center gap-2">
             <BarChart3 className="text-secondary shrink-0" />
@@ -191,6 +192,12 @@ export default function ReportsView({ stats, companyName }: ReportsViewProps) {
             Analyse complète de la performance de sourcing, de la vélocité du pipeline de recrutement et exports de données.
           </p>
         </div>
+        <button
+          onClick={() => onNavigateToView("candidates")}
+          className="px-4 py-2 border border-secondary text-secondary rounded-lg text-sm font-medium hover:bg-surface-container transition-all shrink-0"
+        >
+          Voir les candidats
+        </button>
       </div>
 
       {/* KPI Performance Metrics */}

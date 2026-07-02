@@ -22,7 +22,7 @@ export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, righ
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
             <input
               className="w-full bg-surface-container-low border border-outline-variant rounded-full py-1.5 pl-10 pr-4 focus:ring-2 focus:ring-secondary-container focus:outline-none text-sm transition-all"
-              placeholder={searchPlaceholder || "Search candidates, jobs, or reports..."}
+              placeholder={searchPlaceholder || "Rechercher candidats, offres ou rapports..."}
               type="text"
               {...(onSearchChange
                 ? { value: searchValue ?? "", onChange: (e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value) }

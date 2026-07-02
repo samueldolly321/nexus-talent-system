@@ -138,7 +138,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
             </button>
             <button className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all">
               <Download size={15} />
-              Export List
+              Exporter la liste
             </button>
           </div>
         }
@@ -148,17 +148,17 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
         {/* Filters sidebar */}
         <aside className="w-72 border-r border-outline-variant p-6 shrink-0 overflow-y-auto">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="font-bold text-on-surface">Filters</h3>
+            <h3 className="font-bold text-on-surface">Filtres</h3>
             <button
               onClick={() => { setScoreFilter("all"); setMinExperience(0); setStageFilter("all"); }}
               className="text-secondary text-xs font-bold hover:underline"
             >
-              Clear all
+              Tout effacer
             </button>
           </div>
 
           <div className="mb-6">
-            <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">AI Match Score</h4>
+            <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">Score IA</h4>
             <label className="flex items-center justify-between mb-2 cursor-pointer">
               <span className="flex items-center gap-2 text-sm text-on-surface">
                 <input type="checkbox" checked={scoreFilter === "excellent"} onChange={() => setScoreFilter(scoreFilter === "excellent" ? "all" : "excellent")} className="rounded border-outline-variant text-secondary focus:ring-secondary" />
@@ -169,14 +169,14 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
             <label className="flex items-center justify-between cursor-pointer">
               <span className="flex items-center gap-2 text-sm text-on-surface">
                 <input type="checkbox" checked={scoreFilter === "strong"} onChange={() => setScoreFilter(scoreFilter === "strong" ? "all" : "strong")} className="rounded border-outline-variant text-secondary focus:ring-secondary" />
-                Strong (60-80%)
+                Bon (60-80%)
               </span>
               <span className="text-xs text-on-surface-variant font-mono">{strongCount}</span>
             </label>
           </div>
 
           <div className="mb-6">
-            <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">Experience (years)</h4>
+            <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">Expérience (années)</h4>
             <input
               type="range"
               min={0}
@@ -186,14 +186,14 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
               className="w-full accent-secondary"
             />
             <div className="flex justify-between text-xs text-on-surface-variant font-mono mt-1">
-              <span>{minExperience} yrs</span>
-              <span>15+ yrs</span>
+              <span>{minExperience} ans</span>
+              <span>15+ ans</span>
             </div>
           </div>
 
           {allSkills.length > 0 && (
             <div className="mb-6">
-              <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">Skills</h4>
+              <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">Compétences</h4>
               <div className="flex flex-wrap gap-2">
                 {allSkills.map(skill => (
                   <span key={skill} className="px-2.5 py-1 bg-surface-container text-secondary text-xs rounded-full font-medium">{skill}</span>
@@ -204,7 +204,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
           )}
 
           <div>
-            <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">Status</h4>
+            <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">Statut</h4>
             <div className="space-y-2">
               {stageOptions.map(opt => (
                 <label key={opt.value} className="flex items-center justify-between gap-2 text-sm text-on-surface cursor-pointer">
@@ -230,11 +230,11 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
         {/* Main list */}
         <main className="flex-1 min-w-0 p-6 overflow-y-auto relative">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="font-sans text-2xl font-semibold text-primary">Candidates <span className="text-on-surface-variant font-normal">({filtered.length})</span></h2>
+            <h2 className="font-sans text-2xl font-semibold text-primary">Candidats <span className="text-on-surface-variant font-normal">({filtered.length})</span></h2>
             <div className="flex items-center gap-3">
               <button className="px-3 py-1.5 border border-outline-variant rounded-lg text-sm flex items-center gap-2 hover:bg-surface-container-low">
                 <ArrowUpDown size={14} />
-                Sort by: Newest
+                Trier : Récents
               </button>
               <button className="p-2 border border-outline-variant rounded-lg hover:bg-surface-container-low">
                 <LayoutGrid size={16} />
@@ -252,10 +252,10 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                 <thead className="bg-surface-container-low text-on-surface-variant font-mono text-[10px] uppercase tracking-wider">
                   <tr>
                     <th className="px-4 py-3 w-10"><input type="checkbox" className="rounded border-outline-variant" /></th>
-                    <th className="px-4 py-3 font-medium">Profile</th>
-                    <th className="px-4 py-3 font-medium">Email &amp; Phone</th>
-                    <th className="px-4 py-3 font-medium">AI Match Score</th>
-                    <th className="px-4 py-3 font-medium">Experience</th>
+                    <th className="px-4 py-3 font-medium">Profil</th>
+                    <th className="px-4 py-3 font-medium">Email &amp; Téléphone</th>
+                    <th className="px-4 py-3 font-medium">Score IA</th>
+                    <th className="px-4 py-3 font-medium">Expérience</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant">
@@ -296,11 +296,11 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                               </div>
                             </div>
                           ) : (
-                            <span className="text-xs font-mono text-amber-600">Not analyzed</span>
+                            <span className="text-xs font-mono text-amber-600">Non analysé</span>
                           )}
                         </td>
                         <td className="px-4 py-4 text-sm text-on-surface">
-                          {cand.analysis?.yearsOfExperience ?? "—"} Years
+                          {cand.analysis?.yearsOfExperience ?? "—"} ans
                           {cand.analysis?.experiences?.[0] && (
                             <p className="text-xs text-on-surface-variant truncate max-w-[160px]">{cand.analysis.experiences[0].company}</p>
                           )}
@@ -346,8 +346,8 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                 <div className="flex items-center gap-2">
                   <Sparkles size={16} className="text-secondary-fixed-dim" />
                   <div>
-                    <p className="font-bold text-white text-sm">AI Recruiter Assistant</p>
-                    <p className="font-mono text-[9px] text-secondary-fixed-dim uppercase tracking-wider">Active Insight</p>
+                    <p className="font-bold text-white text-sm">Assistant IA Recruteur</p>
+                    <p className="font-mono text-[9px] text-secondary-fixed-dim uppercase tracking-wider">Insight actif</p>
                   </div>
                 </div>
                 <button onClick={() => setShowAiBanner(false)} className="text-white/60 hover:text-white">
@@ -355,9 +355,9 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                 </button>
               </div>
               <p className="text-sm text-inverse-on-surface/90 mb-4">
-                I've identified <span className="font-bold text-white">{excellentCount} candidates</span> matching your criteria with a score above 80%. Would you like to schedule a bulk intro?
+                J'ai identifié <span className="font-bold text-white">{excellentCount} candidats</span> correspondant à vos critères avec un score supérieur à 80 %. Souhaitez-vous planifier une prise de contact groupée ?
               </p>
-              <button className="w-full bg-secondary text-white py-2 rounded-lg text-sm font-bold hover:brightness-110">View Batch</button>
+              <button className="w-full bg-secondary text-white py-2 rounded-lg text-sm font-bold hover:brightness-110">Voir la sélection</button>
             </div>
           )}
         </main>

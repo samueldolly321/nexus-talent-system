@@ -21,7 +21,7 @@ interface CandidateProfileViewProps {
   onOpenRecommendation: () => void;
 }
 
-const tabs = ["AI Analysis", "Experience & CV", "Cover Letter", "History"];
+const tabs = ["Analyse IA", "Expérience & CV", "Lettre de motivation", "Historique"];
 
 export default function CandidateProfileView({
   candidate,
@@ -38,11 +38,11 @@ export default function CandidateProfileView({
 
   const aptitudeData = scores
     ? [
-        { subject: "Skills", value: scores.skillsScore },
-        { subject: "Experience", value: scores.experienceScore },
-        { subject: "Education", value: scores.educationScore },
-        { subject: "Soft Skills", value: scores.softSkillsScore },
-        { subject: "Languages", value: scores.languagesScore }
+        { subject: "Compétences", value: scores.skillsScore },
+        { subject: "Expérience", value: scores.experienceScore },
+        { subject: "Formation", value: scores.educationScore },
+        { subject: "Savoir-être", value: scores.softSkillsScore },
+        { subject: "Langues", value: scores.languagesScore }
       ]
     : [];
 
@@ -52,19 +52,19 @@ export default function CandidateProfileView({
         activeUser={activeUser}
         breadcrumb={
           <div className="flex items-center gap-2 text-sm min-w-0">
-            <button onClick={onBack} className="text-on-surface-variant hover:text-secondary font-medium shrink-0">Candidates</button>
+            <button onClick={onBack} className="text-on-surface-variant hover:text-secondary font-medium shrink-0">Candidats</button>
             <ChevronRight size={14} className="text-on-surface-variant shrink-0" />
             <span className="font-bold text-on-surface truncate">{candidate.name}</span>
           </div>
         }
         rightSlot={
           <div className="flex items-center gap-2">
-            <button className="px-3 py-2 border border-outline-variant rounded-lg text-sm font-medium hover:bg-surface-container-low">Share Profile</button>
+            <button className="px-3 py-2 border border-outline-variant rounded-lg text-sm font-medium hover:bg-surface-container-low">Partager le profil</button>
             <button
               onClick={onOpenRecommendation}
               className="px-3 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:opacity-90"
             >
-              Move to Interview
+              Voir la recommandation
             </button>
           </div>
         }
@@ -85,7 +85,7 @@ export default function CandidateProfileView({
             </div>
             <button className="w-full border border-outline-variant rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-surface-container-low mb-4">
               <Download size={14} />
-              Download CV
+              Télécharger le CV
             </button>
             <div className="text-left space-y-2.5 pt-4 border-t border-outline-variant">
               <p className="flex items-center gap-2 text-sm text-on-surface-variant truncate"><Mail size={14} className="shrink-0" />{candidate.email}</p>
@@ -110,7 +110,7 @@ export default function CandidateProfileView({
 
           {candidate.recommendation?.summary && (
             <div className="bg-surface-container-low border border-outline-variant rounded-xl p-5">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold mb-2">Recruiter Note</p>
+              <p className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold mb-2">Note du recruteur</p>
               <p className="text-sm text-on-surface italic leading-relaxed">"{candidate.recommendation.summary}"</p>
             </div>
           )}
@@ -137,7 +137,7 @@ export default function CandidateProfileView({
               <div className="bg-white border border-outline-variant rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles size={18} className="text-secondary" />
-                  <h3 className="font-bold text-on-surface">Prescient Summary</h3>
+                  <h3 className="font-bold text-on-surface">Synthèse IA</h3>
                 </div>
                 {candidate.recommendation?.compatibilityExplanation ? (
                   <p className="text-sm text-on-surface-variant leading-relaxed">{candidate.recommendation.compatibilityExplanation}</p>
@@ -157,11 +157,11 @@ export default function CandidateProfileView({
                 {candidate.recommendation && (
                   <div className="grid grid-cols-2 gap-4 mt-5">
                     <div className="bg-secondary-container/30 border border-secondary-container rounded-lg p-4">
-                      <p className="font-mono text-[10px] uppercase tracking-wider text-secondary font-semibold mb-1">Key Strength</p>
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-secondary font-semibold mb-1">Point fort clé</p>
                       <p className="text-sm font-medium text-on-surface">{candidate.recommendation.strengths[0] || "—"}</p>
                     </div>
                     <div className="bg-surface-container-low border border-outline-variant rounded-lg p-4">
-                      <p className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold mb-1">Growth Area</p>
+                      <p className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold mb-1">Axe de progression</p>
                       <p className="text-sm font-medium text-on-surface">{candidate.recommendation.weaknesses[0] || "—"}</p>
                     </div>
                   </div>
@@ -170,7 +170,7 @@ export default function CandidateProfileView({
 
               {candidate.analysis?.experiences && candidate.analysis.experiences.length > 0 && (
                 <div className="bg-white border border-outline-variant rounded-xl p-6">
-                  <h3 className="font-bold text-on-surface mb-5">Professional Journey</h3>
+                  <h3 className="font-bold text-on-surface mb-5">Parcours professionnel</h3>
                   <div className="space-y-5">
                     {candidate.analysis.experiences.map((exp, i) => (
                       <div key={i} className="relative pl-6 border-l-2 border-outline-variant">
@@ -190,7 +190,7 @@ export default function CandidateProfileView({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {candidate.analysis?.educations && candidate.analysis.educations.length > 0 && (
                   <div className="bg-white border border-outline-variant rounded-xl p-6">
-                    <h3 className="font-bold text-on-surface mb-4 flex items-center gap-2"><GraduationCap size={16} />Education</h3>
+                    <h3 className="font-bold text-on-surface mb-4 flex items-center gap-2"><GraduationCap size={16} />Formation</h3>
                     <div className="space-y-3">
                       {candidate.analysis.educations.map((edu, i) => (
                         <div key={i}>
@@ -202,7 +202,7 @@ export default function CandidateProfileView({
                   </div>
                 )}
                 <div className="bg-white border border-outline-variant rounded-xl p-6">
-                  <h3 className="font-bold text-on-surface mb-4 flex items-center gap-2"><BadgeCheck size={16} />Core Skills</h3>
+                  <h3 className="font-bold text-on-surface mb-4 flex items-center gap-2"><BadgeCheck size={16} />Compétences clés</h3>
                   <div className="flex flex-wrap gap-2">
                     {[
                       ...(candidate.analysis?.skills.languages || []),
@@ -253,19 +253,19 @@ export default function CandidateProfileView({
         {/* Right: scores */}
         <div className="space-y-4">
           <div className="bg-primary-container rounded-xl p-6 text-center">
-            <p className="font-mono text-[10px] uppercase tracking-wider text-secondary-fixed-dim font-semibold mb-2">Global Match Score</p>
+            <p className="font-mono text-[10px] uppercase tracking-wider text-secondary-fixed-dim font-semibold mb-2">Score global</p>
             <p className="font-sans text-5xl font-bold text-white">
               {scores?.globalScore ?? "—"}<span className="text-xl">{scores ? "%" : ""}</span>
             </p>
             {scores && scores.globalScore >= 80 && (
-              <span className="inline-block mt-2 px-2.5 py-1 bg-secondary-fixed-dim/20 text-secondary-fixed-dim text-[10px] font-mono uppercase rounded-full">High Priority</span>
+              <span className="inline-block mt-2 px-2.5 py-1 bg-secondary-fixed-dim/20 text-secondary-fixed-dim text-[10px] font-mono uppercase rounded-full">Priorité haute</span>
             )}
             {scores && (
               <div className="mt-5 space-y-3 text-left">
                 {[
-                  ["Technical Skills", scores.skillsScore],
-                  ["Experience Match", scores.experienceScore],
-                  ["Soft Skills", scores.softSkillsScore]
+                  ["Compétences techniques", scores.skillsScore],
+                  ["Adéquation expérience", scores.experienceScore],
+                  ["Savoir-être", scores.softSkillsScore]
                 ].map(([label, value]) => (
                   <div key={label as string}>
                     <div className="flex justify-between text-xs text-inverse-on-surface/80 mb-1">
@@ -282,7 +282,7 @@ export default function CandidateProfileView({
 
           {scores && (
             <div className="bg-white border border-outline-variant rounded-xl p-6">
-              <h3 className="font-bold text-on-surface mb-2">Aptitude Profile</h3>
+              <h3 className="font-bold text-on-surface mb-2">Profil d'aptitudes</h3>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={aptitudeData} outerRadius="70%">

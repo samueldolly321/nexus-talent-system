@@ -40,15 +40,15 @@ export default function Sidebar({
   onLogout
 }: SidebarProps) {
   const menuItems = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "jobs", label: "Jobs", icon: Briefcase },
-    { id: "candidates", label: "Candidates", icon: Users },
+    { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
+    { id: "jobs", label: "Offres", icon: Briefcase },
+    { id: "candidates", label: "Candidats", icon: Users },
     { id: "pipeline", label: "Pipeline", icon: KanbanSquare },
     { id: "emails", label: "Emails", icon: Mail },
-    { id: "ai-search", label: "AI Search", icon: BrainCircuit },
-    { id: "reports", label: "Reports", icon: BarChart3 },
-    { id: "users", label: "Users", icon: UserCog },
-    { id: "settings", label: "Settings", icon: Settings }
+    { id: "ai-search", label: "Recherche IA", icon: BrainCircuit },
+    { id: "reports", label: "Rapports", icon: BarChart3 },
+    { id: "users", label: "Utilisateurs", icon: UserCog },
+    { id: "settings", label: "Paramètres", icon: Settings }
   ];
 
   const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -70,7 +70,7 @@ export default function Sidebar({
         </div>
         <div className="min-w-0">
           <h1 className="font-sans font-bold text-lg text-primary leading-tight truncate">Nexus Talent</h1>
-          <p className="font-mono text-[10px] text-on-surface-variant tracking-widest uppercase">Recruiter Workspace</p>
+          <p className="font-mono text-[10px] text-on-surface-variant tracking-widest uppercase">Espace Recruteur</p>
         </div>
       </div>
 
