@@ -10,6 +10,7 @@ import {
   ExternalLink
 } from "lucide-react";
 import { Candidate, Job } from "../types";
+import { apiFetch } from "../lib/api";
 
 interface AiSearchViewProps {
   candidates: Candidate[];
@@ -20,6 +21,7 @@ export default function AiSearchView({ candidates, jobs }: AiSearchViewProps) {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<{ matchedIds: string[]; explanation: string } | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const quickSearches = [
     "Trouve les développeurs React avec plus de 5 ans d'expérience",
@@ -33,17 +35,23 @@ export default function AiSearchView({ candidates, jobs }: AiSearchViewProps) {
     setQuery(searchQuery);
     setLoading(true);
     setResults(null);
+    setError(null);
 
     try {
-      const response = await fetch("/api/candidates/ai-search", {
+      const response = await apiFetch("/api/candidates/ai-search", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query: searchQuery })
       });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        setError(err.error || `Erreur ${response.status}`);
+        return;
+      }
       const data = await response.json();
       setResults(data);
     } catch (e) {
       console.error(e);
+      setError("Impossible de joindre le serveur. Réessayez.");
     } finally {
       setLoading(false);
     }
@@ -93,6 +101,14 @@ export default function AiSearchView({ candidates, jobs }: AiSearchViewProps) {
             Rechercher
           </button>
         </div>
+
+        {error && (
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+            {/429|quota/i.test(error)
+              ? "Quota Gemini épuisé. Réessayez dans quelques minutes ou vérifiez votre clé API."
+              : error}
+          </div>
+        )}
 
         {/* Quick searches prompt triggers */}
         <div className="mt-4">
