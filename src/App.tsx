@@ -20,6 +20,7 @@ export default function App() {
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<string>("dashboard");
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
@@ -37,7 +38,17 @@ export default function App() {
   const [emails, setEmails] = useState<EmailItem[]>([]);
   const [dashboardStats, setDashboardStats] = useState<any>(null);
 
-  const fetchData = async () => {
+  // Pagination des candidats (les routes candidates/emails renvoient { data, meta }).
+  const CANDIDATES_PAGE_SIZE = 20;
+  const [candidatesPage, setCandidatesPage] = useState(1);
+  const [candidatesMeta, setCandidatesMeta] = useState<{ total: number; page: number; limit: number; totalPages: number }>({
+    total: 0,
+    page: 1,
+    limit: CANDIDATES_PAGE_SIZE,
+    totalPages: 1,
+  });
+
+  const fetchData = async (candPage = candidatesPage) => {
     setLoading(true);
     try {
       const contextData = await apiJson("/api/context");
@@ -48,13 +59,32 @@ export default function App() {
       setAllUsers(contextData.allUsers);
 
       setJobs(await apiJson("/api/jobs"));
-      setCandidates(await apiJson("/api/candidates"));
-      setEmails(await apiJson("/api/emails"));
+
+      // candidates & emails sont désormais paginés → on extrait .data.
+      const candidatesRes = await apiJson(`/api/candidates?page=${candPage}&limit=${CANDIDATES_PAGE_SIZE}`);
+      setCandidates(candidatesRes.data);
+      setCandidatesMeta(candidatesRes.meta);
+      setCandidatesPage(candidatesRes.meta.page);
+
+      const emailsRes = await apiJson("/api/emails?page=1&limit=100");
+      setEmails(emailsRes.data);
+
       setDashboardStats(await apiJson("/api/dashboard/stats"));
     } catch (error) {
       console.error("Error loading ATS data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCandidatesPageChange = async (page: number) => {
+    setCandidatesPage(page);
+    try {
+      const res = await apiJson(`/api/candidates?page=${page}&limit=${CANDIDATES_PAGE_SIZE}`);
+      setCandidates(res.data);
+      setCandidatesMeta(res.meta);
+    } catch (error) {
+      console.error("Error loading candidates page:", error);
     }
   };
 
@@ -284,6 +314,7 @@ export default function App() {
   const navigateTo = (view: string) => {
     setSelectedCandidateId(null);
     setShowRecommendation(false);
+    setSearchQuery(""); // la recherche est réinitialisée à chaque changement de vue
     setActiveView(view);
   };
 
@@ -326,6 +357,9 @@ export default function App() {
         return (
           <JobsView
             jobs={jobs}
+            activeUser={activeUser}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
             onCreateJob={handleCreateJob}
             onEditJob={handleEditJob}
             onDeleteJob={handleDeleteJob}
@@ -338,8 +372,15 @@ export default function App() {
             candidates={candidates}
             jobs={jobs}
             activeUser={activeUser}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
             onSelectCandidate={openCandidateProfile}
+            onAddCandidate={handleAddCandidate}
             loading={loading}
+            page={candidatesMeta.page}
+            totalPages={candidatesMeta.totalPages}
+            totalCandidates={candidatesMeta.total}
+            onPageChange={handleCandidatesPageChange}
           />
         );
       case "pipeline":
@@ -370,7 +411,7 @@ export default function App() {
       case "users":
         return (
           <div className="flex-1 bg-background min-h-screen flex flex-col">
-            <TopBar activeUser={activeUser} />
+            <TopBar activeUser={activeUser} searchValue={searchQuery} onSearchChange={setSearchQuery} />
             <main className="p-8">
               <h2 className="font-sans text-2xl font-semibold text-primary mb-6">Utilisateurs</h2>
               <div className="bg-white border border-outline-variant rounded-xl overflow-hidden">
@@ -383,7 +424,14 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline-variant">
-                    {allUsers.filter(u => u.companyId === activeCompany?.id).map(u => (
+                    {allUsers
+                      .filter(u => u.companyId === activeCompany?.id)
+                      .filter(u => {
+                        const q = searchQuery.trim().toLowerCase();
+                        if (!q) return true;
+                        return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
+                      })
+                      .map(u => (
                       <tr key={u.id} className="hover:bg-surface-container-low">
                         <td className="px-6 py-3 text-sm font-bold text-on-surface">{u.name}</td>
                         <td className="px-6 py-3 text-sm text-on-surface-variant">{u.email}</td>

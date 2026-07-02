@@ -7,9 +7,11 @@ interface TopBarProps {
   searchPlaceholder?: string;
   breadcrumb?: React.ReactNode;
   rightSlot?: React.ReactNode;
+  searchValue?: string;
+  onSearchChange?: (q: string) => void;
 }
 
-export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, rightSlot }: TopBarProps) {
+export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, rightSlot, searchValue, onSearchChange }: TopBarProps) {
   return (
     <header className="sticky top-0 h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center px-8 z-40 shrink-0">
       <div className="flex items-center flex-1 max-w-xl min-w-0">
@@ -22,6 +24,9 @@ export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, righ
               className="w-full bg-surface-container-low border border-outline-variant rounded-full py-1.5 pl-10 pr-4 focus:ring-2 focus:ring-secondary-container focus:outline-none text-sm transition-all"
               placeholder={searchPlaceholder || "Search candidates, jobs, or reports..."}
               type="text"
+              {...(onSearchChange
+                ? { value: searchValue ?? "", onChange: (e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value) }
+                : {})}
             />
           </div>
         )}

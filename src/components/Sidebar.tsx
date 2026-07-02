@@ -11,7 +11,8 @@ import {
   Plus,
   Building2,
   ChevronDown,
-  LogOut
+  LogOut,
+  BrainCircuit
 } from "lucide-react";
 import { Company, User } from "../types";
 
@@ -44,6 +45,7 @@ export default function Sidebar({
     { id: "candidates", label: "Candidates", icon: Users },
     { id: "pipeline", label: "Pipeline", icon: KanbanSquare },
     { id: "emails", label: "Emails", icon: Mail },
+    { id: "ai-search", label: "AI Search", icon: BrainCircuit },
     { id: "reports", label: "Reports", icon: BarChart3 },
     { id: "users", label: "Users", icon: UserCog },
     { id: "settings", label: "Settings", icon: Settings }

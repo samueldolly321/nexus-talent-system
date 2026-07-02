@@ -40,6 +40,29 @@ const ai = new GoogleGenAI({
   },
 });
 
+// Appel Gemini avec retry automatique sur 503/429 uniquement : 3 tentatives max,
+// 2 s d'attente entre chaque. Toute autre erreur — ou l'échec de la 3e tentative —
+// propage l'erreur originale. Réutilisé par /analyze et /ai-search.
+const isRetryable = (err: any): boolean => {
+  const status = err?.status ?? err?.code ?? err?.response?.status;
+  if (status === 503 || status === 429) return true;
+  return /\b(503|429)\b/.test(String(err?.message ?? ""));
+};
+
+const callGeminiWithRetry = async (params: Parameters<typeof ai.models.generateContent>[0]) => {
+  const MAX_ATTEMPTS = 3;
+  const RETRY_DELAY_MS = 2000;
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await ai.models.generateContent(params);
+    } catch (err) {
+      if (attempt >= MAX_ATTEMPTS || !isRetryable(err)) throw err;
+      console.warn(`[gemini] Tentative ${attempt}/${MAX_ATTEMPTS} — retry dans ${RETRY_DELAY_MS}ms`);
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    }
+  }
+};
+
 // ==========================================
 // AUTHENTICATION (JWT + Refresh Token + bcrypt)
 // ==========================================
@@ -104,6 +127,21 @@ const getContext = (req: express.Request) => {
   const companyId = (req as any).authCompanyId as string;
   return { companyId, userId: user.id, user };
 };
+
+// Helper: lit ?page & ?limit d'une requête (défauts 1 / 20), les normalise
+// (entiers positifs, limit plafonnée) et calcule skip pour prisma.findMany.
+const getPagination = (req: express.Request, defaultLimit = 20, maxLimit = 100) => {
+  const page = Math.max(1, parseInt(String(req.query.page ?? ""), 10) || 1);
+  const rawLimit = parseInt(String(req.query.limit ?? ""), 10) || defaultLimit;
+  const limit = Math.min(maxLimit, Math.max(1, rawLimit));
+  return { page, limit, skip: (page - 1) * limit };
+};
+
+// Construit l'enveloppe paginée { data, meta } commune aux routes listées.
+const paginated = <T>(data: T[], total: number, page: number, limit: number) => ({
+  data,
+  meta: { total, page, limit, totalPages: Math.max(1, Math.ceil(total / limit)) },
+});
 
 // Log action helper — [Prisma] écrit en base en fire-and-forget : on n'attend
 // PAS la promesse (comportement identique aux appels existants, non bloquant
@@ -261,6 +299,14 @@ app.get("/api/context", requireAuth, async (req, res) => {
 // target seed user so the multi-tenant workspace switcher keeps working.
 app.post("/api/switch-context", requireAuth, async (req, res) => {
   const { companyId, userId } = req.body;
+
+  // Contrôle de rôle : seuls les administrateurs (plateforme ou entreprise)
+  // peuvent changer de contexte. Le rôle de l'appelant est la clé d'enum Prisma.
+  const callerRole = getContext(req).user.role;
+  if (callerRole !== PrismaUserRole.AdminPlateforme && callerRole !== PrismaUserRole.AdminEntreprise) {
+    return res.status(403).json({ error: "Accès refusé. Rôle insuffisant pour changer de contexte." });
+  }
+
   try {
     const targetUser = userId
       ? await prisma.user.findUnique({ where: { id: userId } })
@@ -293,7 +339,7 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
   const { companyId } = getContext(req);
   try {
     // Agrégations Prisma, toutes scopées au tenant, exécutées en parallèle.
-    const [totalJobs, activeJobs, totalCandidates, hiredCandidates, scoreAgg, candidateRows, recentJobRows] =
+    const [totalJobs, activeJobs, totalCandidates, hiredCandidates, scoreAgg, candidateRows, recentJobRows, sourcingRows] =
       await Promise.all([
         prisma.job.count({ where: { companyId } }),
         prisma.job.count({ where: { companyId, status: JobStatus.Active } }),
@@ -302,21 +348,31 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
         prisma.candidateScore.aggregate({ _avg: { globalScore: true }, where: { candidate: { companyId } } }),
         prisma.candidate.findMany({ where: { companyId }, include: candidateInclude, orderBy: { appliedAt: "desc" } }),
         prisma.job.findMany({ where: { companyId }, include: jobInclude, orderBy: { createdAt: "desc" }, take: 4 }),
+        // Sourcing trend : candidatures par mois sur les 6 derniers mois (SQL PostgreSQL).
+        prisma.$queryRaw<Array<{ name: string; candidatures: number }>>`
+          SELECT TO_CHAR(DATE_TRUNC('month', "appliedAt"), 'Mon') AS name,
+                 COUNT(*)::int AS candidatures
+          FROM "Candidate"
+          WHERE "companyId" = ${companyId}
+            AND "appliedAt" >= NOW() - INTERVAL '6 months'
+          GROUP BY DATE_TRUNC('month', "appliedAt"), name
+          ORDER BY DATE_TRUNC('month', "appliedAt") ASC
+        `,
       ]);
 
     const avgMatchingScore = scoreAgg._avg.globalScore != null ? Math.round(scoreAgg._avg.globalScore) : 0;
 
     const candidates = candidateRows.map(mapCandidate);
 
-    // Sourcing trend: candidates per month (simulation) — dernier mois dérivé du total.
-    const sourcingTrend = [
-      { name: "Jan", candidatures: 12 },
-      { name: "Fév", candidatures: 18 },
-      { name: "Mar", candidatures: 25 },
-      { name: "Avr", candidatures: 21 },
-      { name: "Mai", candidatures: 35 },
-      { name: "Juin", candidatures: totalCandidates + 5 },
-    ];
+    // Sourcing trend : agrégation réelle des candidatures par mois. Si la base
+    // est vide (aucune candidature sur 6 mois), fallback = 0 pour les 6 derniers mois.
+    const sourcingTrend = sourcingRows.length > 0
+      ? sourcingRows.map((r) => ({ name: r.name, candidatures: Number(r.candidatures) }))
+      : Array.from({ length: 6 }, (_, i) => {
+          const d = new Date();
+          d.setMonth(d.getMonth() - (5 - i));
+          return { name: d.toLocaleString("en-US", { month: "short" }), candidatures: 0 };
+        });
 
     // Distribution des compétences (depuis analysis.skills : languages+frameworks+tools+cloud), top 7.
     const skillCounts: Record<string, number> = {};
@@ -518,13 +574,19 @@ app.delete("/api/jobs/:id", requireAuth, async (req, res) => {
 
 app.get("/api/candidates", requireAuth, async (req, res) => {
   const { companyId } = getContext(req);
+  const { page, limit, skip } = getPagination(req);
   try {
-    const rows = await prisma.candidate.findMany({
-      where: { companyId },
-      include: candidateInclude,
-      orderBy: { appliedAt: "desc" },
-    });
-    res.json(rows.map(mapCandidate));
+    const [total, rows] = await Promise.all([
+      prisma.candidate.count({ where: { companyId } }),
+      prisma.candidate.findMany({
+        where: { companyId },
+        include: candidateInclude,
+        orderBy: { appliedAt: "desc" },
+        skip,
+        take: limit,
+      }),
+    ]);
+    res.json(paginated(rows.map(mapCandidate), total, page, limit));
   } catch (err) {
     console.error("[GET /api/candidates]", err);
     res.status(500).json({ error: "Erreur base de données." });
@@ -672,9 +734,9 @@ Tu dois renvoyer un objet JSON valide contenant exactement les clés suivantes :
 
 Réponds uniquement avec le bloc JSON brut, sans enrobage markdown (sans \`\`\`json). Ta réponse doit être directement parsable en JSON.`;
 
-    // Call Gemini API server-side
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+    // Call Gemini API server-side (retry 503/429 via l'utilitaire partagé).
+    const response = await callGeminiWithRetry({
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -785,8 +847,8 @@ Tu dois renvoyer un objet JSON contenant exactement deux clés :
 
 Réponds uniquement avec le bloc JSON brut. Pas de markdown.`;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+    const response = await callGeminiWithRetry({
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json"
@@ -805,12 +867,18 @@ Réponds uniquement avec le bloc JSON brut. Pas de markdown.`;
 // 6. EMAIL IMPORT & AUTOMATIC CREATION
 app.get("/api/emails", requireAuth, async (req, res) => {
   const { companyId } = getContext(req);
+  const { page, limit, skip } = getPagination(req);
   try {
-    const rows = await prisma.email.findMany({
-      where: { companyId },
-      orderBy: { date: "desc" },
-    });
-    res.json(rows.map(mapEmail));
+    const [total, rows] = await Promise.all([
+      prisma.email.count({ where: { companyId } }),
+      prisma.email.findMany({
+        where: { companyId },
+        orderBy: { date: "desc" },
+        skip,
+        take: limit,
+      }),
+    ]);
+    res.json(paginated(rows.map(mapEmail), total, page, limit));
   } catch (err) {
     console.error("[GET /api/emails]", err);
     res.status(500).json({ error: "Erreur base de données." });
@@ -869,12 +937,18 @@ app.post("/api/emails/:id/import", requireAuth, async (req, res) => {
 // 7. AUDIT LOGS — [Prisma] lecture sur la base (écriture via logActionFor).
 app.get("/api/audit-logs", requireAuth, async (req, res) => {
   const { companyId } = getContext(req);
+  const { page, limit, skip } = getPagination(req);
   try {
-    const rows = await prisma.auditLog.findMany({
-      where: { companyId },
-      orderBy: { timestamp: "desc" },
-    });
-    res.json(rows.map(mapAuditLog));
+    const [total, rows] = await Promise.all([
+      prisma.auditLog.count({ where: { companyId } }),
+      prisma.auditLog.findMany({
+        where: { companyId },
+        orderBy: { timestamp: "desc" },
+        skip,
+        take: limit,
+      }),
+    ]);
+    res.json(paginated(rows.map(mapAuditLog), total, page, limit));
   } catch (err) {
     console.error("[GET /api/audit-logs]", err);
     res.status(500).json({ error: "Erreur base de données." });

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { 
-  BarChart3, 
+import * as XLSX from "xlsx";
+import {
+  BarChart3,
   FileSpreadsheet, 
   FileDown, 
   TrendingUp, 
@@ -55,12 +56,126 @@ export default function ReportsView({ stats, companyName }: ReportsViewProps) {
     { name: "Indeed / Monster", pourcentage: 10 }
   ];
 
-  const handleExport = (type: "excel" | "pdf") => {
-    setExporting(type);
-    setTimeout(() => {
+  // Échappe le texte injecté dans le HTML du registre PDF (évite un HTML cassé/injection).
+  const escapeHtml = (value: unknown) =>
+    String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+
+  // Export Excel (.xlsx) via SheetJS : un onglet "Candidats" à partir des données réelles.
+  const handleExportExcel = () => {
+    if (!stats) return;
+    setExporting("excel");
+
+    const rows = (stats.recentCandidates || []).map((c: any) => ({
+      Nom: c.name,
+      Email: c.email,
+      Téléphone: c.phone,
+      Localisation: c.location,
+      Stage: c.stage,
+      "Score Global": c.scores?.globalScore ?? "N/A",
+      "Score Compétences": c.scores?.skillsScore ?? "N/A",
+      "Score Expérience": c.scores?.experienceScore ?? "N/A",
+      "Décision IA": c.recommendation?.suggestedDecision ?? "Non analysé",
+      "Date candidature": new Date(c.appliedAt).toLocaleDateString("fr-FR"),
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Candidats");
+    XLSX.writeFile(wb, `nexus-sourcing-${companyName}-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    setExporting(null);
+  };
+
+  // Export PDF : ouvre une fenêtre avec une mise en page dédiée à l'impression,
+  // puis déclenche l'impression navigateur (l'utilisateur choisit "Enregistrer en PDF").
+  const handleExportPdf = () => {
+    if (!stats) return;
+    setExporting("pdf");
+
+    const kpis = stats.kpis || {};
+    const candidates = stats.recentCandidates || [];
+    const dateStr = new Date().toLocaleDateString("fr-FR");
+
+    const kpiCards = [
+      { label: "Offres d'emploi", value: kpis.totalJobs ?? 0 },
+      { label: "Candidatures totales", value: kpis.totalCandidates ?? 0 },
+      { label: "Embauches", value: kpis.hiredCandidates ?? 0 },
+      { label: "Score moyen IA", value: `${kpis.avgMatchingScore ?? 0}%` },
+    ]
+      .map(k => `<div class="kpi"><div class="kpi-value">${escapeHtml(k.value)}</div><div class="kpi-label">${escapeHtml(k.label)}</div></div>`)
+      .join("");
+
+    const candidateRows = candidates
+      .map((c: any) => `
+        <tr>
+          <td>${escapeHtml(c.name)}</td>
+          <td>${escapeHtml(c.stage)}</td>
+          <td>${escapeHtml(c.scores?.globalScore ?? "N/A")}</td>
+          <td>${escapeHtml(c.recommendation?.suggestedDecision ?? "Non analysé")}</td>
+        </tr>`)
+      .join("");
+
+    const funnelItems = funnelData
+      .map(f => `<li><strong>${escapeHtml(f.name)}</strong> : ${escapeHtml(f.valeur)}</li>`)
+      .join("");
+
+    const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Registre RH — ${escapeHtml(companyName)}</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 32px; color: #111; }
+  h1 { color: #131b2e; font-size: 22px; margin-bottom: 4px; }
+  h2 { color: #131b2e; font-size: 15px; margin-top: 28px; }
+  .meta { color: #64748b; font-size: 12px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 12px; }
+  th { background: #131b2e; color: white; padding: 8px; text-align: left; }
+  td { padding: 6px 8px; border-bottom: 1px solid #e2e8f0; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin: 24px 0; }
+  .kpi { border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; }
+  .kpi-value { font-size: 28px; font-weight: bold; color: #131b2e; }
+  .kpi-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; }
+  ul { font-size: 12px; line-height: 1.9; }
+  footer { margin-top: 40px; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 12px; }
+  @media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+  <h1>Nexus Talent</h1>
+  <div class="meta">${escapeHtml(companyName)} — Registre RH généré le ${escapeHtml(dateStr)}</div>
+
+  <h2>Indicateurs clés</h2>
+  <div class="kpi-grid">${kpiCards}</div>
+
+  <h2>Candidats récents</h2>
+  <table>
+    <thead><tr><th>Nom</th><th>Stage</th><th>Score global</th><th>Décision IA</th></tr></thead>
+    <tbody>${candidateRows || `<tr><td colspan="4">Aucun candidat.</td></tr>`}</tbody>
+  </table>
+
+  <h2>Entonnoir de recrutement</h2>
+  <ul>${funnelItems}</ul>
+
+  <footer>Généré par Nexus Talent System</footer>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) {
       setExporting(null);
-      alert(`[Nexus Talent] Le rapport ${type.toUpperCase()} pour "${companyName}" a été généré et téléchargé avec succès.`);
-    }, 1500);
+      alert("Impossible d'ouvrir la fenêtre d'impression. Autorisez les pop-ups pour ce site.");
+      return;
+    }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+    win.close();
+    setExporting(null);
   };
 
   return (
@@ -187,7 +302,7 @@ export default function ReportsView({ stats, companyName }: ReportsViewProps) {
                 </p>
                 
                 <button
-                  onClick={() => handleExport("excel")}
+                  onClick={handleExportExcel}
                   disabled={exporting !== null}
                   className="mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
                 >
@@ -215,7 +330,7 @@ export default function ReportsView({ stats, companyName }: ReportsViewProps) {
                 </p>
 
                 <button
-                  onClick={() => handleExport("pdf")}
+                  onClick={handleExportPdf}
                   disabled={exporting !== null}
                   className="mt-4 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs px-4 py-2.5 rounded-lg flex items-center gap-1.5 shadow-sm transition-colors disabled:opacity-50"
                 >

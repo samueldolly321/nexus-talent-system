@@ -1,32 +1,38 @@
 import React, { useState } from "react";
-import { 
-  Plus, 
-  MapPin, 
-  Clock, 
-  DollarSign, 
-  Award, 
-  FileText, 
-  Check, 
-  Briefcase, 
+import {
+  Plus,
+  MapPin,
+  Clock,
+  DollarSign,
+  Award,
+  FileText,
+  Check,
+  Briefcase,
   X,
   PlusCircle,
   Trash2,
-  ListFilter
+  ListFilter,
+  Pencil
 } from "lucide-react";
-import { Job, ContractType } from "../types";
+import TopBar from "./TopBar";
+import { Job, ContractType, User } from "../types";
 
 interface JobsViewProps {
   jobs: Job[];
+  activeUser: User | null;
+  searchQuery: string;
+  onSearchChange: (q: string) => void;
   onCreateJob: (jobData: Partial<Job>) => void;
   onEditJob: (id: string, jobData: Partial<Job>) => void;
   onDeleteJob: (id: string) => void;
   loading: boolean;
 }
 
-export default function JobsView({ jobs, onCreateJob, onEditJob, onDeleteJob, loading }: JobsViewProps) {
+export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange, onCreateJob, onEditJob, onDeleteJob, loading }: JobsViewProps) {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  
+
   // Form State
   const [title, setTitle] = useState("");
   const [contractType, setContractType] = useState<ContractType>(ContractType.CDI);
@@ -52,9 +58,40 @@ export default function JobsView({ jobs, onCreateJob, onEditJob, onDeleteJob, lo
     setLanguagesRequired("");
   };
 
-  const handleCreate = (e: React.FormEvent) => {
+  // Ouvre le modal en mode création (formulaire vierge).
+  const openCreateModal = () => {
+    resetForm();
+    setSelectedJob(null);
+    setIsEditing(false);
+    setShowAddModal(true);
+  };
+
+  // Ouvre le modal en mode édition : pré-remplit le formulaire avec le job choisi.
+  const openEditModal = (job: Job) => {
+    setSelectedJob(job);
+    setIsEditing(true);
+    setTitle(job.title);
+    setContractType(job.contractType);
+    setLocation(job.location);
+    setSalaryRange(job.salaryRange || "");
+    setMinExperienceYears(job.minExperienceYears);
+    setEducationRequired(job.educationRequired);
+    setDescription(job.description);
+    setMissions(job.missions.join("\n"));
+    setSkillsRequired(job.skillsRequired.join(", "));
+    setLanguagesRequired(job.languagesRequired.join(", "));
+    setShowAddModal(true);
+  };
+
+  const closeModal = () => {
+    setShowAddModal(false);
+    setIsEditing(false);
+    resetForm();
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onCreateJob({
+    const jobData: Partial<Job> = {
       title,
       contractType,
       location,
@@ -65,13 +102,29 @@ export default function JobsView({ jobs, onCreateJob, onEditJob, onDeleteJob, lo
       missions: missions.split("\n").filter(Boolean),
       skillsRequired: skillsRequired.split(",").map(s => s.trim()).filter(Boolean),
       languagesRequired: languagesRequired.split(",").map(l => l.trim()).filter(Boolean)
-    });
-    resetForm();
-    setShowAddModal(false);
+    };
+    if (isEditing && selectedJob) {
+      onEditJob(selectedJob.id, jobData);
+    } else {
+      onCreateJob(jobData);
+    }
+    closeModal();
   };
 
+  // Recherche globale : titre, description ou compétences contiennent la requête.
+  const q = searchQuery.trim().toLowerCase();
+  const filteredJobs = q
+    ? jobs.filter(job =>
+        job.title.toLowerCase().includes(q) ||
+        job.description.toLowerCase().includes(q) ||
+        job.skillsRequired.join(", ").toLowerCase().includes(q)
+      )
+    : jobs;
+
   return (
-    <div className="flex-1 bg-background min-h-screen p-8 overflow-y-auto">
+    <div className="flex-1 bg-background min-h-screen flex flex-col">
+      <TopBar activeUser={activeUser} searchValue={searchQuery} onSearchChange={onSearchChange} searchPlaceholder="Rechercher une offre par titre, description ou compétence..." />
+      <div className="flex-1 p-8 overflow-y-auto">
       {/* Upper header block */}
       <div className="mb-8 flex justify-between items-center">
         <div>
@@ -81,10 +134,7 @@ export default function JobsView({ jobs, onCreateJob, onEditJob, onDeleteJob, lo
           </p>
         </div>
         <button
-          onClick={() => {
-            resetForm();
-            setShowAddModal(true);
-          }}
+          onClick={openCreateModal}
           className="bg-accent hover:brightness-110 text-on-primary font-bold px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 shadow-sm transition-colors"
         >
           <Plus size={16} className="stroke-[3]" />
@@ -101,16 +151,20 @@ export default function JobsView({ jobs, onCreateJob, onEditJob, onDeleteJob, lo
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           {/* Left / Middle: Jobs List */}
           <div className="xl:col-span-2 space-y-4">
-            {jobs.length === 0 ? (
+            {filteredJobs.length === 0 ? (
               <div className="bg-white rounded-xl border border-dashed border-outline-variant p-12 text-center">
                 <Briefcase className="mx-auto text-slate-300 mb-4" size={44} />
-                <h3 className="font-sans font-bold text-on-surface-variant text-sm">Aucune offre d'emploi active</h3>
+                <h3 className="font-sans font-bold text-on-surface-variant text-sm">
+                  {q ? "Aucune offre ne correspond à la recherche" : "Aucune offre d'emploi active"}
+                </h3>
                 <p className="text-xs text-on-surface-variant mt-1 max-w-sm mx-auto">
-                  Commencez à recruter en publiant votre première offre d'emploi multi-tenant.
+                  {q
+                    ? "Essayez d'autres mots-clés (titre, compétence...)."
+                    : "Commencez à recruter en publiant votre première offre d'emploi multi-tenant."}
                 </p>
               </div>
             ) : (
-              jobs.map(job => (
+              filteredJobs.map(job => (
                 <div 
                   key={job.id} 
                   onClick={() => setSelectedJob(job)}
@@ -132,19 +186,31 @@ export default function JobsView({ jobs, onCreateJob, onEditJob, onDeleteJob, lo
                         {job.title}
                       </h3>
                     </div>
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm("Archiver définitivement cette offre d'emploi ?")) {
-                          onDeleteJob(job.id);
-                          if (selectedJob?.id === job.id) setSelectedJob(null);
-                        }
-                      }}
-                      className="text-on-surface-variant hover:text-red-500 p-1.5 hover:bg-red-50 rounded transition-colors"
-                      title="Archiver l'offre"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openEditModal(job);
+                        }}
+                        className="text-on-surface-variant hover:text-secondary p-1.5 hover:bg-secondary-container/20 rounded transition-colors"
+                        title="Modifier l'offre"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm("Archiver définitivement cette offre d'emploi ?")) {
+                            onDeleteJob(job.id);
+                            if (selectedJob?.id === job.id) setSelectedJob(null);
+                          }
+                        }}
+                        className="text-on-surface-variant hover:text-red-500 p-1.5 hover:bg-red-50 rounded transition-colors"
+                        title="Archiver l'offre"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
                   </div>
 
                   <p className="text-xs text-on-surface-variant mt-3 line-clamp-2 leading-relaxed">
@@ -263,6 +329,7 @@ export default function JobsView({ jobs, onCreateJob, onEditJob, onDeleteJob, lo
           </div>
         </div>
       )}
+      </div>
 
       {/* Add Job Modal */}
       {showAddModal && (
@@ -270,18 +337,18 @@ export default function JobsView({ jobs, onCreateJob, onEditJob, onDeleteJob, lo
           <div className="bg-white rounded-xl border border-outline-variant shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-outline-variant flex justify-between items-center">
               <div className="flex items-center gap-2 text-on-surface">
-                <PlusCircle size={20} className="text-secondary" />
-                <h3 className="font-bold text-base font-sans">Publier une Nouvelle Offre</h3>
+                {isEditing ? <Pencil size={20} className="text-secondary" /> : <PlusCircle size={20} className="text-secondary" />}
+                <h3 className="font-bold text-base font-sans">{isEditing ? "Modifier l'offre" : "Publier une Nouvelle Offre"}</h3>
               </div>
-              <button 
-                onClick={() => setShowAddModal(false)}
+              <button
+                onClick={closeModal}
                 className="text-on-surface-variant hover:text-on-surface-variant p-1 rounded-lg hover:bg-surface-container transition-colors"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">Titre du poste *</label>
@@ -399,18 +466,18 @@ export default function JobsView({ jobs, onCreateJob, onEditJob, onDeleteJob, lo
               </div>
 
               <div className="pt-4 border-t border-outline-variant flex justify-end gap-3">
-                <button 
-                  type="button" 
-                  onClick={() => setShowAddModal(false)}
+                <button
+                  type="button"
+                  onClick={closeModal}
                   className="px-4 py-2 text-xs font-semibold text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors"
                 >
                   Annuler
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="bg-accent hover:brightness-110 text-on-primary font-bold px-4 py-2 rounded-lg text-xs shadow-sm transition-colors"
                 >
-                  Publier l'offre
+                  {isEditing ? "Enregistrer les modifications" : "Publier l'offre"}
                 </button>
               </div>
             </form>
