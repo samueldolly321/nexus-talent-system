@@ -279,14 +279,15 @@ export default function App() {
     }
   };
 
-  const handleUpdateCandidateCv = async (id: string, cvText: string) => {
+  // Mise à jour partielle d'un candidat (profil, CV, lettre, avatar…) via PUT.
+  const handleUpdateCandidate = async (id: string, patch: Partial<Candidate>) => {
     const res = await apiFetch(`/api/candidates/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ cvText })
+      body: JSON.stringify(patch)
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || "Échec de l'enregistrement du CV.");
+      throw new Error(err.error || "Échec de l'enregistrement.");
     }
     const updated = await res.json();
     setCandidates(prev => prev.map(c => (c.id === id ? updated : c)));
@@ -412,7 +413,7 @@ export default function App() {
           onAnalyzeCandidate={handleAnalyzeCandidate}
           analyzing={analyzingId === selectedCandidate.id}
           onOpenRecommendation={() => setShowRecommendation(true)}
-          onSaveCv={handleUpdateCandidateCv}
+          onSaveCandidate={handleUpdateCandidate}
         />
       );
     }

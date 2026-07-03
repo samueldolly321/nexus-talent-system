@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronRight, Download, Mail, Phone, MapPin, Linkedin, Globe, Sparkles, RefreshCw, GraduationCap, BadgeCheck, Pencil, X, Loader2 } from "lucide-react";
+import { ChevronRight, Download, Mail, Phone, MapPin, Linkedin, Globe, Sparkles, RefreshCw, GraduationCap, BadgeCheck, Pencil, X, Loader2, Camera } from "lucide-react";
 import {
   RadarChart,
   PolarGrid,
@@ -19,10 +19,16 @@ interface CandidateProfileViewProps {
   onAnalyzeCandidate: (id: string) => Promise<void>;
   analyzing: boolean;
   onOpenRecommendation: () => void;
-  onSaveCv: (id: string, cvText: string) => Promise<void>;
+  onSaveCandidate: (id: string, patch: Partial<Candidate>) => Promise<void>;
 }
 
 const tabs = ["Analyse IA", "Expérience & CV", "Lettre de motivation", "Historique"];
+
+// Classes partagées des modals (cohérentes avec le reste de l'app).
+const LABEL_CLS = "block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5";
+const INPUT_CLS = "w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all";
+const CANCEL_CLS = "h-10 px-4 rounded-[8px] text-sm font-bold text-on-surface-variant hover:bg-surface-container-low transition-all disabled:opacity-40";
+const SUBMIT_CLS = "h-10 px-4 bg-primary text-white rounded-[8px] text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed";
 
 export default function CandidateProfileView({
   candidate,
@@ -33,40 +39,53 @@ export default function CandidateProfileView({
   onAnalyzeCandidate,
   analyzing,
   onOpenRecommendation,
-  onSaveCv
+  onSaveCandidate
 }: CandidateProfileViewProps) {
   const [activeTab, setActiveTab] = useState(0);
   const scores = candidate.scores;
 
-  // Modal d'édition du CV (onglet "Expérience & CV").
-  const [showCvModal, setShowCvModal] = useState(false);
+  // Un seul modal ouvert à la fois : profil, avatar, CV ou lettre de motivation.
+  type ModalKind = "profile" | "avatar" | "cv" | "letter";
+  const [modal, setModal] = useState<ModalKind | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  // Brouillons par formulaire (initialisés à l'ouverture depuis le candidat).
+  const [profileDraft, setProfileDraft] = useState({ name: "", email: "", phone: "", location: "", linkedinUrl: "" });
+  const [avatarDraft, setAvatarDraft] = useState("");
   const [cvDraft, setCvDraft] = useState("");
-  const [savingCv, setSavingCv] = useState(false);
-  const [cvError, setCvError] = useState<string | null>(null);
+  const [letterDraft, setLetterDraft] = useState("");
 
-  const openCvModal = () => {
-    setCvDraft(candidate.cvText || "");
-    setCvError(null);
-    setShowCvModal(true);
+  const closeModal = () => { if (!saving) { setModal(null); setFormError(null); } };
+
+  const openProfile = () => {
+    setProfileDraft({
+      name: candidate.name,
+      email: candidate.email,
+      phone: candidate.phone || "",
+      location: candidate.location || "",
+      linkedinUrl: candidate.linkedinUrl || "",
+    });
+    setFormError(null);
+    setModal("profile");
   };
+  const openAvatar = () => { setAvatarDraft(candidate.avatarUrl || ""); setFormError(null); setModal("avatar"); };
+  const openCv = () => { setCvDraft(candidate.cvText || ""); setFormError(null); setModal("cv"); };
+  const openLetter = () => { setLetterDraft(candidate.letterText || ""); setFormError(null); setModal("letter"); };
 
-  const closeCvModal = () => {
-    if (savingCv) return;
-    setShowCvModal(false);
-  };
-
-  const handleSaveCv = async (e: React.FormEvent) => {
+  // Soumission générique : construit le patch au submit puis délègue à onSaveCandidate.
+  const handleSubmit = (buildPatch: () => Partial<Candidate>) => async (e: React.FormEvent) => {
     e.preventDefault();
-    if (savingCv) return;
-    setSavingCv(true);
-    setCvError(null);
+    if (saving) return;
+    setSaving(true);
+    setFormError(null);
     try {
-      await onSaveCv(candidate.id, cvDraft);
-      setShowCvModal(false);
+      await onSaveCandidate(candidate.id, buildPatch());
+      setModal(null);
     } catch (err: any) {
-      setCvError(err?.message || "Une erreur est survenue.");
+      setFormError(err?.message || "Une erreur est survenue.");
     } finally {
-      setSavingCv(false);
+      setSaving(false);
     }
   };
 
@@ -109,8 +128,25 @@ export default function CandidateProfileView({
         {/* Left: identity card */}
         <div className="space-y-4">
           <div className="bg-white border border-outline-variant rounded-xl p-6 text-center">
-            <div className="w-20 h-20 rounded-full bg-primary-fixed-dim mx-auto mb-4 flex items-center justify-center font-bold text-2xl text-on-primary-fixed">
-              {candidate.name.substring(0, 2).toUpperCase()}
+            <div className="relative w-20 h-20 mx-auto mb-4">
+              {candidate.avatarUrl ? (
+                <img
+                  src={candidate.avatarUrl}
+                  alt={candidate.name}
+                  className="w-20 h-20 rounded-full object-cover border-2 border-secondary"
+                />
+              ) : (
+                <div className="w-20 h-20 rounded-full bg-primary-fixed-dim flex items-center justify-center font-bold text-2xl text-on-primary-fixed">
+                  {candidate.name.substring(0, 2).toUpperCase()}
+                </div>
+              )}
+              <button
+                onClick={openAvatar}
+                title="Changer la photo"
+                className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center shadow hover:opacity-90 transition-all"
+              >
+                <Camera size={14} />
+              </button>
             </div>
             <h2 className="font-bold text-lg text-on-surface">{candidate.name}</h2>
             <p className="text-secondary text-sm font-medium mb-3">{job?.title || "—"}</p>
@@ -130,6 +166,13 @@ export default function CandidateProfileView({
                 <p className="flex items-center gap-2 text-sm text-secondary truncate"><Linkedin size={14} className="shrink-0" />{candidate.linkedinUrl}</p>
               )}
             </div>
+            <button
+              onClick={openProfile}
+              className="w-full border border-outline-variant rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-surface-container-low transition-all mt-4"
+            >
+              <Pencil size={14} />
+              Modifier le profil
+            </button>
           </div>
 
           <div>
@@ -258,7 +301,7 @@ export default function CandidateProfileView({
               <div className="flex items-center justify-between mb-3 gap-3">
                 <h3 className="font-bold text-on-surface">CV Original</h3>
                 <button
-                  onClick={openCvModal}
+                  onClick={openCv}
                   className="shrink-0 px-3 py-1.5 border border-outline-variant rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-surface-container-low transition-all"
                 >
                   <Pencil size={14} />
@@ -275,7 +318,16 @@ export default function CandidateProfileView({
 
           {activeTab === 2 && (
             <div className="bg-white border border-outline-variant rounded-xl p-6">
-              <h3 className="font-bold text-on-surface mb-3">Lettre de Motivation</h3>
+              <div className="flex items-center justify-between mb-3 gap-3">
+                <h3 className="font-bold text-on-surface">Lettre de Motivation</h3>
+                <button
+                  onClick={openLetter}
+                  className="shrink-0 px-3 py-1.5 border border-outline-variant rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-surface-container-low transition-all"
+                >
+                  <Pencil size={14} />
+                  Ajouter / Modifier
+                </button>
+              </div>
               {candidate.letterText ? (
                 <p className="text-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap">{candidate.letterText}</p>
               ) : (
@@ -341,59 +393,120 @@ export default function CandidateProfileView({
         </div>
       </main>
 
-      {/* Modal d'édition du CV */}
-      {showCvModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-          onClick={closeCvModal}
-        >
-          <div
-            className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]"
-            onClick={e => e.stopPropagation()}
-          >
+      {/* Modal : modifier le profil (nom, email, téléphone, localisation, LinkedIn) */}
+      {modal === "profile" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-sans text-lg font-semibold text-primary">Modifier le profil</h3>
+              <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleSubmit(() => ({
+              name: profileDraft.name.trim(),
+              email: profileDraft.email.trim(),
+              phone: profileDraft.phone.trim(),
+              location: profileDraft.location.trim(),
+              linkedinUrl: profileDraft.linkedinUrl.trim() || undefined,
+            }))} className="space-y-4">
+              <div>
+                <label htmlFor="prof-name" className={LABEL_CLS}>Nom <span className="text-error">*</span></label>
+                <input id="prof-name" type="text" required autoFocus value={profileDraft.name} onChange={e => setProfileDraft(d => ({ ...d, name: e.target.value }))} className={INPUT_CLS} placeholder="Jean Dupont" />
+              </div>
+              <div>
+                <label htmlFor="prof-email" className={LABEL_CLS}>Email</label>
+                <input id="prof-email" type="email" value={profileDraft.email} onChange={e => setProfileDraft(d => ({ ...d, email: e.target.value }))} className={INPUT_CLS} placeholder="jean@exemple.com" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="prof-phone" className={LABEL_CLS}>Téléphone</label>
+                  <input id="prof-phone" type="tel" value={profileDraft.phone} onChange={e => setProfileDraft(d => ({ ...d, phone: e.target.value }))} className={INPUT_CLS} placeholder="06 12 34 56 78" />
+                </div>
+                <div>
+                  <label htmlFor="prof-loc" className={LABEL_CLS}>Localisation</label>
+                  <input id="prof-loc" type="text" value={profileDraft.location} onChange={e => setProfileDraft(d => ({ ...d, location: e.target.value }))} className={INPUT_CLS} placeholder="Paris, France" />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="prof-linkedin" className={LABEL_CLS}>LinkedIn</label>
+                <input id="prof-linkedin" type="text" value={profileDraft.linkedinUrl} onChange={e => setProfileDraft(d => ({ ...d, linkedinUrl: e.target.value }))} className={INPUT_CLS} placeholder="linkedin.com/in/…" />
+              </div>
+              {formError && <p className="text-error text-sm">{formError}</p>}
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={closeModal} disabled={saving} className={CANCEL_CLS}>Annuler</button>
+                <button type="submit" disabled={saving || !profileDraft.name.trim()} className={SUBMIT_CLS}>
+                  {saving && <Loader2 size={16} className="animate-spin" />}{saving ? "Enregistrement…" : "Enregistrer"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal : changer la photo (URL) */}
+      {modal === "avatar" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
+          <div className="w-full max-w-sm bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-sans text-lg font-semibold text-primary">Changer la photo</h3>
+              <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleSubmit(() => ({ avatarUrl: avatarDraft.trim() || undefined }))} className="space-y-4">
+              <div>
+                <label htmlFor="avatar-url" className={LABEL_CLS}>URL de la photo</label>
+                <input id="avatar-url" type="url" autoFocus value={avatarDraft} onChange={e => setAvatarDraft(e.target.value)} className={INPUT_CLS} placeholder="https://…/photo.jpg" />
+                <p className="text-[11px] text-on-surface-variant mt-1.5">Laissez vide pour revenir aux initiales.</p>
+              </div>
+              {formError && <p className="text-error text-sm">{formError}</p>}
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={closeModal} disabled={saving} className={CANCEL_CLS}>Annuler</button>
+                <button type="submit" disabled={saving} className={SUBMIT_CLS}>
+                  {saving && <Loader2 size={16} className="animate-spin" />}{saving ? "Enregistrement…" : "Enregistrer"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal : éditer le CV */}
+      {modal === "cv" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
+          <div className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-sans text-lg font-semibold text-primary">Modifier le CV — {candidate.name}</h3>
-              <button
-                type="button"
-                onClick={closeCvModal}
-                disabled={savingCv}
-                className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"
-              >
-                <X size={20} />
-              </button>
+              <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
             </div>
-
-            <form onSubmit={handleSaveCv} className="flex flex-col min-h-0 flex-1">
-              <label htmlFor="cv-edit" className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">
-                Texte du CV
-              </label>
-              <textarea
-                id="cv-edit"
-                autoFocus
-                value={cvDraft}
-                onChange={e => setCvDraft(e.target.value)}
-                className="w-full flex-1 min-h-[240px] bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm font-mono text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all resize-y"
-                placeholder="Collez ou éditez le texte du CV ici…"
-              />
-
-              {cvError && <p className="text-error text-sm mt-2">{cvError}</p>}
-
+            <form onSubmit={handleSubmit(() => ({ cvText: cvDraft }))} className="flex flex-col min-h-0 flex-1">
+              <label htmlFor="cv-edit" className={LABEL_CLS}>Texte du CV</label>
+              <textarea id="cv-edit" autoFocus value={cvDraft} onChange={e => setCvDraft(e.target.value)} className="w-full flex-1 min-h-[240px] bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm font-mono text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all resize-y" placeholder="Collez ou éditez le texte du CV ici…" />
+              {formError && <p className="text-error text-sm mt-2">{formError}</p>}
               <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={closeCvModal}
-                  disabled={savingCv}
-                  className="h-10 px-4 rounded-[8px] text-sm font-bold text-on-surface-variant hover:bg-surface-container-low transition-all disabled:opacity-40"
-                >
-                  Annuler
+                <button type="button" onClick={closeModal} disabled={saving} className={CANCEL_CLS}>Annuler</button>
+                <button type="submit" disabled={saving} className={SUBMIT_CLS}>
+                  {saving && <Loader2 size={16} className="animate-spin" />}{saving ? "Enregistrement…" : "Enregistrer"}
                 </button>
-                <button
-                  type="submit"
-                  disabled={savingCv}
-                  className="h-10 px-4 bg-primary text-white rounded-[8px] text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50"
-                >
-                  {savingCv && <Loader2 size={16} className="animate-spin" />}
-                  {savingCv ? "Enregistrement…" : "Enregistrer"}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal : lettre de motivation */}
+      {modal === "letter" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
+          <div className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-sans text-lg font-semibold text-primary">Lettre de motivation — {candidate.name}</h3>
+              <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleSubmit(() => ({ letterText: letterDraft }))} className="flex flex-col min-h-0 flex-1">
+              <label htmlFor="letter-edit" className={LABEL_CLS}>Texte de la lettre</label>
+              <textarea id="letter-edit" autoFocus value={letterDraft} onChange={e => setLetterDraft(e.target.value)} className="w-full flex-1 min-h-[240px] bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all resize-y" placeholder="Saisissez la lettre de motivation…" />
+              {formError && <p className="text-error text-sm mt-2">{formError}</p>}
+              <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={closeModal} disabled={saving} className={CANCEL_CLS}>Annuler</button>
+                <button type="submit" disabled={saving} className={SUBMIT_CLS}>
+                  {saving && <Loader2 size={16} className="animate-spin" />}{saving ? "Enregistrement…" : "Enregistrer"}
                 </button>
               </div>
             </form>

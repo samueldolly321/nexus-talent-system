@@ -725,6 +725,7 @@ app.put("/api/candidates/:id", requireAuth, async (req, res) => {
     if (b.phone !== undefined) data.phone = b.phone;
     if (b.location !== undefined) data.location = b.location;
     if (b.linkedinUrl !== undefined) data.linkedinUrl = b.linkedinUrl || null;
+    if (b.avatarUrl !== undefined) data.avatarUrl = b.avatarUrl || null;
     if (b.cvText !== undefined) data.cvText = b.cvText;
     if (b.letterText !== undefined) data.letterText = b.letterText;
 

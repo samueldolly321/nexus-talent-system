@@ -158,6 +158,7 @@ model Candidate {
   phone       String
   location    String
   linkedinUrl String?
+  avatarUrl   String? // photo de profil (URL), optionnelle
   stage       PipelineStage @default(Received)
   cvText      String?
   letterText  String?

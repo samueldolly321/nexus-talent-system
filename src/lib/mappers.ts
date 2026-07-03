@@ -150,6 +150,7 @@ export const mapCandidate = (c: CandidateWithScore) => ({
   phone: c.phone,
   location: c.location,
   linkedinUrl: c.linkedinUrl ?? undefined,
+  avatarUrl: c.avatarUrl ?? undefined,
   stage: mapPipelineStage(c.stage),
   cvText: c.cvText ?? undefined,
   letterText: c.letterText ?? undefined,

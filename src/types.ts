@@ -125,6 +125,7 @@ export interface Candidate {
   phone: string;
   location: string;
   linkedinUrl?: string;
+  avatarUrl?: string;
   stage: PipelineStage;
   cvText?: string;
   letterText?: string;
