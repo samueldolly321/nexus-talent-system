@@ -1,5 +1,6 @@
-import React from "react";
-import { ChevronRight, Star, TrendingUp, AlertTriangle, CalendarCheck, Share2, BadgeCheck } from "lucide-react";
+import React, { useState } from "react";
+import { ChevronRight, Star, TrendingUp, AlertTriangle, CalendarCheck, Share2, BadgeCheck, X, Loader2 } from "lucide-react";
+import { apiFetch } from "../lib/api";
 import {
   RadarChart,
   PolarGrid,
@@ -20,10 +21,56 @@ interface RecommendationViewProps {
   onBack: () => void;
 }
 
+// Classes partagées des modals (cohérentes avec le reste de l'app).
+const LABEL_CLS = "block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5";
+const INPUT_CLS = "w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all";
+const CANCEL_CLS = "h-10 px-4 rounded-[8px] text-sm font-bold text-on-surface-variant hover:bg-surface-container-low transition-all disabled:opacity-40";
+const SUBMIT_CLS = "h-10 px-4 bg-primary text-white rounded-[8px] text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed";
+
 export default function RecommendationView({ candidate, job, activeUser, onBack }: RecommendationViewProps) {
   const scores = candidate.scores;
   const rec = candidate.recommendation;
   const successRate = scores?.globalScore ?? 0;
+
+  // Un seul modal ouvert à la fois : planifier un entretien ou partager le profil.
+  const [modal, setModal] = useState<null | "interview" | "share">(null);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [done, setDone] = useState<string | null>(null); // message de confirmation
+
+  const [interview, setInterview] = useState({ date: "", time: "", type: "RH", notes: "" });
+  const [share, setShare] = useState({ email: "", message: "" });
+
+  const closeModal = () => { if (!saving) { setModal(null); setFormError(null); } };
+
+  const openInterview = () => { setInterview({ date: "", time: "", type: "RH", notes: "" }); setFormError(null); setModal("interview"); };
+  const openShare = () => { setShare({ email: "", message: "" }); setFormError(null); setModal("share"); };
+
+  // POST /api/audit-logs — trace l'action côté serveur.
+  const postAuditLog = async (action: string, details: string) => {
+    const res = await apiFetch("/api/audit-logs", { method: "POST", body: JSON.stringify({ action, details }) });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Échec de l'enregistrement.");
+    }
+  };
+
+  const submit = (build: () => { action: string; details: string; confirm: string }) => async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setFormError(null);
+    try {
+      const { action, details, confirm } = build();
+      await postAuditLog(action, details);
+      setModal(null);
+      setDone(confirm);
+    } catch (err: any) {
+      setFormError(err?.message || "Une erreur est survenue.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const donutData = [
     { name: "score", value: successRate },
@@ -179,14 +226,107 @@ export default function RecommendationView({ candidate, job, activeUser, onBack 
             </div>
           )}
 
-          <button className="w-full bg-primary text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90">
+          <button onClick={openInterview} className="w-full bg-primary text-white py-3 rounded-lg font-bold text-sm flex items-center justify-center gap-2 hover:opacity-90">
             <CalendarCheck size={16} />Planifier un entretien
           </button>
-          <button className="w-full border border-outline-variant rounded-lg py-3 font-medium text-sm flex items-center justify-center gap-2 hover:bg-surface-container-low">
+          <button onClick={openShare} className="w-full border border-outline-variant rounded-lg py-3 font-medium text-sm flex items-center justify-center gap-2 hover:bg-surface-container-low">
             <Share2 size={16} />Partager aux décideurs
           </button>
+
+          {done && (
+            <div className="bg-secondary-container/40 border border-secondary-container rounded-lg p-3 text-sm text-on-secondary-container flex items-start justify-between gap-2">
+              <span>{done}</span>
+              <button onClick={() => setDone(null)} className="shrink-0 text-on-secondary-container/70 hover:text-on-secondary-container"><X size={16} /></button>
+            </div>
+          )}
         </div>
       </main>
+
+      {/* Modal : planifier un entretien */}
+      {modal === "interview" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-sans text-lg font-semibold text-primary">Planifier un entretien</h3>
+              <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
+            </div>
+            <form
+              onSubmit={submit(() => ({
+                action: "Entretien planifié",
+                details: `Entretien ${interview.type} planifié pour ${candidate.name} le ${interview.date} à ${interview.time}${interview.notes.trim() ? ` — ${interview.notes.trim()}` : ""}`,
+                confirm: `Entretien ${interview.type} planifié pour ${candidate.name}.`,
+              }))}
+              className="space-y-4"
+            >
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="intv-date" className={LABEL_CLS}>Date <span className="text-error">*</span></label>
+                  <input id="intv-date" type="date" required value={interview.date} onChange={e => setInterview(d => ({ ...d, date: e.target.value }))} className={INPUT_CLS} />
+                </div>
+                <div>
+                  <label htmlFor="intv-time" className={LABEL_CLS}>Heure <span className="text-error">*</span></label>
+                  <input id="intv-time" type="time" required value={interview.time} onChange={e => setInterview(d => ({ ...d, time: e.target.value }))} className={INPUT_CLS} />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="intv-type" className={LABEL_CLS}>Type</label>
+                <select id="intv-type" value={interview.type} onChange={e => setInterview(d => ({ ...d, type: e.target.value }))} className={INPUT_CLS}>
+                  <option value="RH">RH</option>
+                  <option value="Technique">Technique</option>
+                  <option value="Final">Final</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="intv-notes" className={LABEL_CLS}>Notes</label>
+                <textarea id="intv-notes" rows={3} value={interview.notes} onChange={e => setInterview(d => ({ ...d, notes: e.target.value }))} className={`${INPUT_CLS} resize-y`} placeholder="Sujets à aborder, participants…" />
+              </div>
+              {formError && <p className="text-error text-sm">{formError}</p>}
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={closeModal} disabled={saving} className={CANCEL_CLS}>Annuler</button>
+                <button type="submit" disabled={saving || !interview.date || !interview.time} className={SUBMIT_CLS}>
+                  {saving && <Loader2 size={16} className="animate-spin" />}{saving ? "Enregistrement…" : "Planifier"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal : partager aux décideurs */}
+      {modal === "share" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-sans text-lg font-semibold text-primary">Partager aux décideurs</h3>
+              <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
+            </div>
+            <form
+              onSubmit={submit(() => ({
+                action: "Partage de profil",
+                details: `Profil de ${candidate.name} partagé à ${share.email.trim()}${share.message.trim() ? ` — ${share.message.trim()}` : ""}`,
+                confirm: `Profil partagé à ${share.email.trim()}.`,
+              }))}
+              className="space-y-4"
+            >
+              <div>
+                <label htmlFor="share-email" className={LABEL_CLS}>Email du destinataire <span className="text-error">*</span></label>
+                <input id="share-email" type="email" required autoFocus value={share.email} onChange={e => setShare(d => ({ ...d, email: e.target.value }))} className={INPUT_CLS} placeholder="decideur@entreprise.com" />
+              </div>
+              <div>
+                <label htmlFor="share-msg" className={LABEL_CLS}>Message (optionnel)</label>
+                <textarea id="share-msg" rows={3} value={share.message} onChange={e => setShare(d => ({ ...d, message: e.target.value }))} className={`${INPUT_CLS} resize-y`} placeholder="Un mot pour accompagner le partage…" />
+              </div>
+              {formError && <p className="text-error text-sm">{formError}</p>}
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={closeModal} disabled={saving} className={CANCEL_CLS}>Annuler</button>
+                <button type="submit" disabled={saving || !share.email.trim()} className={SUBMIT_CLS}>
+                  {saving && <Loader2 size={16} className="animate-spin" />}{saving ? "Envoi…" : "Partager"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1038,6 +1038,35 @@ app.get("/api/audit-logs", requireAuth, async (req, res) => {
   }
 });
 
+// Création d'une entrée d'audit depuis le front (traçage d'actions métier :
+// planification d'entretien, partage de profil…). Écriture attendue (await).
+app.post("/api/audit-logs", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  const b = req.body ?? {};
+  const action = String(b.action ?? "").trim();
+  const details = String(b.details ?? "").trim();
+  if (!action || !details) {
+    return res.status(400).json({ error: "Les champs action et details sont requis." });
+  }
+  try {
+    const userRole = (ctx.user ? toPrismaUserRole(ctx.user.role) : undefined) ?? PrismaUserRole.RH;
+    const created = await prisma.auditLog.create({
+      data: {
+        companyId: ctx.companyId,
+        userId: ctx.userId || null,
+        userName: ctx.user ? ctx.user.name : "Système",
+        userRole: userRole as PrismaUserRole,
+        action,
+        details,
+      },
+    });
+    res.json(mapAuditLog(created));
+  } catch (err) {
+    console.error("[POST /api/audit-logs]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
 // ==========================================
 // VITE INTEGRATION / SERVER LISTEN
 // ==========================================
