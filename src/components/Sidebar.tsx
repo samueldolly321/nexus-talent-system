@@ -12,7 +12,8 @@ import {
   Building2,
   ChevronDown,
   LogOut,
-  BrainCircuit
+  BrainCircuit,
+  X
 } from "lucide-react";
 import { Company, User } from "../types";
 
@@ -26,6 +27,9 @@ interface SidebarProps {
   onSwitchContext: (companyId: string, userId: string) => void;
   onCreateJob?: () => void;
   onLogout?: () => void;
+  // Drawer mobile : contrôlé par App (statique ≥ md, coulissant < md).
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export default function Sidebar({
@@ -37,7 +41,9 @@ export default function Sidebar({
   allUsers,
   onSwitchContext,
   onCreateJob,
-  onLogout
+  onLogout,
+  isOpen = false,
+  onClose
 }: SidebarProps) {
   const menuItems = [
     { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -62,16 +68,38 @@ export default function Sidebar({
   };
 
   return (
-    <aside className="w-[260px] h-screen bg-surface flex flex-col py-6 border-r border-outline-variant shrink-0 select-none">
+    <>
+      {/* Backdrop mobile : n'apparaît que lorsque le drawer est ouvert, < md. */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 bg-black/40 z-40 md:hidden"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`w-[260px] h-screen bg-surface flex flex-col py-6 border-r border-outline-variant shrink-0 select-none fixed inset-y-0 left-0 z-50 transition-transform duration-300 md:static md:z-auto md:translate-x-0 ${
+          isOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
       {/* Brand */}
       <div className="px-6 mb-6 flex items-center gap-3">
         <div className="w-9 h-9 rounded-md bg-primary flex items-center justify-center shrink-0">
           <span className="font-mono text-on-primary text-[10px] font-bold tracking-tight">NT</span>
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="font-sans font-bold text-lg text-primary leading-tight truncate">Nexus Talent</h1>
           <p className="font-mono text-[10px] text-on-surface-variant tracking-widest uppercase">Espace Recruteur</p>
         </div>
+        {/* Fermeture du drawer (mobile uniquement) */}
+        <button
+          onClick={onClose}
+          className="md:hidden p-1.5 -mr-1 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-lg transition-all shrink-0"
+          title="Fermer le menu"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {/* Multi-tenant workspace selector */}
@@ -166,6 +194,7 @@ export default function Sidebar({
           </button>
         )}
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

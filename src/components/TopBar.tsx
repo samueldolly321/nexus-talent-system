@@ -1,6 +1,7 @@
 import React from "react";
-import { Search, Bell, HelpCircle } from "lucide-react";
+import { Search, Bell, HelpCircle, Menu } from "lucide-react";
 import { User } from "../types";
+import { useSidebar } from "../SidebarContext";
 
 interface TopBarProps {
   activeUser: User | null;
@@ -12,8 +13,17 @@ interface TopBarProps {
 }
 
 export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, rightSlot, searchValue, onSearchChange }: TopBarProps) {
+  const { openSidebar } = useSidebar();
   return (
-    <header className="sticky top-0 h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center px-8 z-40 shrink-0">
+    <header className="sticky top-0 h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center gap-2 px-4 md:px-8 z-40 shrink-0">
+      {/* Ouverture du menu latéral (mobile uniquement) */}
+      <button
+        onClick={openSidebar}
+        className="md:hidden p-2 -ml-1 text-on-surface-variant hover:bg-surface-variant rounded-lg transition-all shrink-0"
+        title="Ouvrir le menu"
+      >
+        <Menu size={20} />
+      </button>
       <div className="flex items-center flex-1 max-w-xl min-w-0">
         {breadcrumb ? (
           breadcrumb

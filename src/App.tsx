@@ -14,12 +14,14 @@ import ReportsView from "./components/ReportsView";
 import DevCenterView from "./components/DevCenterView";
 import { Company, User, Job, Candidate, EmailItem, PipelineStage } from "./types";
 import { apiFetch, apiJson, setAccessToken } from "./lib/api";
+import { SidebarContext } from "./SidebarContext";
 
 export default function App() {
   // null = not yet known (checking for an existing session), false = confirmed logged out
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
   const [authError, setAuthError] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<string>("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
@@ -316,6 +318,7 @@ export default function App() {
     setShowRecommendation(false);
     setSearchQuery(""); // la recherche est réinitialisée à chaque changement de vue
     setActiveView(view);
+    setSidebarOpen(false); // referme le drawer mobile après navigation
   };
 
   const openCandidateProfile = (candidate: Candidate) => {
@@ -483,21 +486,25 @@ export default function App() {
   };
 
   return (
-    <div className="flex w-screen h-screen overflow-hidden bg-background font-sans text-on-background antialiased">
-      <Sidebar
-        activeView={activeView}
-        setActiveView={navigateTo}
-        activeCompany={activeCompany}
-        activeUser={activeUser}
-        allCompanies={allCompanies}
-        allUsers={allUsers}
-        onSwitchContext={handleSwitchContext}
-        onCreateJob={() => navigateTo("jobs")}
-        onLogout={handleLogout}
-      />
-      <div className="flex-1 flex flex-col h-screen overflow-y-auto">
-        {renderMainContent()}
+    <SidebarContext.Provider value={{ openSidebar: () => setSidebarOpen(true) }}>
+      <div className="flex w-screen h-screen overflow-hidden bg-background font-sans text-on-background antialiased">
+        <Sidebar
+          activeView={activeView}
+          setActiveView={navigateTo}
+          activeCompany={activeCompany}
+          activeUser={activeUser}
+          allCompanies={allCompanies}
+          allUsers={allUsers}
+          onSwitchContext={handleSwitchContext}
+          onCreateJob={() => navigateTo("jobs")}
+          onLogout={handleLogout}
+          isOpen={sidebarOpen}
+          onClose={() => setSidebarOpen(false)}
+        />
+        <div className="flex-1 flex flex-col h-screen overflow-y-auto">
+          {renderMainContent()}
+        </div>
       </div>
-    </div>
+    </SidebarContext.Provider>
   );
 }
