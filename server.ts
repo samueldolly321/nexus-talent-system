@@ -661,6 +661,40 @@ app.put("/api/candidates/:id/stage", requireAuth, async (req, res) => {
   }
 });
 
+// Mise à jour du profil candidat (édition du CV depuis la fiche, entre autres).
+// Chemin distinct de "/:id/stage" → pas de collision de route Express.
+app.put("/api/candidates/:id", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  const { companyId } = ctx;
+  const { id } = req.params;
+  const b = req.body ?? {};
+  try {
+    const existing = await prisma.candidate.findFirst({ where: { id, companyId } });
+    if (!existing) return res.status(404).json({ error: "Candidat introuvable" });
+
+    // Whitelist des champs éditables (évite d'écraser id/companyId/stage/scores).
+    const data: Prisma.CandidateUpdateInput = {};
+    if (b.name !== undefined) data.name = b.name;
+    if (b.email !== undefined) data.email = b.email;
+    if (b.phone !== undefined) data.phone = b.phone;
+    if (b.location !== undefined) data.location = b.location;
+    if (b.linkedinUrl !== undefined) data.linkedinUrl = b.linkedinUrl || null;
+    if (b.cvText !== undefined) data.cvText = b.cvText;
+    if (b.letterText !== undefined) data.letterText = b.letterText;
+
+    const updated = await prisma.candidate.update({
+      where: { id },
+      data,
+      include: candidateInclude,
+    });
+    logActionFor(ctx, "Mise à jour candidat", `Modification du profil de '${updated.name}'`);
+    res.json(mapCandidate(updated));
+  } catch (err) {
+    console.error("[PUT /api/candidates/:id]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
 // Suppression DÉFINITIVE (fidèle à l'origine). Cascade : CandidateScore + CandidateSkill.
 app.delete("/api/candidates/:id", requireAuth, async (req, res) => {
   const ctx = getContext(req);

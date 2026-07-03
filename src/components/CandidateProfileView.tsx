@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronRight, Download, Mail, Phone, MapPin, Linkedin, Globe, Sparkles, RefreshCw, GraduationCap, BadgeCheck } from "lucide-react";
+import { ChevronRight, Download, Mail, Phone, MapPin, Linkedin, Globe, Sparkles, RefreshCw, GraduationCap, BadgeCheck, Pencil, X, Loader2 } from "lucide-react";
 import {
   RadarChart,
   PolarGrid,
@@ -19,6 +19,7 @@ interface CandidateProfileViewProps {
   onAnalyzeCandidate: (id: string) => Promise<void>;
   analyzing: boolean;
   onOpenRecommendation: () => void;
+  onSaveCv: (id: string, cvText: string) => Promise<void>;
 }
 
 const tabs = ["Analyse IA", "Expérience & CV", "Lettre de motivation", "Historique"];
@@ -31,10 +32,43 @@ export default function CandidateProfileView({
   onUpdateStage,
   onAnalyzeCandidate,
   analyzing,
-  onOpenRecommendation
+  onOpenRecommendation,
+  onSaveCv
 }: CandidateProfileViewProps) {
   const [activeTab, setActiveTab] = useState(0);
   const scores = candidate.scores;
+
+  // Modal d'édition du CV (onglet "Expérience & CV").
+  const [showCvModal, setShowCvModal] = useState(false);
+  const [cvDraft, setCvDraft] = useState("");
+  const [savingCv, setSavingCv] = useState(false);
+  const [cvError, setCvError] = useState<string | null>(null);
+
+  const openCvModal = () => {
+    setCvDraft(candidate.cvText || "");
+    setCvError(null);
+    setShowCvModal(true);
+  };
+
+  const closeCvModal = () => {
+    if (savingCv) return;
+    setShowCvModal(false);
+  };
+
+  const handleSaveCv = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (savingCv) return;
+    setSavingCv(true);
+    setCvError(null);
+    try {
+      await onSaveCv(candidate.id, cvDraft);
+      setShowCvModal(false);
+    } catch (err: any) {
+      setCvError(err?.message || "Une erreur est survenue.");
+    } finally {
+      setSavingCv(false);
+    }
+  };
 
   const aptitudeData = scores
     ? [
@@ -221,7 +255,16 @@ export default function CandidateProfileView({
 
           {activeTab === 1 && (
             <div className="bg-white border border-outline-variant rounded-xl p-6">
-              <h3 className="font-bold text-on-surface mb-3">CV Original</h3>
+              <div className="flex items-center justify-between mb-3 gap-3">
+                <h3 className="font-bold text-on-surface">CV Original</h3>
+                <button
+                  onClick={openCvModal}
+                  className="shrink-0 px-3 py-1.5 border border-outline-variant rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-surface-container-low transition-all"
+                >
+                  <Pencil size={14} />
+                  Modifier le CV
+                </button>
+              </div>
               {candidate.cvText ? (
                 <pre className="bg-primary-container text-inverse-on-surface p-4 rounded-lg text-xs font-mono leading-relaxed whitespace-pre-wrap max-h-[500px] overflow-y-auto">{candidate.cvText}</pre>
               ) : (
@@ -297,6 +340,66 @@ export default function CandidateProfileView({
           )}
         </div>
       </main>
+
+      {/* Modal d'édition du CV */}
+      {showCvModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={closeCvModal}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-sans text-lg font-semibold text-primary">Modifier le CV — {candidate.name}</h3>
+              <button
+                type="button"
+                onClick={closeCvModal}
+                disabled={savingCv}
+                className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveCv} className="flex flex-col min-h-0 flex-1">
+              <label htmlFor="cv-edit" className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">
+                Texte du CV
+              </label>
+              <textarea
+                id="cv-edit"
+                autoFocus
+                value={cvDraft}
+                onChange={e => setCvDraft(e.target.value)}
+                className="w-full flex-1 min-h-[240px] bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm font-mono text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all resize-y"
+                placeholder="Collez ou éditez le texte du CV ici…"
+              />
+
+              {cvError && <p className="text-error text-sm mt-2">{cvError}</p>}
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={closeCvModal}
+                  disabled={savingCv}
+                  className="h-10 px-4 rounded-[8px] text-sm font-bold text-on-surface-variant hover:bg-surface-container-low transition-all disabled:opacity-40"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingCv}
+                  className="h-10 px-4 bg-primary text-white rounded-[8px] text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50"
+                >
+                  {savingCv && <Loader2 size={16} className="animate-spin" />}
+                  {savingCv ? "Enregistrement…" : "Enregistrer"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

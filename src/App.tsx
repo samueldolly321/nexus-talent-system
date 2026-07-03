@@ -273,6 +273,19 @@ export default function App() {
     }
   };
 
+  const handleUpdateCandidateCv = async (id: string, cvText: string) => {
+    const res = await apiFetch(`/api/candidates/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ cvText })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || "Échec de l'enregistrement du CV.");
+    }
+    const updated = await res.json();
+    setCandidates(prev => prev.map(c => (c.id === id ? updated : c)));
+  };
+
   const handleDeleteCandidate = async (id: string) => {
     setLoading(true);
     try {
@@ -358,6 +371,7 @@ export default function App() {
           onAnalyzeCandidate={handleAnalyzeCandidate}
           analyzing={analyzingId === selectedCandidate.id}
           onOpenRecommendation={() => setShowRecommendation(true)}
+          onSaveCv={handleUpdateCandidateCv}
         />
       );
     }
