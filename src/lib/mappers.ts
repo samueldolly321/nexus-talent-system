@@ -97,6 +97,7 @@ export const mapJob = (j: JobWithSkills) => ({
   languagesRequired: j.languagesRequired,
   minExperienceYears: j.minExperienceYears,
   salaryRange: j.salaryRange ?? undefined,
+  deadline: j.deadline ? j.deadline.toISOString().slice(0, 10) : undefined,
   location: j.location,
   contractType: mapContractType(j.contractType),
   status: mapJobStatus(j.status),

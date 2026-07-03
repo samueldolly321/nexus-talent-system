@@ -496,6 +496,7 @@ app.post("/api/jobs", requireAuth, async (req, res) => {
           languagesRequired: toStringArray(b.languagesRequired, ","),
           minExperienceYears: Number(b.minExperienceYears) || 0,
           salaryRange: b.salaryRange || "",
+          deadline: b.deadline ? new Date(b.deadline) : null,
           location: b.location || "Télé-travail / Hybride",
           contractType: isValidContractType(b.contractType) ? b.contractType : PrismaContractType.CDI,
           status: JobStatus.Active,
@@ -531,6 +532,7 @@ app.put("/api/jobs/:id", requireAuth, async (req, res) => {
     if (b.languagesRequired !== undefined) data.languagesRequired = toStringArray(b.languagesRequired, ",");
     if (b.minExperienceYears !== undefined) data.minExperienceYears = Number(b.minExperienceYears) || 0;
     if (b.salaryRange !== undefined) data.salaryRange = b.salaryRange;
+    if (b.deadline !== undefined) data.deadline = b.deadline ? new Date(b.deadline) : null;
     if (b.location !== undefined) data.location = b.location;
     if (isValidContractType(b.contractType)) data.contractType = b.contractType;
     if (isValidJobStatus(b.status)) data.status = b.status;

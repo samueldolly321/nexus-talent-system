@@ -126,6 +126,7 @@ model Job {
   languagesRequired  String[] // ex. "Anglais (Technique)" — texte libre, PAS des Skill
   minExperienceYears Int
   salaryRange        String?
+  deadline           DateTime? // date limite de candidature (optionnelle)
   location           String
   contractType       ContractType
   status             JobStatus    @default(Draft)

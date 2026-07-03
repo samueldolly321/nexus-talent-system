@@ -28,6 +28,15 @@ interface JobsViewProps {
   loading: boolean;
 }
 
+// Formate une date ISO "YYYY-MM-DD" en "JJ/MM/AAAA" (indépendant du fuseau horaire).
+const formatDeadline = (iso: string) => {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+};
+
+// Deadline dépassée = strictement avant aujourd'hui (comparaison lexicographique sur YYYY-MM-DD).
+const isDeadlinePassed = (iso: string) => iso < new Date().toISOString().slice(0, 10);
+
 export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange, onCreateJob, onEditJob, onDeleteJob, loading }: JobsViewProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -39,6 +48,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
   const [location, setLocation] = useState("");
   const [salaryRange, setSalaryRange] = useState("");
   const [minExperienceYears, setMinExperienceYears] = useState(3);
+  const [deadline, setDeadline] = useState("");
   const [educationRequired, setEducationRequired] = useState("");
   const [description, setDescription] = useState("");
   const [missions, setMissions] = useState("");
@@ -51,6 +61,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
     setLocation("");
     setSalaryRange("");
     setMinExperienceYears(3);
+    setDeadline("");
     setEducationRequired("");
     setDescription("");
     setMissions("");
@@ -75,6 +86,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
     setLocation(job.location);
     setSalaryRange(job.salaryRange || "");
     setMinExperienceYears(job.minExperienceYears);
+    setDeadline(job.deadline || "");
     setEducationRequired(job.educationRequired);
     setDescription(job.description);
     setMissions(job.missions.join("\n"));
@@ -97,6 +109,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
       location,
       salaryRange,
       minExperienceYears,
+      deadline: deadline || undefined,
       educationRequired,
       description,
       missions: missions.split("\n").filter(Boolean),
@@ -235,6 +248,14 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                       <span className="truncate max-w-[120px]">{job.educationRequired}</span>
                     </div>
                   </div>
+
+                  {/* Date limite de candidature (rouge si dépassée) */}
+                  {job.deadline && (
+                    <p className={`flex items-center gap-1.5 text-xs font-semibold mt-3 ${isDeadlinePassed(job.deadline) ? "text-red-600" : "text-on-surface-variant"}`}>
+                      <Clock size={14} className="shrink-0" />
+                      Limite : {formatDeadline(job.deadline)}
+                    </p>
+                  )}
 
                   {/* Skills badges */}
                   <div className="flex flex-wrap gap-1.5 mt-4">
@@ -400,13 +421,23 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                 </div>
                 <div>
                   <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">Expérience minimale (ans)</label>
-                  <input 
-                    type="number" 
+                  <input
+                    type="number"
                     value={minExperienceYears}
                     onChange={e => setMinExperienceYears(Number(e.target.value))}
                     className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">Date limite de candidature</label>
+                <input
+                  type="date"
+                  value={deadline}
+                  onChange={e => setDeadline(e.target.value)}
+                  className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                />
               </div>
 
               <div>

@@ -44,6 +44,7 @@ export interface Job {
   languagesRequired: string[];
   minExperienceYears: number;
   salaryRange?: string;
+  deadline?: string; // date limite de candidature, ISO "YYYY-MM-DD" (optionnel)
   location: string;
   contractType: ContractType;
   status: "Active" | "Archived" | "Draft";
