@@ -6,6 +6,8 @@ import dotenv from "dotenv";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
+import multer from "multer";
+import fs from "fs";
 import { Prisma, ContractType as PrismaContractType, JobStatus, SkillCategory, PipelineStage as PrismaPipelineStage, UserRole as PrismaUserRole } from "@prisma/client";
 import { prisma } from "./src/lib/prisma.js";
 import type { User as PrismaUser } from "@prisma/client";
@@ -19,6 +21,29 @@ const PORT = 3000;
 
 app.use(express.json());
 app.use(cookieParser());
+
+// ==========================================
+// UPLOADS (photos candidats)
+// ==========================================
+// Dossier de stockage des fichiers uploadés (créé au démarrage si absent).
+// La desserte statique de /uploads est configurée dans vite.config.ts (dev).
+const avatarDir = path.join(process.cwd(), "uploads", "avatars");
+fs.mkdirSync(avatarDir, { recursive: true });
+
+const uploadAvatar = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, avatarDir),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
+      cb(null, `${req.params.id}-${Date.now()}${ext}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 Mo max
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith("image/")) cb(null, true);
+    else cb(new Error("Seules les images sont acceptées."));
+  },
+});
 
 // ==========================================
 // AUTH CONFIG
@@ -740,6 +765,30 @@ app.put("/api/candidates/:id", requireAuth, async (req, res) => {
     console.error("[PUT /api/candidates/:id]", err);
     res.status(500).json({ error: "Erreur base de données." });
   }
+});
+
+// Upload de la photo d'un candidat (fichier image). Sauvegarde locale dans
+// /uploads/avatars et renvoie l'URL publique. Le front enchaîne avec un
+// PUT /api/candidates/:id pour persister avatarUrl.
+app.post("/api/candidates/:id/avatar", requireAuth, (req, res) => {
+  uploadAvatar.single("avatar")(req, res, async (err: unknown) => {
+    if (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : "Upload invalide." });
+    }
+    const { companyId } = getContext(req);
+    const { id } = req.params;
+    try {
+      const existing = await prisma.candidate.findFirst({ where: { id, companyId } });
+      if (!existing) return res.status(404).json({ error: "Candidat introuvable" });
+      if (!req.file) return res.status(400).json({ error: "Aucun fichier reçu." });
+
+      const url = `/uploads/avatars/${req.file.filename}`;
+      res.json({ url });
+    } catch (e) {
+      console.error("[POST /api/candidates/:id/avatar]", e);
+      res.status(500).json({ error: "Erreur lors de l'upload." });
+    }
+  });
 });
 
 // Suppression DÉFINITIVE (fidèle à l'origine). Cascade : CandidateScore + CandidateSkill.

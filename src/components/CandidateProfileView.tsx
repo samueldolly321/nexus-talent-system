@@ -9,6 +9,7 @@ import {
 } from "recharts";
 import TopBar from "./TopBar";
 import { Candidate, Job, PipelineStage, User } from "../types";
+import { getAccessToken } from "../lib/api";
 
 interface CandidateProfileViewProps {
   candidate: Candidate;
@@ -52,7 +53,7 @@ export default function CandidateProfileView({
 
   // Brouillons par formulaire (initialisés à l'ouverture depuis le candidat).
   const [profileDraft, setProfileDraft] = useState({ name: "", email: "", phone: "", location: "", linkedinUrl: "" });
-  const [avatarDraft, setAvatarDraft] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [cvDraft, setCvDraft] = useState("");
   const [letterDraft, setLetterDraft] = useState("");
 
@@ -69,7 +70,7 @@ export default function CandidateProfileView({
     setFormError(null);
     setModal("profile");
   };
-  const openAvatar = () => { setAvatarDraft(candidate.avatarUrl || ""); setFormError(null); setModal("avatar"); };
+  const openAvatar = () => { setAvatarFile(null); setFormError(null); setModal("avatar"); };
   const openCv = () => { setCvDraft(candidate.cvText || ""); setFormError(null); setModal("cv"); };
   const openLetter = () => { setLetterDraft(candidate.letterText || ""); setFormError(null); setModal("letter"); };
 
@@ -81,6 +82,38 @@ export default function CandidateProfileView({
     setFormError(null);
     try {
       await onSaveCandidate(candidate.id, buildPatch());
+      setModal(null);
+    } catch (err: any) {
+      setFormError(err?.message || "Une erreur est survenue.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Upload de la photo : POST multipart → URL publique, puis PUT avatarUrl.
+  // fetch brut (pas apiFetch, qui force le Content-Type JSON incompatible multipart).
+  const handleAvatarSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving) return;
+    if (!avatarFile) { setFormError("Veuillez choisir une image."); return; }
+    setSaving(true);
+    setFormError(null);
+    try {
+      const form = new FormData();
+      form.append("avatar", avatarFile);
+      const token = getAccessToken();
+      const res = await fetch(`/api/candidates/${candidate.id}/avatar`, {
+        method: "POST",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Échec de l'upload.");
+      }
+      const { url } = await res.json();
+      await onSaveCandidate(candidate.id, { avatarUrl: url });
       setModal(null);
     } catch (err: any) {
       setFormError(err?.message || "Une erreur est survenue.");
@@ -450,17 +483,24 @@ export default function CandidateProfileView({
               <h3 className="font-sans text-lg font-semibold text-primary">Changer la photo</h3>
               <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
             </div>
-            <form onSubmit={handleSubmit(() => ({ avatarUrl: avatarDraft.trim() || undefined }))} className="space-y-4">
+            <form onSubmit={handleAvatarSubmit} className="space-y-4">
               <div>
-                <label htmlFor="avatar-url" className={LABEL_CLS}>URL de la photo</label>
-                <input id="avatar-url" type="url" autoFocus value={avatarDraft} onChange={e => setAvatarDraft(e.target.value)} className={INPUT_CLS} placeholder="https://…/photo.jpg" />
-                <p className="text-[11px] text-on-surface-variant mt-1.5">Laissez vide pour revenir aux initiales.</p>
+                <label htmlFor="avatar-file" className={LABEL_CLS}>Fichier image</label>
+                <input
+                  id="avatar-file"
+                  type="file"
+                  accept="image/*"
+                  autoFocus
+                  onChange={e => setAvatarFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-sm text-on-surface file:mr-3 file:py-2 file:px-4 file:rounded-[8px] file:border-0 file:text-sm file:font-bold file:bg-primary file:text-white hover:file:opacity-90 file:cursor-pointer"
+                />
+                <p className="text-[11px] text-on-surface-variant mt-1.5">JPG, PNG… — 5 Mo maximum.</p>
               </div>
               {formError && <p className="text-error text-sm">{formError}</p>}
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={closeModal} disabled={saving} className={CANCEL_CLS}>Annuler</button>
-                <button type="submit" disabled={saving} className={SUBMIT_CLS}>
-                  {saving && <Loader2 size={16} className="animate-spin" />}{saving ? "Enregistrement…" : "Enregistrer"}
+                <button type="submit" disabled={saving || !avatarFile} className={SUBMIT_CLS}>
+                  {saving && <Loader2 size={16} className="animate-spin" />}{saving ? "Envoi…" : "Envoyer"}
                 </button>
               </div>
             </form>
