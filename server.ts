@@ -1116,6 +1116,29 @@ app.post("/api/audit-logs", requireAuth, async (req, res) => {
   }
 });
 
+// Entonnoir de recrutement : nombre de candidats par stage (scopé tenant).
+app.get("/api/reports/funnel", requireAuth, async (req, res) => {
+  const { companyId } = getContext(req);
+  try {
+    const grouped = await prisma.candidate.groupBy({
+      by: ["stage"],
+      where: { companyId },
+      _count: { _all: true },
+    });
+    const countByStage = new Map<string, number>();
+    for (const g of grouped) countByStage.set(g.stage, g._count._all);
+    // Ordre du pipeline = ordre de déclaration de l'enum Prisma ; libellé FR via mapPipelineStage.
+    const funnel = Object.values(PrismaPipelineStage).map((stage) => ({
+      stage: mapPipelineStage(stage),
+      count: countByStage.get(stage) ?? 0,
+    }));
+    res.json({ funnel });
+  } catch (err) {
+    console.error("[GET /api/reports/funnel]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
 // ==========================================
 // VITE INTEGRATION / SERVER LISTEN
 // ==========================================

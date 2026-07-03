@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
+import { apiFetch } from "../lib/api";
 import {
   BarChart3,
-  FileSpreadsheet, 
-  FileDown, 
-  TrendingUp, 
-  Users, 
+  FileSpreadsheet,
+  FileDown,
+  Users,
   CheckCircle2, 
   PieChart as LucidePieChart, 
   Target,
@@ -39,16 +39,27 @@ interface ReportsViewProps {
 
 export default function ReportsView({ stats, companyName, onNavigateToView }: ReportsViewProps) {
   const [exporting, setExporting] = useState<string | null>(null);
+  const [funnel, setFunnel] = useState<{ stage: string; count: number }[]>([]);
 
-  const funnelData = [
-    { name: "Candidatures Reçues", valeur: 100 },
-    { name: "Pré-sélectionnés", valeur: 65 },
-    { name: "Entretiens RH", valeur: 32 },
-    { name: "Tests Techniques", valeur: 18 },
-    { name: "Entretiens Finaux", valeur: 8 },
-    { name: "Offres Envoyées", valeur: 4 },
-    { name: "Embauches", valeur: 3 }
-  ];
+  // Entonnoir réel : nombre de candidats par stage, chargé au montage.
+  useEffect(() => {
+    apiFetch("/api/reports/funnel")
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => { if (data?.funnel) setFunnel(data.funnel); })
+      .catch(() => { /* silencieux : l'entonnoir reste vide */ });
+  }, []);
+
+  // Format attendu par le BarChart et l'export PDF.
+  const funnelData = funnel.map(f => ({ name: f.stage, valeur: f.count }));
+
+  // KPIs dérivés des stats réelles (prop). "--" si donnée absente.
+  const kpis = stats?.kpis;
+  const conversionRate =
+    kpis && kpis.totalCandidates > 0
+      ? ((kpis.hiredCandidates / kpis.totalCandidates) * 100).toFixed(1)
+      : null;
+  const aiScore =
+    kpis && kpis.avgMatchingScore != null ? Number(kpis.avgMatchingScore).toFixed(1) : null;
 
   const channelDistribution = [
     { name: "LinkedIn Recruiter", pourcentage: 54 },
@@ -208,11 +219,8 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
           </div>
           <div>
             <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider font-semibold">Temps Moyen de Recrutement</span>
-            <span className="text-xl font-bold text-on-surface block mt-0.5 font-sans">18.5 Jours</span>
-            <span className="text-[10px] font-mono text-emerald-600 font-semibold flex items-center gap-0.5 mt-0.5">
-              <TrendingUp size={12} />
-              -2.4 jours vs l'an dernier
-            </span>
+            <span className="text-xl font-bold text-on-surface block mt-0.5 font-sans">-- j</span>
+            <span className="text-[10px] font-mono text-on-surface-variant font-semibold block mt-0.5">Données indicatives</span>
           </div>
         </div>
 
@@ -222,8 +230,8 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
           </div>
           <div>
             <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider font-semibold">Taux de Conversion Final</span>
-            <span className="text-xl font-bold text-on-surface block mt-0.5 font-sans">24.6%</span>
-            <span className="text-[10px] text-on-surface-variant block mt-0.5">Des candidats retenus en entretien</span>
+            <span className="text-xl font-bold text-on-surface block mt-0.5 font-sans">{conversionRate !== null ? `${conversionRate}%` : "--"}</span>
+            <span className="text-[10px] text-on-surface-variant block mt-0.5">Embauchés / total candidats</span>
           </div>
         </div>
 
@@ -233,7 +241,7 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
           </div>
           <div>
             <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider font-semibold">Sourcing ROI par IA</span>
-            <span className="text-xl font-bold text-on-surface block mt-0.5 font-sans">86% d'exactitude</span>
+            <span className="text-xl font-bold text-on-surface block mt-0.5 font-sans">{aiScore !== null ? `${aiScore}% d'exactitude` : "--"}</span>
             <span className="text-[10px] text-on-secondary-container font-semibold block mt-0.5">Précision du scoring sémantique</span>
           </div>
         </div>
@@ -261,6 +269,7 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
         <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-sans font-bold text-on-surface text-sm mb-1">Canaux de Sourcing</h3>
+            <p className="text-[10px] font-mono text-on-surface-variant/70 mb-1">Données indicatives — champ source à venir</p>
             <p className="text-xs text-on-surface-variant mb-6">Répartition par origine des candidatures reçues.</p>
           </div>
 
