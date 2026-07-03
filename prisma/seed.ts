@@ -202,29 +202,24 @@ const JOB_SKILL_WEIGHTS: Record<string, Record<string, number>> = {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  console.log("🌱 Seed Nexus Talent System…");
+  console.log("🌱 Seed Nexus Talent System… (idempotent : upsert, n'écrase jamais l'existant)");
 
-  // Purge (ordre inverse des dépendances)
-  await prisma.auditLog.deleteMany();
-  await prisma.email.deleteMany();
-  await prisma.candidateSkill.deleteMany();
-  await prisma.jobSkill.deleteMany();
-  await prisma.candidateScore.deleteMany();
-  await prisma.candidate.deleteMany();
-  await prisma.job.deleteMany();
-  await prisma.skill.deleteMany();
-  await prisma.user.deleteMany();
-  await prisma.company.deleteMany();
+  // Aucune purge : le seed n'AJOUTE que ce qui manque. Partout `update: {}` →
+  // une ligne déjà présente n'est jamais modifiée.
 
-  // 1. Companies
-  for (const c of companies) await prisma.company.create({ data: c });
+  // 1. Companies — upsert sur id.
+  for (const c of companies) {
+    await prisma.company.upsert({ where: { id: c.id }, update: {}, create: c });
+  }
 
-  // 2. Users (bcrypt)
+  // 2. Users (bcrypt) — upsert sur id.
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
-  for (const u of users) await prisma.user.create({ data: { ...u, passwordHash } });
+  for (const u of users) {
+    await prisma.user.upsert({ where: { id: u.id }, update: {}, create: { ...u, passwordHash } });
+  }
 
-  // 2b. Comptes admin dédiés pour TechCorp Solutions — upsert idempotent sur l'email
-  // (mot de passe distinct "admin123"). Recréés proprement même hors purge complète.
+  // 2b. Comptes admin dédiés pour TechCorp Solutions — upsert sur l'email (create-only,
+  // mot de passe "admin123"). update vide : un compte déjà présent n'est jamais modifié.
   const adminPasswordHash = await bcrypt.hash("admin123", 10);
   const adminUsers = [
     { name: "Samuel Admin",   email: "samuel@techcorp.io", role: UserRole.AdminPlateforme },
@@ -233,7 +228,7 @@ async function main() {
   for (const a of adminUsers) {
     await prisma.user.upsert({
       where: { email: a.email },
-      update: { name: a.name, role: a.role, companyId: "tenant-techcorp", passwordHash: adminPasswordHash },
+      update: {},
       create: { name: a.name, email: a.email, role: a.role, companyId: "tenant-techcorp", passwordHash: adminPasswordHash },
     });
   }
@@ -245,36 +240,49 @@ async function main() {
 
   const skillIdByName = new Map<string, string>();
   for (const name of [...skillSet].sort()) {
-    const created = await prisma.skill.create({ data: { name, category: categoryFor(name) } });
-    skillIdByName.set(name, created.id);
+    // upsert sur name (@unique) → récupère l'id existant ou nouvellement créé.
+    const skill = await prisma.skill.upsert({ where: { name }, update: {}, create: { name, category: categoryFor(name) } });
+    skillIdByName.set(name, skill.id);
   }
   console.log(`   ${skillIdByName.size} compétences dans le référentiel`);
 
   // 4. Jobs + JobSkill (avec poids)
   for (const j of jobs) {
     const { skillsRequired, ...jobData } = j;
-    await prisma.job.create({ data: jobData });
+    await prisma.job.upsert({ where: { id: j.id }, update: {}, create: jobData });
     const weights = JOB_SKILL_WEIGHTS[j.id] ?? {};
     for (const raw of skillsRequired) {
       if (isSpokenLanguage(raw)) continue;
       const name = canon(raw);
       const skillId = skillIdByName.get(name);
       if (!skillId) continue;
-      await prisma.jobSkill.create({ data: { jobId: j.id, skillId, required: true, weight: weights[name] ?? null } });
+      await prisma.jobSkill.upsert({
+        where: { jobId_skillId: { jobId: j.id, skillId } },
+        update: {},
+        create: { jobId: j.id, skillId, required: true, weight: weights[name] ?? null },
+      });
     }
   }
 
   // 5. Candidats + CandidateScore + CandidateSkill
   for (const c of candidates) {
     const { skills, scores, analysis, recommendation, ...candData } = c;
-    await prisma.candidate.create({
-      data: {
+    await prisma.candidate.upsert({
+      where: { id: c.id },
+      update: {},
+      create: {
         ...candData,
         analysis: analysis ?? undefined,
         recommendation: recommendation ?? undefined,
       },
     });
-    if (scores) await prisma.candidateScore.create({ data: { candidateId: c.id, ...scores } });
+    if (scores) {
+      await prisma.candidateScore.upsert({
+        where: { candidateId: c.id },
+        update: {},
+        create: { candidateId: c.id, ...scores },
+      });
+    }
     const seen = new Set<string>();
     for (const raw of skills ?? []) {
       if (isSpokenLanguage(raw)) continue;
@@ -282,7 +290,11 @@ async function main() {
       const skillId = skillIdByName.get(name);
       if (!skillId || seen.has(skillId)) continue;
       seen.add(skillId);
-      await prisma.candidateSkill.create({ data: { candidateId: c.id, skillId } });
+      await prisma.candidateSkill.upsert({
+        where: { candidateId_skillId: { candidateId: c.id, skillId } },
+        update: {},
+        create: { candidateId: c.id, skillId },
+      });
     }
   }
 
@@ -363,7 +375,7 @@ Master Informatique option Réseaux & Cloud - Telecom Paris (2018)`,
       status: EmailStatus.Pending,
     },
   ];
-  for (const e of emails) await prisma.email.create({ data: e });
+  for (const e of emails) await prisma.email.upsert({ where: { id: e.id }, update: {}, create: e });
 
   // 7. Audit logs (démo) — 2 entrées TechCorp fidèles au tableau mémoire + 1 HealthSoft.
   const auditLogs = [
@@ -389,7 +401,7 @@ Master Informatique option Réseaux & Cloud - Telecom Paris (2018)`,
       timestamp: new Date("2026-06-20T08:00:00Z"),
     },
   ];
-  for (const l of auditLogs) await prisma.auditLog.create({ data: l });
+  for (const l of auditLogs) await prisma.auditLog.upsert({ where: { id: l.id }, update: {}, create: l });
 
   const counts = {
     companies: await prisma.company.count(),
