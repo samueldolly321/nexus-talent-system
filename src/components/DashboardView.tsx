@@ -146,11 +146,11 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
         searchPlaceholder="Rechercher candidats, offres ou rapports..."
       />
 
-      <main className="px-8 pt-8 pb-12 flex-1">
+      <main className="px-4 md:px-8 pt-6 md:pt-8 pb-12 flex-1">
         {/* Welcome */}
         <div className="flex justify-between items-end mb-8 flex-wrap gap-4">
           <div>
-            <h2 className="font-sans text-[32px] font-semibold text-primary tracking-tight leading-tight">Tableau de bord Recruteur</h2>
+            <h2 className="font-sans text-2xl md:text-[32px] font-semibold text-primary tracking-tight leading-tight">Tableau de bord Recruteur</h2>
             <p className="text-on-surface-variant mt-1">Insights intelligents sur votre pipeline de talents.</p>
           </div>
           <div className="flex gap-3">
@@ -370,7 +370,7 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
         </div>
       </main>
 
-      <footer className="flex justify-between items-center py-4 px-8 border-t border-outline-variant bg-surface">
+      <footer className="flex flex-col sm:flex-row justify-between items-center gap-3 py-4 px-4 md:px-8 border-t border-outline-variant bg-surface">
         <p className="font-mono text-[10px] text-on-surface-variant">© 2026 Nexus Talent System. v1.0.0</p>
         <div className="flex gap-6">
           <a className="font-mono text-[10px] text-on-surface-variant hover:text-secondary transition-colors" href="#">Privacy Policy</a>
