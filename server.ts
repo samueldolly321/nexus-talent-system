@@ -868,7 +868,7 @@ Réponds uniquement avec le bloc JSON brut, sans enrobage markdown (sans \`\`\`j
 
     // Call Gemini API server-side (retry 503/429 via l'utilitaire partagé).
     const response = await callGeminiWithRetry({
-      model: "gemini-2.0-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -980,7 +980,7 @@ Tu dois renvoyer un objet JSON contenant exactement deux clés :
 Réponds uniquement avec le bloc JSON brut. Pas de markdown.`;
 
     const response = await callGeminiWithRetry({
-      model: "gemini-2.0-flash",
+      model: "gemini-3.5-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json"
