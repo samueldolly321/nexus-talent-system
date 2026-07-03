@@ -477,6 +477,9 @@ export default function App() {
         return <ReportsView stats={dashboardStats} companyName={activeCompany?.name || "Nexus Client"} onNavigateToView={navigateTo} />;
       case "users": {
         const usersQuery = searchQuery.trim().toLowerCase();
+        // Seuls les admins (plateforme ou entreprise) peuvent créer des utilisateurs — miroir du contrôle serveur.
+        const canManageUsers =
+          activeUser?.role === UserRole.AdminPlateforme || activeUser?.role === UserRole.AdminEntreprise;
         const visibleUsers = allUsers
           .filter(u => u.companyId === activeCompany?.id)
           .filter(u => !usersQuery || u.name.toLowerCase().includes(usersQuery) || u.email.toLowerCase().includes(usersQuery));
@@ -486,13 +489,15 @@ export default function App() {
             <main className="p-4 md:p-8">
               <div className="flex justify-between items-center mb-6 gap-3 flex-wrap">
                 <h2 className="font-sans text-2xl font-semibold text-primary">Utilisateurs</h2>
-                <button
-                  onClick={openAddUserModal}
-                  className="h-10 px-4 bg-accent hover:bg-accent-dark text-white rounded-[8px] text-sm font-bold flex items-center gap-2 transition-all shrink-0"
-                >
-                  <span className="text-lg leading-none">+</span>
-                  Ajouter un utilisateur
-                </button>
+                {canManageUsers && (
+                  <button
+                    onClick={openAddUserModal}
+                    className="h-10 px-4 bg-accent hover:bg-accent-dark text-white rounded-[8px] text-sm font-bold flex items-center gap-2 transition-all shrink-0"
+                  >
+                    <span className="text-lg leading-none">+</span>
+                    Ajouter un utilisateur
+                  </button>
+                )}
               </div>
               <div className="bg-white border border-outline-variant rounded-xl overflow-hidden">
                 <table className="w-full text-left">
