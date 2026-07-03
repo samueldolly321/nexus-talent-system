@@ -338,6 +338,14 @@ app.post("/api/switch-context", requireAuth, async (req, res) => {
 app.post("/api/users", requireAuth, async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
+
+  // Contrôle de rôle : seuls les administrateurs (plateforme ou entreprise)
+  // peuvent créer des utilisateurs. Le rôle de l'appelant est la clé d'enum Prisma.
+  const callerRole = ctx.user.role;
+  if (callerRole !== PrismaUserRole.AdminPlateforme && callerRole !== PrismaUserRole.AdminEntreprise) {
+    return res.status(403).json({ error: "Accès refusé. Rôle insuffisant pour créer un utilisateur." });
+  }
+
   const b = req.body ?? {};
   const name = String(b.name ?? "").trim();
   const email = String(b.email ?? "").trim();
