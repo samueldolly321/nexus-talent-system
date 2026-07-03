@@ -12,3 +12,10 @@ coverage/
 
 # Fichiers uploadés (photos candidats)
 /uploads/
+
+# Dumps de base de données (contiennent des données + hashs — ne jamais versionner)
+/nexus_dump.sql
+*.dump
+
+# Fichiers temporaires Office (verrous ~$)
+~$*
