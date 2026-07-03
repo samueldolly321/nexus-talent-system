@@ -223,6 +223,21 @@ async function main() {
   const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 10);
   for (const u of users) await prisma.user.create({ data: { ...u, passwordHash } });
 
+  // 2b. Comptes admin dédiés pour TechCorp Solutions — upsert idempotent sur l'email
+  // (mot de passe distinct "admin123"). Recréés proprement même hors purge complète.
+  const adminPasswordHash = await bcrypt.hash("admin123", 10);
+  const adminUsers = [
+    { name: "Samuel Admin",   email: "samuel@techcorp.io", role: UserRole.AdminPlateforme },
+    { name: "Admin TechCorp", email: "admin@techcorp.io",  role: UserRole.AdminEntreprise },
+  ];
+  for (const a of adminUsers) {
+    await prisma.user.upsert({
+      where: { email: a.email },
+      update: { name: a.name, role: a.role, companyId: "tenant-techcorp", passwordHash: adminPasswordHash },
+      create: { name: a.name, email: a.email, role: a.role, companyId: "tenant-techcorp", passwordHash: adminPasswordHash },
+    });
+  }
+
   // 3. Référentiel Skill : collecte jobs.skillsRequired + candidates skills, normalise, exclut langues.
   const skillSet = new Set<string>();
   for (const j of jobs) for (const s of j.skillsRequired) { if (!isSpokenLanguage(s)) skillSet.add(canon(s)); }
