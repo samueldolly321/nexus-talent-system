@@ -334,6 +334,44 @@ app.post("/api/switch-context", requireAuth, async (req, res) => {
   }
 });
 
+// Création d'un utilisateur dans la company active (mot de passe hashé bcrypt).
+app.post("/api/users", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  const { companyId } = ctx;
+  const b = req.body ?? {};
+  const name = String(b.name ?? "").trim();
+  const email = String(b.email ?? "").trim();
+  const password = String(b.password ?? "");
+  try {
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: "Nom, email et mot de passe sont requis." });
+    }
+    // Le front envoie le libellé FR ("Admin entreprise") ou la clé ("AdminEntreprise").
+    const prismaRole = toPrismaUserRole(String(b.role ?? ""));
+    if (!prismaRole) return res.status(400).json({ error: "Rôle invalide." });
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const created = await prisma.user.create({
+      data: {
+        companyId,
+        name,
+        email,
+        role: prismaRole as PrismaUserRole,
+        passwordHash,
+      },
+    });
+    logActionFor(ctx, "Ajout d'utilisateur", `Création de l'utilisateur '${created.name}'`);
+    // mapUser n'expose jamais passwordHash.
+    res.json(mapUser(created));
+  } catch (err: any) {
+    if (err?.code === "P2002") {
+      return res.status(409).json({ error: "Un utilisateur avec cet email existe déjà." });
+    }
+    console.error("[POST /api/users]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
 // 2. DASHBOARD KPIS & CHARTS
 app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
   const { companyId } = getContext(req);

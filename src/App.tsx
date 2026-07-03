@@ -12,7 +12,7 @@ import AiSearchView from "./components/AiSearchView";
 import EmailInboxView from "./components/EmailInboxView";
 import ReportsView from "./components/ReportsView";
 import DevCenterView from "./components/DevCenterView";
-import { Company, User, Job, Candidate, EmailItem, PipelineStage } from "./types";
+import { Company, User, Job, Candidate, EmailItem, PipelineStage, UserRole } from "./types";
 import { apiFetch, apiJson, setAccessToken } from "./lib/api";
 import { SidebarContext } from "./SidebarContext";
 
@@ -23,6 +23,12 @@ export default function App() {
   const [activeView, setActiveView] = useState<string>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Modal "Ajouter un utilisateur" (vue Utilisateurs)
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [userFormError, setUserFormError] = useState<string | null>(null);
+  const [userForm, setUserForm] = useState({ name: "", email: "", password: "", role: UserRole.RH });
   const [loading, setLoading] = useState(true);
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
@@ -286,6 +292,41 @@ export default function App() {
     setCandidates(prev => prev.map(c => (c.id === id ? updated : c)));
   };
 
+  const openAddUserModal = () => {
+    setUserForm({ name: "", email: "", password: "", role: UserRole.RH });
+    setUserFormError(null);
+    setShowAddUserModal(true);
+  };
+
+  const closeAddUserModal = () => {
+    if (creatingUser) return;
+    setShowAddUserModal(false);
+  };
+
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (creatingUser) return;
+    setCreatingUser(true);
+    setUserFormError(null);
+    try {
+      const res = await apiFetch("/api/users", {
+        method: "POST",
+        body: JSON.stringify(userForm)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Échec de la création de l'utilisateur.");
+      }
+      const created = await res.json();
+      setAllUsers(prev => [...prev, created]);
+      setShowAddUserModal(false);
+    } catch (err: any) {
+      setUserFormError(err?.message || "Une erreur est survenue.");
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
   const handleDeleteCandidate = async (id: string) => {
     setLoading(true);
     try {
@@ -442,8 +483,17 @@ export default function App() {
         return (
           <div className="flex-1 bg-background min-h-screen flex flex-col">
             <TopBar activeUser={activeUser} searchValue={searchQuery} onSearchChange={setSearchQuery} />
-            <main className="p-8">
-              <h2 className="font-sans text-2xl font-semibold text-primary mb-6">Utilisateurs</h2>
+            <main className="p-4 md:p-8">
+              <div className="flex justify-between items-center mb-6 gap-3 flex-wrap">
+                <h2 className="font-sans text-2xl font-semibold text-primary">Utilisateurs</h2>
+                <button
+                  onClick={openAddUserModal}
+                  className="h-10 px-4 bg-accent hover:bg-accent-dark text-white rounded-[8px] text-sm font-bold flex items-center gap-2 transition-all shrink-0"
+                >
+                  <span className="text-lg leading-none">+</span>
+                  Ajouter un utilisateur
+                </button>
+              </div>
               <div className="bg-white border border-outline-variant rounded-xl overflow-hidden">
                 <table className="w-full text-left">
                   <thead className="bg-surface-container-low text-on-surface-variant font-mono text-[10px] uppercase tracking-wider">
@@ -470,6 +520,107 @@ export default function App() {
                 </table>
               </div>
             </main>
+
+            {/* Modal "Ajouter un utilisateur" */}
+            {showAddUserModal && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+                onClick={closeAddUserModal}
+              >
+                <div
+                  className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-5">
+                    <h3 className="font-sans text-lg font-semibold text-primary">Ajouter un utilisateur</h3>
+                    <button
+                      type="button"
+                      onClick={closeAddUserModal}
+                      disabled={creatingUser}
+                      className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40 text-xl leading-none"
+                    >
+                      ×
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleCreateUser} className="space-y-4">
+                    <div>
+                      <label htmlFor="user-name" className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">Nom <span className="text-error">*</span></label>
+                      <input
+                        id="user-name"
+                        type="text"
+                        required
+                        autoFocus
+                        value={userForm.name}
+                        onChange={e => setUserForm(f => ({ ...f, name: e.target.value }))}
+                        className="w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+                        placeholder="Jean Dupont"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="user-email" className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">Email <span className="text-error">*</span></label>
+                      <input
+                        id="user-email"
+                        type="email"
+                        required
+                        value={userForm.email}
+                        onChange={e => setUserForm(f => ({ ...f, email: e.target.value }))}
+                        className="w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+                        placeholder="jean@exemple.com"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="user-password" className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">Mot de passe <span className="text-error">*</span></label>
+                      <input
+                        id="user-password"
+                        type="password"
+                        required
+                        value={userForm.password}
+                        onChange={e => setUserForm(f => ({ ...f, password: e.target.value }))}
+                        className="w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+                        placeholder="••••••••"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="user-role" className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5">Rôle</label>
+                      <select
+                        id="user-role"
+                        value={userForm.role}
+                        onChange={e => setUserForm(f => ({ ...f, role: e.target.value as UserRole }))}
+                        className="w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+                      >
+                        {Object.values(UserRole).map(r => (
+                          <option key={r} value={r}>{r}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {userFormError && <p className="text-error text-sm">{userFormError}</p>}
+
+                    <div className="flex justify-end gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={closeAddUserModal}
+                        disabled={creatingUser}
+                        className="h-10 px-4 rounded-[8px] text-sm font-bold text-on-surface-variant hover:bg-surface-container-low transition-all disabled:opacity-40"
+                      >
+                        Annuler
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={creatingUser}
+                        className="h-10 px-4 bg-accent hover:bg-accent-dark text-white rounded-[8px] text-sm font-bold transition-all disabled:opacity-50"
+                      >
+                        {creatingUser ? "Création…" : "Ajouter"}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         );
       }
