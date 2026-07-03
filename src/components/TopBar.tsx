@@ -48,17 +48,22 @@ export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, righ
   const [notifs, setNotifs] = useState<AuditLog[]>([]);
   const [helpOpen, setHelpOpen] = useState(false);
 
-  // Charge les 5 dernières actions (pour le badge + le panneau).
-  useEffect(() => {
-    let cancelled = false;
+  // Charge les 5 dernières actions. La réponse est paginée { data, meta } : on
+  // extrait bien .data. Rechargé au montage (pour le badge) ET à l'ouverture du
+  // drawer, afin de refléter les actions récentes (ex. changement de stage).
+  const loadNotifs = () => {
     apiJson<{ data: AuditLog[] }>("/api/audit-logs?limit=5")
-      .then(res => { if (!cancelled) setNotifs(res.data ?? []); })
+      .then(res => setNotifs(res.data ?? []))
       .catch(() => { /* silencieux : le badge reste simplement vide */ });
-    return () => { cancelled = true; };
-  }, []);
+  };
+
+  useEffect(() => { loadNotifs(); }, []);
+
+  const openNotifs = () => { loadNotifs(); setNotifOpen(true); };
 
   return (
-    <header className="sticky top-0 h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center gap-2 px-4 md:px-8 z-40 shrink-0">
+    <>
+      <header className="sticky top-0 h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant flex justify-between items-center gap-2 px-4 md:px-8 z-40 shrink-0">
       {/* Ouverture du menu latéral (mobile uniquement) */}
       <button
         onClick={openSidebar}
@@ -88,7 +93,7 @@ export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, righ
         {rightSlot}
         {/* Cloche : notifications (5 dernières actions) + badge. Masquée sur mobile. */}
         <button
-          onClick={() => setNotifOpen(true)}
+          onClick={openNotifs}
           title="Notifications"
           className="hidden sm:inline-flex relative p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-all"
         >
@@ -126,6 +131,7 @@ export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, righ
           )}
         </div>
       </div>
+      </header>
 
       {/* Panneau latéral droit : notifications. Se ferme au clic en dehors (backdrop). */}
       {notifOpen && (
@@ -194,6 +200,6 @@ export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, righ
           </div>
         </div>
       )}
-    </header>
+    </>
   );
 }
