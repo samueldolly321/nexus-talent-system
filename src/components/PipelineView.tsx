@@ -33,10 +33,10 @@ export default function PipelineView({ candidates, jobs, activeUser, onSelectCan
     <div className="flex-1 bg-background min-h-screen flex flex-col">
       <TopBar activeUser={activeUser} searchPlaceholder="Rechercher candidats, postes ou scores..." />
 
-      <main className="flex-1 p-6 overflow-hidden flex flex-col min-h-0">
+      <main className="flex-1 p-4 md:p-6 overflow-hidden flex flex-col min-h-0">
         <div className="flex justify-between items-start mb-6 flex-wrap gap-4">
           <div>
-            <h2 className="font-sans text-[32px] font-semibold text-primary tracking-tight leading-tight">Pipeline de recrutement</h2>
+            <h2 className="font-sans text-2xl md:text-[32px] font-semibold text-primary tracking-tight leading-tight">Pipeline de recrutement</h2>
             <div className="flex items-center gap-2 mt-2">
               <span className="px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-[10px] font-mono uppercase rounded-full font-bold">Poste actif</span>
               <select
@@ -69,7 +69,7 @@ export default function PipelineView({ candidates, jobs, activeUser, onSelectCan
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-secondary mx-auto" />
           </div>
         ) : (
-          <div className="flex gap-4 overflow-x-auto pb-4 flex-1 min-h-0">
+          <div className="flex gap-4 overflow-x-auto custom-scrollbar pb-4 flex-1 min-h-0">
             {stageOrder.map(stage => {
               const cands = getStageCandidates(stage);
               return (
