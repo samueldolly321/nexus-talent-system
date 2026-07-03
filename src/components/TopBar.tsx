@@ -31,7 +31,7 @@ export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, righ
           <div className="relative w-full">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
             <input
-              className="w-full bg-surface-container-low border border-outline-variant rounded-full py-1.5 pl-10 pr-4 focus:ring-2 focus:ring-secondary-container focus:outline-none text-sm transition-all"
+              className="w-full bg-surface-container-low border border-outline-variant rounded-full py-1.5 pl-9 pr-3 md:pl-10 md:pr-4 focus:ring-2 focus:ring-secondary-container focus:outline-none text-sm transition-all"
               placeholder={searchPlaceholder || "Rechercher candidats, offres ou rapports..."}
               type="text"
               {...(onSearchChange
@@ -41,15 +41,16 @@ export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, righ
           </div>
         )}
       </div>
-      <div className="flex items-center gap-4 shrink-0">
+      <div className="flex items-center gap-2 md:gap-4 shrink-0">
         {rightSlot}
-        <button className="p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-all">
+        {/* Icônes utilitaires masquées sur mobile pour laisser la place à la recherche */}
+        <button className="hidden sm:inline-flex p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-all">
           <Bell size={18} />
         </button>
-        <button className="p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-all">
+        <button className="hidden sm:inline-flex p-2 text-on-surface-variant hover:bg-surface-variant rounded-full transition-all">
           <HelpCircle size={18} />
         </button>
-        <div className="h-8 w-px bg-outline-variant mx-1" />
+        <div className="hidden sm:block h-8 w-px bg-outline-variant mx-1" />
         <div className="flex items-center gap-3 cursor-pointer">
           <div className="text-right hidden sm:block">
             <p className="text-sm font-bold text-on-surface leading-tight">{activeUser?.name || "Utilisateur"}</p>
