@@ -155,26 +155,26 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
           <div className="flex items-center gap-3">
             <button
               onClick={() => setShowAddModal(true)}
-              className="h-10 px-4 bg-accent hover:bg-accent-dark text-white rounded-[8px] text-sm font-bold flex items-center gap-2 transition-all"
+              className="h-10 px-3 sm:px-4 bg-accent hover:bg-accent-dark text-white rounded-[8px] text-sm font-bold flex items-center gap-2 transition-all"
             >
               <Plus size={16} />
-              Ajouter un candidat
+              <span className="hidden sm:inline">Ajouter un candidat</span>
             </button>
             <button
               onClick={handleExportListe}
               disabled={filtered.length === 0}
-              className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-10 px-3 sm:px-4 bg-primary text-white rounded-lg text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download size={15} />
-              Exporter la liste
+              <span className="hidden sm:inline">Exporter la liste</span>
             </button>
           </div>
         }
       />
 
       <div className="flex flex-1 min-h-0">
-        {/* Filters sidebar */}
-        <aside className="w-72 border-r border-outline-variant p-6 shrink-0 overflow-y-auto">
+        {/* Filters sidebar — masquée sous lg (place à la liste sur mobile/tablette) */}
+        <aside className="hidden lg:block w-72 border-r border-outline-variant p-6 shrink-0 overflow-y-auto">
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-bold text-on-surface">Filtres</h3>
             <button
@@ -256,7 +256,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
         </aside>
 
         {/* Main list */}
-        <main className="flex-1 min-w-0 p-6 overflow-y-auto relative">
+        <main className="flex-1 min-w-0 p-4 md:p-6 overflow-y-auto relative">
           <div className="flex justify-between items-center mb-6">
             <h2 className="font-sans text-2xl font-semibold text-primary">Candidats <span className="text-on-surface-variant font-normal">({filtered.length})</span></h2>
             <div className="flex items-center gap-3">
@@ -276,7 +276,8 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
             </div>
           ) : (
             <div className="bg-white border border-outline-variant rounded-xl overflow-hidden">
-              <table className="w-full text-left">
+              {/* Vue tableau (>= md) */}
+              <table className="hidden md:table w-full text-left">
                 <thead className="bg-surface-container-low text-on-surface-variant font-mono text-[10px] uppercase tracking-wider">
                   <tr>
                     <th className="px-4 py-3 w-10"><input type="checkbox" className="rounded border-outline-variant" /></th>
@@ -343,7 +344,47 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                   )}
                 </tbody>
               </table>
-              <div className="flex justify-between items-center px-4 py-3 border-t border-outline-variant text-xs text-on-surface-variant">
+
+              {/* Vue cards empilées (< md) */}
+              <div className="md:hidden divide-y divide-outline-variant">
+                {filtered.map(cand => {
+                  const score = cand.scores?.globalScore ?? 0;
+                  return (
+                    <button
+                      key={cand.id}
+                      onClick={() => onSelectCandidate(cand)}
+                      className="w-full text-left p-4 hover:bg-surface-container-low transition-all"
+                    >
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center font-bold text-on-primary-fixed text-xs shrink-0">
+                          {cand.name.substring(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-on-surface text-sm truncate">{cand.name}</p>
+                          <p className="text-xs text-on-surface-variant truncate">
+                            {jobs.find(j => j.id === cand.jobId)?.title || "—"}
+                          </p>
+                        </div>
+                        {cand.scores ? (
+                          <span className={`shrink-0 px-2.5 py-1 rounded-full font-mono text-xs font-bold ${scoreTone(score)}`}>{score}%</span>
+                        ) : (
+                          <span className="shrink-0 text-xs font-mono text-amber-600">Non analysé</span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-on-surface-variant">
+                        <span className="truncate max-w-full">{cand.email}</span>
+                        {cand.phone && <span>{cand.phone}</span>}
+                        <span>{cand.analysis?.yearsOfExperience ?? "—"} ans d'exp.</span>
+                      </div>
+                    </button>
+                  );
+                })}
+                {filtered.length === 0 && (
+                  <p className="px-4 py-16 text-center text-sm text-on-surface-variant">Aucun candidat ne correspond aux filtres.</p>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row justify-between items-center gap-3 px-4 py-3 border-t border-outline-variant text-xs text-on-surface-variant">
                 <span>Page {page} / {totalPages} — {totalCandidates} candidats au total</span>
                 <div className="flex items-center gap-2">
                   <button
@@ -369,7 +410,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
 
           {/* AI assistant floating banner */}
           {showAiBanner && excellentCount > 0 && (
-            <div className="fixed bottom-6 right-6 w-80 bg-primary-container rounded-xl shadow-xl p-5 z-30">
+            <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-[calc(100vw-2rem)] sm:w-80 bg-primary-container rounded-xl shadow-xl p-5 z-30">
               <div className="flex justify-between items-start mb-3">
                 <div className="flex items-center gap-2">
                   <Sparkles size={16} className="text-secondary-fixed-dim" />
