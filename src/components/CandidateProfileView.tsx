@@ -59,18 +59,19 @@ export default function CandidateProfileView({
         }
         rightSlot={
           <div className="flex items-center gap-2">
-            <button className="px-3 py-2 border border-outline-variant rounded-lg text-sm font-medium hover:bg-surface-container-low">Partager le profil</button>
+            <button className="hidden sm:inline-flex px-3 py-2 border border-outline-variant rounded-lg text-sm font-medium hover:bg-surface-container-low">Partager le profil</button>
             <button
               onClick={onOpenRecommendation}
-              className="px-3 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:opacity-90"
+              className="px-3 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:opacity-90 whitespace-nowrap"
             >
-              Voir la recommandation
+              <span className="sm:hidden">Reco. IA</span>
+              <span className="hidden sm:inline">Voir la recommandation</span>
             </button>
           </div>
         }
       />
 
-      <main className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-6 items-start">
+      <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-6 items-start">
         {/* Left: identity card */}
         <div className="space-y-4">
           <div className="bg-white border border-outline-variant rounded-xl p-6 text-center">
@@ -155,7 +156,7 @@ export default function CandidateProfileView({
                   </div>
                 )}
                 {candidate.recommendation && (
-                  <div className="grid grid-cols-2 gap-4 mt-5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
                     <div className="bg-secondary-container/30 border border-secondary-container rounded-lg p-4">
                       <p className="font-mono text-[10px] uppercase tracking-wider text-secondary font-semibold mb-1">Point fort clé</p>
                       <p className="text-sm font-medium text-on-surface">{candidate.recommendation.strengths[0] || "—"}</p>
