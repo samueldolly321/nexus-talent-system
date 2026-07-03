@@ -124,9 +124,9 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
   return (
     <div className="flex-1 bg-background min-h-screen flex flex-col">
       <TopBar activeUser={activeUser} searchValue={searchQuery} onSearchChange={onSearchChange} searchPlaceholder="Rechercher une offre par titre, description ou compétence..." />
-      <div className="flex-1 p-8 overflow-y-auto">
+      <div className="flex-1 p-4 md:p-8 overflow-y-auto">
       {/* Upper header block */}
-      <div className="mb-8 flex justify-between items-center">
+      <div className="mb-8 flex justify-between items-center flex-wrap gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-on-surface font-sans">Offres d'Emploi</h2>
           <p className="text-sm text-on-surface-variant mt-1">
@@ -135,7 +135,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
         </div>
         <button
           onClick={openCreateModal}
-          className="bg-accent hover:brightness-110 text-on-primary font-bold px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 shadow-sm transition-colors"
+          className="bg-accent hover:brightness-110 text-on-primary font-bold px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 shadow-sm transition-colors shrink-0"
         >
           <Plus size={16} className="stroke-[3]" />
           Nouvelle Offre
@@ -148,7 +148,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
           <p className="mt-4 text-xs font-mono text-on-surface-variant">Synchronisation des offres d'emploi...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 xl:gap-8">
           {/* Left / Middle: Jobs List */}
           <div className="xl:col-span-2 space-y-4">
             {filteredJobs.length === 0 ? (
