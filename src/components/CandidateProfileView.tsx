@@ -9,7 +9,7 @@ import {
 } from "recharts";
 import TopBar from "./TopBar";
 import { Candidate, Job, PipelineStage, User } from "../types";
-import { getAccessToken } from "../lib/api";
+import { getAccessToken, apiFetch } from "../lib/api";
 
 interface CandidateProfileViewProps {
   candidate: Candidate;
@@ -58,6 +58,46 @@ export default function CandidateProfileView({
   const [letterDraft, setLetterDraft] = useState("");
 
   const closeModal = () => { if (!saving) { setModal(null); setFormError(null); } };
+
+  // Partage du profil : trace un audit log côté serveur (qui déclenche l'email Resend).
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareEmail, setShareEmail] = useState("");
+  const [shareMessage, setShareMessage] = useState("");
+  const [shareLoading, setShareLoading] = useState(false);
+  const [shareResult, setShareResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const openShare = () => { setShareEmail(""); setShareMessage(""); setShareResult(null); setShowShareModal(true); };
+
+  const handleShare = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (shareLoading) return;
+    setShareLoading(true);
+    setShareResult(null);
+    try {
+      const res = await apiFetch("/api/audit-logs", {
+        method: "POST",
+        body: JSON.stringify({
+          action: "Partage de profil",
+          details: `Profil de ${candidate.name} partagé à ${shareEmail.trim()}${shareMessage.trim() ? ` — ${shareMessage.trim()}` : ""}`,
+        }),
+      });
+      if (res.ok) {
+        setShareResult({ ok: true, msg: "Profil partagé avec succès !" });
+        setTimeout(() => {
+          setShowShareModal(false);
+          setShareEmail("");
+          setShareMessage("");
+          setShareResult(null);
+        }, 2000);
+      } else {
+        setShareResult({ ok: false, msg: "Erreur lors du partage." });
+      }
+    } catch {
+      setShareResult({ ok: false, msg: "Erreur réseau." });
+    } finally {
+      setShareLoading(false);
+    }
+  };
 
   const openProfile = () => {
     setProfileDraft({
@@ -146,7 +186,7 @@ export default function CandidateProfileView({
         }
         rightSlot={
           <div className="flex items-center gap-2">
-            <button className="hidden sm:inline-flex px-3 py-2 border border-outline-variant rounded-lg text-sm font-medium hover:bg-surface-container-low">Partager le profil</button>
+            <button onClick={openShare} className="hidden sm:inline-flex px-3 py-2 border border-outline-variant rounded-lg text-sm font-medium hover:bg-surface-container-low">Partager le profil</button>
             <button
               onClick={onOpenRecommendation}
               className="px-3 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:opacity-90 whitespace-nowrap"
@@ -568,6 +608,53 @@ export default function CandidateProfileView({
                 <button type="button" onClick={closeModal} disabled={saving} className={CANCEL_CLS}>Annuler</button>
                 <button type="submit" disabled={saving} className={SUBMIT_CLS}>
                   {saving && <Loader2 size={16} className="animate-spin" />}{saving ? "Enregistrement…" : "Enregistrer"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal : partager le profil candidat */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !shareLoading && setShowShareModal(false)}>
+          <div className="w-full max-w-md bg-surface-container-lowest rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-sans text-lg font-semibold text-on-surface">Partager le profil — {candidate.name}</h3>
+              <button type="button" onClick={() => setShowShareModal(false)} disabled={shareLoading} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleShare} className="space-y-4">
+              <div>
+                <label htmlFor="share-email" className={LABEL_CLS}>Email du destinataire <span className="text-error">*</span></label>
+                <input
+                  id="share-email"
+                  type="email"
+                  required
+                  autoFocus
+                  value={shareEmail}
+                  onChange={e => setShareEmail(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all"
+                  placeholder="decideur@entreprise.com"
+                />
+              </div>
+              <div>
+                <label htmlFor="share-message" className={LABEL_CLS}>Message (optionnel)</label>
+                <textarea
+                  id="share-message"
+                  rows={3}
+                  value={shareMessage}
+                  onChange={e => setShareMessage(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all resize-y"
+                  placeholder="Un mot pour accompagner le partage…"
+                />
+              </div>
+              {shareResult && (
+                <p className={`text-sm font-medium ${shareResult.ok ? "text-secondary" : "text-error"}`}>{shareResult.msg}</p>
+              )}
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setShowShareModal(false)} disabled={shareLoading} className={CANCEL_CLS}>Annuler</button>
+                <button type="submit" disabled={shareLoading || !shareEmail.trim()} className={SUBMIT_CLS}>
+                  {shareLoading && <Loader2 size={16} className="animate-spin" />}{shareLoading ? "Envoi…" : "Envoyer"}
                 </button>
               </div>
             </form>

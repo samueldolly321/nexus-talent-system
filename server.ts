@@ -1310,6 +1310,7 @@ app.post("/api/audit-logs", requireAuth, async (req, res) => {
   const b = req.body ?? {};
   const action = String(b.action ?? "").trim();
   const details = String(b.details ?? "").trim();
+  console.log("[audit-log]", { action, details });
   if (!action || !details) {
     return res.status(400).json({ error: "Les champs action et details sont requis." });
   }
@@ -1330,7 +1331,12 @@ app.post("/api/audit-logs", requireAuth, async (req, res) => {
     // Pipeline : "Pipeline (...) partagé à email. Message : ..."
     // Profil   : "Profil de {nom} partagé à email — message"
     if (action === "Pipeline partagé" || action === "Partage de profil") {
-      const toEmail = details.match(/partagé à\s+([\w.+-]+@[\w.-]+\.\w+)/i)?.[1];
+      // Extraction de l'email : "…partagé à email…" en priorité, sinon toute
+      // adresse trouvée dans les details (robuste aux variations de format).
+      const toEmail =
+        details.match(/partagé à\s+([\w.+-]+@[\w.-]+\.[a-z]{2,})/i)?.[1] ||
+        details.match(/([\w.+-]+@[\w.-]+\.[a-z]{2,})/i)?.[1];
+      console.log("[email-share] toEmail extrait :", toEmail);
       if (toEmail) {
         const company = await prisma.company.findUnique({ where: { id: ctx.companyId }, select: { name: true, appName: true } });
         const appName = company?.appName || "Nexus Talent";
