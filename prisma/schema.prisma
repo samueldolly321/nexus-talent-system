@@ -130,6 +130,7 @@ model Job {
   location           String
   contractType       ContractType
   status             JobStatus    @default(Draft)
+  priority           String?      @default("Normal") // "Urgent", "Haute", "Normal", "Basse"
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 

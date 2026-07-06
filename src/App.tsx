@@ -10,6 +10,7 @@ import PipelineView from "./components/PipelineView";
 import RecommendationView from "./components/RecommendationView";
 import EmailInboxView from "./components/EmailInboxView";
 import SettingsView from "./components/SettingsView";
+import ArchivedJobsView from "./components/ArchivedJobsView";
 // Vues lourdes (recharts / gros contenus) chargées à la demande → code-splitting
 // pour alléger le bundle principal (chunks séparés générés par Vite).
 const ReportsView = lazy(() => import("./components/ReportsView"));
@@ -279,6 +280,16 @@ export default function App() {
     }
   };
 
+  // Suppression réelle (depuis "Offres archivées") — ?permanent=true côté serveur.
+  const handleDeleteJobPermanently = async (id: string) => {
+    try {
+      const res = await apiFetch(`/api/jobs/${id}?permanent=true`, { method: "DELETE" });
+      if (res.ok) await fetchData();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleAddCandidate = async (candData: Partial<Candidate>) => {
     setLoading(true);
     try {
@@ -502,6 +513,14 @@ export default function App() {
             onDeleteJob={handleDeleteJob}
             loading={loading}
             openCreateSignal={openJobCreateSignal}
+          />
+        );
+      case "archivedJobs":
+        return (
+          <ArchivedJobsView
+            activeUser={activeUser}
+            onRestoreJob={(id) => handleEditJob(id, { status: "Active" })}
+            onDeleteJobPermanently={handleDeleteJobPermanently}
           />
         );
       case "candidates":

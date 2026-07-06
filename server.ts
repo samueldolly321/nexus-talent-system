@@ -591,9 +591,16 @@ const replaceJobSkills = async (
 
 app.get("/api/jobs", requireAuth, async (req, res) => {
   const { companyId } = getContext(req);
+  // ?status=Archived pour la vue "Offres archivées" ; ?status=all = tous les
+  // statuts ; par défaut (non fourni), on renvoie tout comme avant.
+  const statusParam = req.query.status as string | undefined;
+  const statusWhere =
+    statusParam && statusParam !== "all" && isValidJobStatus(statusParam)
+      ? { status: statusParam as JobStatus }
+      : {};
   try {
     const rows = await prisma.job.findMany({
-      where: { companyId },
+      where: { companyId, ...statusWhere },
       include: jobInclude,
       orderBy: { createdAt: "desc" },
     });
@@ -625,6 +632,7 @@ app.post("/api/jobs", requireAuth, async (req, res) => {
           location: b.location || "Télé-travail / Hybride",
           contractType: isValidContractType(b.contractType) ? b.contractType : PrismaContractType.CDI,
           status: JobStatus.Active,
+          priority: b.priority || "Normal",
         },
       });
       await replaceJobSkills(tx, created.id, skills);
@@ -661,6 +669,7 @@ app.put("/api/jobs/:id", requireAuth, async (req, res) => {
     if (b.location !== undefined) data.location = b.location;
     if (isValidContractType(b.contractType)) data.contractType = b.contractType;
     if (isValidJobStatus(b.status)) data.status = b.status;
+    if (b.priority !== undefined) data.priority = b.priority || "Normal";
 
     const full = await prisma.$transaction(async (tx) => {
       await tx.job.update({ where: { id }, data });
@@ -686,6 +695,15 @@ app.delete("/api/jobs/:id", requireAuth, async (req, res) => {
   try {
     const existing = await prisma.job.findFirst({ where: { id, companyId } });
     if (!existing) return res.status(404).json({ error: "Offre introuvable" });
+
+    // ?permanent=true → suppression réelle (depuis "Offres archivées"). Les
+    // candidats liés voient leur jobId passé à null (relation onDelete: SetNull),
+    // les JobSkill sont supprimés en cascade. Sinon : archivage (soft delete).
+    if ((req.query.permanent as string) === "true") {
+      await prisma.job.delete({ where: { id } });
+      logActionFor(ctx, "Suppression d'offre", `L'offre '${existing.title}' a été supprimée définitivement.`);
+      return res.json({ success: true, id, deleted: true });
+    }
 
     await prisma.job.update({ where: { id }, data: { status: JobStatus.Archived } });
     logActionFor(ctx, "Archivage d'offre", `L'offre '${existing.title}' a été archivée.`);

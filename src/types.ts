@@ -48,7 +48,9 @@ export interface Job {
   location: string;
   contractType: ContractType;
   status: "Active" | "Archived" | "Draft";
+  priority?: string;
   createdAt: string;
+  updatedAt?: string;
 }
 
 export enum PipelineStage {

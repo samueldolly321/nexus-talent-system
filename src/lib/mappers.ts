@@ -101,7 +101,9 @@ export const mapJob = (j: JobWithSkills) => ({
   location: j.location,
   contractType: mapContractType(j.contractType),
   status: mapJobStatus(j.status),
+  priority: j.priority ?? "Normal",
   createdAt: j.createdAt.toISOString(),
+  updatedAt: j.updatedAt.toISOString(),
 });
 
 // ----------------------------------------------------------------------------

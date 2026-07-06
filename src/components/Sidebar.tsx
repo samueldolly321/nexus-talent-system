@@ -13,6 +13,7 @@ import {
   ChevronDown,
   LogOut,
   BrainCircuit,
+  Archive,
   Sun,
   Moon,
   X
@@ -54,6 +55,7 @@ export default function Sidebar({
   const menuItems = [
     { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { id: "jobs", label: "Offres", icon: Briefcase },
+    { id: "archivedJobs", label: "Offres archivées", icon: Archive },
     { id: "candidates", label: "Candidats", icon: Users },
     { id: "pipeline", label: "Pipeline", icon: KanbanSquare },
     { id: "emails", label: "Emails", icon: Mail },

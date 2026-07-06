@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Plus,
   MapPin,
@@ -12,8 +12,18 @@ import {
   PlusCircle,
   Trash2,
   ListFilter,
-  Pencil
+  Pencil,
+  SlidersHorizontal
 } from "lucide-react";
+
+// Styles des badges de priorité (tokens adaptés dark/light).
+const PRIORITY_BADGE: Record<string, string> = {
+  Urgent: "bg-red-500/15 text-red-500 border border-red-500/30",
+  Haute: "bg-orange-500/15 text-orange-500 border border-orange-500/30",
+  Normal: "bg-surface-container text-on-surface-variant border border-outline-variant",
+  Basse: "bg-surface-container text-on-surface-variant/60 border border-outline-variant",
+};
+const PRIORITY_OPTIONS = ["Normal", "Haute", "Urgent", "Basse"];
 import TopBar from "./TopBar";
 import { Job, ContractType, User } from "../types";
 
@@ -57,6 +67,17 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
   const [missions, setMissions] = useState("");
   const [skillsRequired, setSkillsRequired] = useState("");
   const [languagesRequired, setLanguagesRequired] = useState("");
+  const [priority, setPriority] = useState("Normal");
+
+  // Filtres avancés (panneau repliable).
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterPriority, setFilterPriority] = useState<string[]>([]);
+  const [filterDate, setFilterDate] = useState<string>("all");
+  const [filterDeadline, setFilterDeadline] = useState<string[]>([]);
+  const toggleFrom = (list: string[], setList: (v: string[]) => void, value: string) =>
+    setList(list.includes(value) ? list.filter(v => v !== value) : [...list, value]);
+  const activeFiltersCount = filterPriority.length + (filterDate !== "all" ? 1 : 0) + filterDeadline.length;
+  const resetFilters = () => { setFilterPriority([]); setFilterDate("all"); setFilterDeadline([]); };
 
   const resetForm = () => {
     setTitle("");
@@ -70,6 +91,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
     setMissions("");
     setSkillsRequired("");
     setLanguagesRequired("");
+    setPriority("Normal");
   };
 
   // Ouvre le modal en mode création (formulaire vierge).
@@ -95,6 +117,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
     setMissions(job.missions.join("\n"));
     setSkillsRequired(job.skillsRequired.join(", "));
     setLanguagesRequired(job.languagesRequired.join(", "));
+    setPriority(job.priority || "Normal");
     setShowAddModal(true);
   };
 
@@ -126,7 +149,8 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
       description,
       missions: missions.split("\n").filter(Boolean),
       skillsRequired: skillsRequired.split(",").map(s => s.trim()).filter(Boolean),
-      languagesRequired: languagesRequired.split(",").map(l => l.trim()).filter(Boolean)
+      languagesRequired: languagesRequired.split(",").map(l => l.trim()).filter(Boolean),
+      priority
     };
     if (isEditing && selectedJob) {
       onEditJob(selectedJob.id, jobData);
@@ -138,13 +162,51 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
 
   // Recherche globale : titre, description ou compétences contiennent la requête.
   const q = searchQuery.trim().toLowerCase();
-  const filteredJobs = q
-    ? jobs.filter(job =>
-        job.title.toLowerCase().includes(q) ||
-        job.description.toLowerCase().includes(q) ||
-        job.skillsRequired.join(", ").toLowerCase().includes(q)
-      )
-    : jobs;
+  const filteredJobs = useMemo(() => {
+    let result = q
+      ? jobs.filter(job =>
+          job.title.toLowerCase().includes(q) ||
+          job.description.toLowerCase().includes(q) ||
+          job.skillsRequired.join(", ").toLowerCase().includes(q)
+        )
+      : jobs;
+
+    // Priorité
+    if (filterPriority.length > 0) {
+      result = result.filter(j => filterPriority.includes(j.priority ?? "Normal"));
+    }
+
+    // Date de création
+    if (filterDate !== "all") {
+      const now = new Date();
+      if (filterDate === "today") {
+        result = result.filter(j => new Date(j.createdAt).toDateString() === now.toDateString());
+      } else if (filterDate === "7d" || filterDate === "30d") {
+        const cutoff = new Date(now);
+        cutoff.setDate(cutoff.getDate() - (filterDate === "7d" ? 7 : 30));
+        result = result.filter(j => new Date(j.createdAt) >= cutoff);
+      } else if (filterDate === "older") {
+        const cutoff = new Date(now);
+        cutoff.setDate(cutoff.getDate() - 30);
+        result = result.filter(j => new Date(j.createdAt) < cutoff);
+      }
+    }
+
+    // Deadline (checkboxes indépendantes, appliquées en ET)
+    if (filterDeadline.includes("passed")) {
+      result = result.filter(j => j.deadline && isDeadlinePassed(j.deadline));
+    }
+    if (filterDeadline.includes("7d")) {
+      const in7 = new Date(); in7.setDate(in7.getDate() + 7);
+      result = result.filter(j => j.deadline && !isDeadlinePassed(j.deadline) && new Date(j.deadline) <= in7);
+    }
+    if (filterDeadline.includes("30d")) {
+      const in30 = new Date(); in30.setDate(in30.getDate() + 30);
+      result = result.filter(j => j.deadline && !isDeadlinePassed(j.deadline) && new Date(j.deadline) <= in30);
+    }
+
+    return result;
+  }, [jobs, q, filterPriority, filterDate, filterDeadline]);
 
   return (
     <div className="flex-1 bg-background min-h-screen flex flex-col">
@@ -158,14 +220,100 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
             Gérez et publiez les offres d'emploi actives et archivez-les une fois pourvues.
           </p>
         </div>
-        <button
-          onClick={openCreateModal}
-          className="bg-accent hover:brightness-110 text-on-primary font-bold px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 shadow-sm transition-colors shrink-0"
-        >
-          <Plus size={16} className="stroke-[3]" />
-          Nouvelle Offre
-        </button>
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={() => setShowFilters(s => !s)}
+            aria-pressed={showFilters}
+            className={`px-4 py-2.5 rounded-lg text-sm font-bold flex items-center gap-2 border transition-all ${
+              showFilters || activeFiltersCount > 0
+                ? "bg-secondary-container border-secondary text-on-secondary-container"
+                : "border-outline-variant text-on-surface-variant hover:bg-surface-container-low"
+            }`}
+          >
+            <SlidersHorizontal size={16} />
+            Filtres
+            {activeFiltersCount > 0 && (
+              <span className="bg-secondary text-white rounded-full px-1.5 text-[10px] font-mono leading-4">{activeFiltersCount}</span>
+            )}
+          </button>
+          <button
+            onClick={openCreateModal}
+            className="bg-accent hover:brightness-110 text-on-primary font-bold px-4 py-2.5 rounded-lg text-sm flex items-center gap-2 shadow-sm transition-colors"
+          >
+            <Plus size={16} className="stroke-[3]" />
+            Nouvelle Offre
+          </button>
+        </div>
       </div>
+
+      {/* Panneau de filtres avancés (repliable) */}
+      {showFilters && (
+        <div className="mb-6 bg-surface-container-lowest border border-outline-variant rounded-xl p-5">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-bold text-on-surface text-sm">Filtres avancés</h3>
+            {activeFiltersCount > 0 && (
+              <button onClick={resetFilters} className="text-secondary text-xs font-bold hover:underline">Réinitialiser</button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Priorité */}
+            <div>
+              <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">Priorité</h4>
+              <div className="space-y-2">
+                {PRIORITY_OPTIONS.map(p => (
+                  <label key={p} className="flex items-center gap-2 text-sm text-on-surface cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filterPriority.includes(p)}
+                      onChange={() => toggleFrom(filterPriority, setFilterPriority, p)}
+                      className="rounded border-outline-variant text-secondary focus:ring-secondary"
+                    />
+                    {p}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Date de création */}
+            <div>
+              <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">Date de création</h4>
+              <select
+                value={filterDate}
+                onChange={e => setFilterDate(e.target.value)}
+                className="w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-2.5 py-1.5 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+              >
+                <option value="all">Toutes</option>
+                <option value="today">Aujourd'hui</option>
+                <option value="7d">7 derniers jours</option>
+                <option value="30d">30 derniers jours</option>
+                <option value="older">Plus de 30 jours</option>
+              </select>
+            </div>
+
+            {/* Deadline */}
+            <div>
+              <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">Deadline</h4>
+              <div className="space-y-2">
+                {[
+                  { value: "passed", label: "Deadline dépassée" },
+                  { value: "7d", label: "Dans 7 jours" },
+                  { value: "30d", label: "Dans 30 jours" },
+                ].map(opt => (
+                  <label key={opt.value} className="flex items-center gap-2 text-sm text-on-surface cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={filterDeadline.includes(opt.value)}
+                      onChange={() => toggleFrom(filterDeadline, setFilterDeadline, opt.value)}
+                      className="rounded border-outline-variant text-secondary focus:ring-secondary"
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12">
@@ -205,6 +353,9 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                         </span>
                         <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wide uppercase bg-surface-container text-on-surface-variant">
                           {job.status === "Active" ? "Publié" : "Archivé"}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wide uppercase ${PRIORITY_BADGE[job.priority ?? "Normal"] ?? PRIORITY_BADGE.Normal}`}>
+                          {job.priority ?? "Normal"}
                         </span>
                       </div>
                       <h3 className="text-base font-bold text-on-surface font-sans tracking-tight leading-snug">
@@ -350,6 +501,12 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                       <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Rémunération</span>
                       <span className="text-xs font-semibold text-on-surface-variant mt-0.5 block">{selectedJob.salaryRange || "Non précisé"}</span>
                     </div>
+                    <div>
+                      <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Priorité</span>
+                      <span className={`inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${PRIORITY_BADGE[selectedJob.priority ?? "Normal"] ?? PRIORITY_BADGE.Normal}`}>
+                        {selectedJob.priority ?? "Normal"}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="pt-4 border-t border-outline-variant flex items-center gap-2">
@@ -434,6 +591,20 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     <option value={ContractType.Stage}>Stage</option>
                   </select>
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">Priorité</label>
+                <select
+                  value={priority}
+                  onChange={e => setPriority(e.target.value)}
+                  className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                >
+                  <option value="Normal">Normal</option>
+                  <option value="Haute">Haute priorité</option>
+                  <option value="Urgent">🔴 Urgent</option>
+                  <option value="Basse">Basse priorité</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
