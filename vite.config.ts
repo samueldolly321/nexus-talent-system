@@ -24,6 +24,20 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          // Isole les grosses libs partagées (charts/tableur) en chunks vendor
+          // dédiés → allège le chunk principal et améliore le cache.
+          // (react/react-dom sont déjà dédupliqués dans l'entrée par
+          // @vitejs/plugin-react : un chunk vendor-react dédié ressortait vide.)
+          manualChunks: {
+            'vendor-charts': ['recharts'],
+            'vendor-xlsx': ['xlsx'],
+          },
+        },
+      },
+    },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
