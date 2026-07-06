@@ -371,7 +371,7 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
       </main>
 
       <footer className="flex flex-col sm:flex-row justify-between items-center gap-3 py-4 px-4 md:px-8 border-t border-outline-variant bg-surface">
-        <p className="font-mono text-[10px] text-on-surface-variant">© 2026 Nexus Talent System. v1.0.0</p>
+        <p className="font-mono text-[10px] text-on-surface-variant">© {new Date().getFullYear()} {localStorage.getItem("nexus-app-name") || "Nexus Talent"}. v1.0.0</p>
         <div className="flex gap-6">
           <a className="font-mono text-[10px] text-on-surface-variant hover:text-secondary transition-colors" href="#">Privacy Policy</a>
           <a className="font-mono text-[10px] text-on-surface-variant hover:text-secondary transition-colors" href="#">Terms of Service</a>

@@ -1,6 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Mail, User, Phone, MapPin, Linkedin, FileText, UploadCloud, CheckCircle2, ArrowLeft } from "lucide-react";
 
+// Nom de l'app (white-label) mémorisé lors de la dernière session connectée.
+const appName = localStorage.getItem("nexus-app-name") || "Nexus Talent";
+const appInitials =
+  appName.split(" ").filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "NT";
+
 interface PublicJob {
   id: string;
   title: string;
@@ -139,10 +144,10 @@ export default function ApplyView() {
       <div className="w-full max-w-xl mx-auto px-6 sm:px-10 py-12">
         <div className="flex items-center gap-3 mb-10">
           <div className="w-10 h-10 rounded-md bg-primary flex items-center justify-center shrink-0">
-            <span className="font-mono text-on-primary text-xs font-bold">NT</span>
+            <span className="font-mono text-on-primary text-xs font-bold">{appInitials}</span>
           </div>
           <div>
-            <h1 className="font-sans font-bold text-lg text-on-surface leading-tight">Nexus Talent</h1>
+            <h1 className="font-sans font-bold text-lg text-on-surface leading-tight">{appName}</h1>
             <p className="font-mono text-[10px] text-on-surface-variant tracking-widest uppercase">Espace Candidat</p>
           </div>
         </div>

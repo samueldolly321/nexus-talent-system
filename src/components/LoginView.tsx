@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Mail, Lock, ArrowRight, Radar, TrendingUp, Users2, Sparkles, Target, MailWarning } from "lucide-react";
 
 interface LoginViewProps {
@@ -7,10 +7,19 @@ interface LoginViewProps {
   error?: string | null;
 }
 
+// Nom de l'app mémorisé lors de la dernière session connectée (App le persiste).
+const appName = localStorage.getItem("nexus-app-name") || "Nexus Talent";
+const appInitials =
+  appName.split(" ").filter(Boolean).slice(0, 2).map(w => w[0].toUpperCase()).join("") || "NT";
+
 export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
+
+  useEffect(() => {
+    document.title = `${appName} — Espace Recruteur`;
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,10 +32,10 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
       <div className="w-full md:w-1/2 flex flex-col px-8 sm:px-16 py-10 overflow-y-auto">
         <div className="flex items-center gap-3 mb-16">
           <div className="w-10 h-10 rounded-md bg-primary flex items-center justify-center shrink-0">
-            <span className="font-mono text-on-primary text-xs font-bold">NT</span>
+            <span className="font-mono text-on-primary text-xs font-bold">{appInitials}</span>
           </div>
           <div>
-            <h1 className="font-sans font-bold text-lg text-on-surface leading-tight">Nexus Talent</h1>
+            <h1 className="font-sans font-bold text-lg text-on-surface leading-tight">{appName}</h1>
             <p className="font-mono text-[10px] text-on-surface-variant tracking-widest uppercase">Espace Recruteur</p>
           </div>
         </div>
@@ -116,10 +125,10 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
         </div>
 
         <div className="pt-8 mt-8 border-t border-outline-variant flex justify-between items-center max-w-sm w-full mx-auto md:mx-0">
-          <p className="font-mono text-[10px] text-on-surface-variant">© 2026 Nexus Talent. v1.0.0</p>
+          <p className="font-mono text-[10px] text-on-surface-variant">© {new Date().getFullYear()} {appName}. v1.0.0</p>
           <div className="flex gap-4">
-            <a href="#" className="font-mono text-[10px] text-on-surface-variant hover:text-secondary">Confidentialité</a>
-            <a href="#" className="font-mono text-[10px] text-on-surface-variant hover:text-secondary">Support</a>
+            <a href="/confidentialite" className="font-mono text-[10px] text-on-surface-variant hover:text-secondary">Confidentialité</a>
+            <a href="/support" className="font-mono text-[10px] text-on-surface-variant hover:text-secondary">Support</a>
           </div>
         </div>
       </div>

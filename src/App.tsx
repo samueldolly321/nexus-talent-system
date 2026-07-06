@@ -62,9 +62,11 @@ export default function App() {
   const [activeUser, setActiveUser] = useState<User | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
-  // Titre de l'onglet navigateur = nom de l'application (personnalisable).
+  // Titre de l'onglet + persistance du nom de l'app (réutilisé par les pages
+  // publiques : login, /confidentialite, /support, qui n'ont pas la société).
   useEffect(() => {
     const appName = activeCompany?.appName || "Nexus Talent";
+    if (activeCompany?.appName) localStorage.setItem("nexus-app-name", activeCompany.appName);
     document.title = `${appName} — Espace Recruteur`;
   }, [activeCompany]);
 
