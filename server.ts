@@ -720,6 +720,20 @@ app.get("/api/candidates", requireAuth, async (req, res) => {
   }
 });
 
+// Récupère un candidat par id (ouverture directe d'une fiche même hors page paginée).
+app.get("/api/candidates/:id", requireAuth, async (req, res) => {
+  const { companyId } = getContext(req);
+  const { id } = req.params;
+  try {
+    const row = await prisma.candidate.findFirst({ where: { id, companyId }, include: candidateInclude });
+    if (!row) return res.status(404).json({ error: "Candidat introuvable" });
+    res.json(mapCandidate(row));
+  } catch (err) {
+    console.error("[GET /api/candidates/:id]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
 app.post("/api/candidates", requireAuth, async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;

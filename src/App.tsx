@@ -50,6 +50,8 @@ export default function App() {
   const [analyzingId, setAnalyzingId] = useState<string | null>(null);
 
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  // Candidat récupéré par fetch ciblé (ouverture d'une fiche hors page paginée).
+  const [selectedCandidateForProfile, setSelectedCandidateForProfile] = useState<Candidate | null>(null);
   const [showRecommendation, setShowRecommendation] = useState(false);
 
   // Core Data States
@@ -372,10 +374,18 @@ export default function App() {
   };
 
   // Ouvre la fiche d'un candidat depuis une autre vue (ex. email déjà importé).
-  const openCandidateById = (candidateId: string) => {
+  // Récupère le candidat par fetch ciblé pour garantir l'ouverture de la fiche
+  // même s'il n'est pas dans la page courante de la liste paginée.
+  const openCandidateById = async (candidateId: string) => {
+    setShowRecommendation(false);
     setActiveView("candidates");
     setSelectedCandidateId(candidateId);
-    setShowRecommendation(false);
+    try {
+      const candidate = await apiJson(`/api/candidates/${candidateId}`);
+      setSelectedCandidateForProfile(candidate);
+    } catch (e) {
+      console.error("Impossible de charger la fiche candidat:", e);
+    }
   };
 
   if (authenticated === null) {
@@ -391,11 +401,14 @@ export default function App() {
     return <LoginView onLogin={handleLogin} loading={loading} error={authError} />;
   }
 
-  const selectedCandidate = candidates.find(c => c.id === selectedCandidateId) || null;
+  const selectedCandidate =
+    candidates.find(c => c.id === selectedCandidateId) ||
+    (selectedCandidateForProfile?.id === selectedCandidateId ? selectedCandidateForProfile : null);
   const selectedJob = selectedCandidate ? jobs.find(j => j.id === selectedCandidate.jobId) : undefined;
 
   const navigateTo = (view: string) => {
     setSelectedCandidateId(null);
+    setSelectedCandidateForProfile(null);
     setShowRecommendation(false);
     setSearchQuery(""); // la recherche est réinitialisée à chaque changement de vue
     setActiveView(view);
