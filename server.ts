@@ -192,13 +192,24 @@ const logActionFor = (ctx: { companyId: string; userId: string; user?: { name: s
 };
 
 // Tente d'extraire une prétention salariale d'un texte libre (lettre de motivation).
-// Reconnaît les montants suivis d'une devise malgache : "1 300 000 Ar", "1300000ar",
-// "1 300 000 ariary", "1.300.000 Ar", "1 300 000 MGA"…
+// Reconnaît les montants suivis d'une devise malgache (Ar/Ariary/MGA) et renvoie
+// toujours un format normalisé : "1 300 000 Ar" (espaces comme séparateurs de milliers).
 function extractSalaryExpectation(text: string): string | null {
   if (!text) return null;
-  const match = text.match(/(\d[\d\s.,]*(?:\s*(?:ar|ariary|mga)[\w\s]*?))/i);
+
+  const match = text.match(/(\d[\d\s.,]*)\s*(?:ar(?:iary)?|mga)\b/i);
   if (!match) return null;
-  return match[0].trim();
+
+  // Nettoyer le nombre : supprimer espaces, points et virgules
+  const raw = match[1].replace(/[\s.,]/g, "");
+  const amount = parseInt(raw, 10);
+  if (isNaN(amount) || amount < 10000) return null; // sanity check
+
+  // Formater avec espaces comme séparateurs de milliers (fr-FR utilise U+202F,
+  // l'espace insécable fine → on la remplace par une espace normale).
+  const formatted = amount.toLocaleString("fr-FR").replace(/[  ]/g, " ");
+
+  return `${formatted} Ar`;
 }
 
 // --- Routes ---
@@ -1023,13 +1034,23 @@ app.post("/api/admin/backfill-salary-expectations", requireAuth, async (req, res
   const { companyId } = ctx;
   try {
     const rows = await prisma.candidate.findMany({
-      where: { companyId, salaryExpectation: null, letterText: { not: null } },
-      select: { id: true, name: true, letterText: true },
+      // Cible les valeurs manquantes ET les valeurs mal formatées (sans espace,
+      // suffixe collé…) issues d'une extraction antérieure — ex. "1300000Ar".
+      where: {
+        companyId,
+        letterText: { not: null },
+        OR: [
+          { salaryExpectation: null },
+          { salaryExpectation: { not: { contains: " " } } },
+        ],
+      },
+      select: { id: true, name: true, salaryExpectation: true, letterText: true },
     });
     const results: { id: string; name: string; salaryExpectation: string }[] = [];
     for (const c of rows) {
       const salaryExpectation = extractSalaryExpectation(c.letterText || "");
-      if (salaryExpectation) {
+      // On n'écrit que si l'extraction donne un résultat différent de l'existant.
+      if (salaryExpectation && salaryExpectation !== c.salaryExpectation) {
         await prisma.candidate.update({ where: { id: c.id }, data: { salaryExpectation } });
         results.push({ id: c.id, name: c.name, salaryExpectation });
       }
