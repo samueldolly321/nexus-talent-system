@@ -62,6 +62,12 @@ export default function App() {
   const [activeUser, setActiveUser] = useState<User | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
+  // Titre de l'onglet navigateur = nom de l'application (personnalisable).
+  useEffect(() => {
+    const appName = activeCompany?.appName || "Nexus Talent";
+    document.title = `${appName} — Espace Recruteur`;
+  }, [activeCompany]);
+
   const [jobs, setJobs] = useState<Job[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [emails, setEmails] = useState<EmailItem[]>([]);

@@ -58,6 +58,15 @@ export default function Sidebar({
     { id: "settings", label: "Paramètres", icon: Settings }
   ];
 
+  // Initiales (max 2 lettres) dérivées du nom de l'application pour le carré de marque.
+  const appName = activeCompany?.appName || "Nexus Talent";
+  const appInitials = appName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(w => w[0].toUpperCase())
+    .join("") || "NT";
+
   return (
     <>
       {/* Backdrop mobile : n'apparaît que lorsque le drawer est ouvert, < md. */}
@@ -77,10 +86,10 @@ export default function Sidebar({
       {/* Brand */}
       <div className="px-6 mb-6 flex items-center gap-3">
         <div className="w-9 h-9 rounded-md bg-primary flex items-center justify-center shrink-0">
-          <span className="font-mono text-on-primary text-[10px] font-bold tracking-tight">NT</span>
+          <span className="font-mono text-on-primary text-[10px] font-bold tracking-tight">{appInitials}</span>
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="font-sans font-bold text-lg text-on-surface leading-tight truncate">{activeCompany?.appName || "Nexus Talent"}</h1>
+          <h1 className="font-sans font-bold text-lg text-on-surface leading-tight truncate">{appName}</h1>
           <p className="font-mono text-[10px] text-on-surface-variant tracking-widest uppercase">Espace Recruteur</p>
         </div>
         {/* Fermeture du drawer (mobile uniquement) */}
