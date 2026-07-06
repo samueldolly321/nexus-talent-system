@@ -9,8 +9,6 @@ import {
   UserCog,
   Settings,
   Plus,
-  Building2,
-  ChevronDown,
   LogOut,
   BrainCircuit,
   Archive,
@@ -23,11 +21,9 @@ import { Company, User } from "../types";
 interface SidebarProps {
   activeView: string;
   setActiveView: (view: string) => void;
+  // Conservé pour afficher le nom de l'application (appName) dans le bandeau.
   activeCompany: Company | null;
   activeUser: User | null;
-  allCompanies: Company[];
-  allUsers: User[];
-  onSwitchContext: (companyId: string, userId: string) => void;
   onCreateJob?: () => void;
   onLogout?: () => void;
   // Drawer mobile : contrôlé par App (statique ≥ md, coulissant < md).
@@ -42,9 +38,6 @@ export default function Sidebar({
   setActiveView,
   activeCompany,
   activeUser,
-  allCompanies,
-  allUsers,
-  onSwitchContext,
   onCreateJob,
   onLogout,
   isOpen = false,
@@ -64,16 +57,6 @@ export default function Sidebar({
     { id: "users", label: "Utilisateurs", icon: UserCog },
     { id: "settings", label: "Paramètres", icon: Settings }
   ];
-
-  const handleCompanyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const compId = e.target.value;
-    const nextUser = allUsers.find(u => u.companyId === compId);
-    if (nextUser) onSwitchContext(compId, nextUser.id);
-  };
-
-  const handleUserChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    if (activeCompany) onSwitchContext(activeCompany.id, e.target.value);
-  };
 
   return (
     <>
@@ -97,7 +80,7 @@ export default function Sidebar({
           <span className="font-mono text-on-primary text-[10px] font-bold tracking-tight">NT</span>
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="font-sans font-bold text-lg text-on-surface leading-tight truncate">Nexus Talent</h1>
+          <h1 className="font-sans font-bold text-lg text-on-surface leading-tight truncate">{activeCompany?.appName || "Nexus Talent"}</h1>
           <p className="font-mono text-[10px] text-on-surface-variant tracking-widest uppercase">Espace Recruteur</p>
         </div>
         {/* Fermeture du drawer (mobile uniquement) */}
@@ -108,38 +91,6 @@ export default function Sidebar({
         >
           <X size={18} />
         </button>
-      </div>
-
-      {/* Multi-tenant workspace selector */}
-      <div className="mx-4 mb-4 p-3 bg-surface-container-low rounded-lg border border-outline-variant">
-        <div className="flex items-center gap-1.5 mb-2 text-on-surface-variant">
-          <Building2 size={12} />
-          <span className="font-mono text-[10px] font-semibold uppercase tracking-wider">Espace Client</span>
-        </div>
-        <div className="relative mb-2">
-          <select
-            value={activeCompany?.id || ""}
-            onChange={handleCompanyChange}
-            className="w-full appearance-none bg-surface-container-lowest text-xs text-on-surface rounded-md border border-outline-variant py-1.5 pl-2 pr-6 focus:border-secondary focus:outline-none font-medium"
-          >
-            {allCompanies.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
-        </div>
-        <div className="relative">
-          <select
-            value={activeUser?.id || ""}
-            onChange={handleUserChange}
-            className="w-full appearance-none bg-surface-container-lowest text-xs text-on-surface rounded-md border border-outline-variant py-1.5 pl-2 pr-6 focus:border-secondary focus:outline-none font-medium"
-          >
-            {allUsers.filter(u => u.companyId === activeCompany?.id).map(u => (
-              <option key={u.id} value={u.id}>{u.name} — {u.role}</option>
-            ))}
-          </select>
-          <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-on-surface-variant pointer-events-none" />
-        </div>
       </div>
 
       {/* Navigation */}

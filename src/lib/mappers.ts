@@ -39,6 +39,7 @@ export const mapCompany = (c: PrismaCompany) => ({
   name: c.name,
   domain: c.domain,
   logoUrl: c.logoUrl ?? undefined,
+  appName: c.appName ?? "Nexus Talent",
   createdAt: c.createdAt.toISOString(),
 });
 

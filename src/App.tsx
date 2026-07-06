@@ -60,7 +60,6 @@ export default function App() {
   // Core Data States
   const [activeCompany, setActiveCompany] = useState<Company | null>(null);
   const [activeUser, setActiveUser] = useState<User | null>(null);
-  const [allCompanies, setAllCompanies] = useState<Company[]>([]);
   const [allUsers, setAllUsers] = useState<User[]>([]);
 
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -100,7 +99,6 @@ export default function App() {
 
       setActiveCompany(contextData.activeCompany);
       setActiveUser(contextData.activeUser);
-      setAllCompanies(contextData.allCompanies);
       setAllUsers(contextData.allUsers);
 
       setJobs(await apiJson("/api/jobs"));
@@ -217,27 +215,6 @@ export default function App() {
       setDashboardStats(null);
       setSelectedCandidateId(null);
       setActiveView("dashboard");
-    }
-  };
-
-  const handleSwitchContext = async (companyId: string, userId: string) => {
-    setLoading(true);
-    try {
-      const res = await apiFetch("/api/switch-context", {
-        method: "POST",
-        body: JSON.stringify({ companyId, userId })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setAccessToken(data.accessToken);
-        setActiveUser(data.user);
-        await fetchData();
-      } else {
-        setLoading(false);
-      }
-    } catch (e) {
-      console.error(e);
-      setLoading(false);
     }
   };
 
@@ -723,7 +700,7 @@ export default function App() {
         );
       }
       case "settings":
-        return <SettingsView activeUser={activeUser} activeCompany={activeCompany} />;
+        return <SettingsView activeUser={activeUser} activeCompany={activeCompany} onCompanyUpdated={setActiveCompany} />;
       case "dev-center":
         return <DevCenterView />;
       default:
@@ -739,9 +716,6 @@ export default function App() {
           setActiveView={navigateTo}
           activeCompany={activeCompany}
           activeUser={activeUser}
-          allCompanies={allCompanies}
-          allUsers={allUsers}
-          onSwitchContext={handleSwitchContext}
           onCreateJob={() => { navigateTo("jobs"); setOpenJobCreateSignal(s => s + 1); }}
           onLogout={handleLogout}
           isOpen={sidebarOpen}

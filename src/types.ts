@@ -11,6 +11,7 @@ export interface Company {
   name: string;
   logoUrl?: string;
   domain: string;
+  appName?: string;
   createdAt: string;
 }
 

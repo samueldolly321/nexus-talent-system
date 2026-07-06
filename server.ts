@@ -311,6 +311,32 @@ app.get("/api/companies", requireAuth, async (req, res) => {
   }
 });
 
+// Mise à jour de la société (nom + nom de l'application). Réservé aux
+// administrateurs (plateforme ou entreprise) et à leur propre société.
+app.put("/api/companies/:id", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  const { id } = req.params;
+  const b = req.body ?? {};
+  const callerRole = ctx.user.role;
+  if (callerRole !== PrismaUserRole.AdminPlateforme && callerRole !== PrismaUserRole.AdminEntreprise) {
+    return res.status(403).json({ error: "Accès refusé. Rôle insuffisant." });
+  }
+  if (id !== ctx.companyId) {
+    return res.status(403).json({ error: "Vous ne pouvez modifier que votre propre société." });
+  }
+  try {
+    const data: Prisma.CompanyUpdateInput = {};
+    if (b.name !== undefined && String(b.name).trim()) data.name = String(b.name).trim();
+    if (b.appName !== undefined) data.appName = String(b.appName).trim() || null;
+    const updated = await prisma.company.update({ where: { id }, data });
+    logActionFor(ctx, "Mise à jour société", `Paramètres de la société '${updated.name}' mis à jour.`);
+    res.json(mapCompany(updated));
+  } catch (err) {
+    console.error("[PUT /api/companies/:id]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
 app.get("/api/users", requireAuth, async (req, res) => {
   try {
     const rows = await prisma.user.findMany({ orderBy: { createdAt: "asc" } });

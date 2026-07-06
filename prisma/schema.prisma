@@ -83,6 +83,7 @@ model Company {
   name      String
   domain    String
   logoUrl   String?
+  appName   String?  @default("Nexus Talent") // nom de l'app affiché (personnalisable)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

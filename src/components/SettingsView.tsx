@@ -1,25 +1,67 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { User as UserIcon, Building2, Lock, Loader2 } from "lucide-react";
 import TopBar from "./TopBar";
-import { Company, User } from "../types";
+import { Company, User, UserRole } from "../types";
 import { apiFetch } from "../lib/api";
 
 interface SettingsViewProps {
   activeUser: User | null;
   activeCompany: Company | null;
+  onCompanyUpdated?: (company: Company) => void;
 }
 
 const LABEL_CLS = "block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold mb-1.5";
 const INPUT_CLS =
   "w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all";
 
-export default function SettingsView({ activeUser, activeCompany }: SettingsViewProps) {
+export default function SettingsView({ activeUser, activeCompany, onCompanyUpdated }: SettingsViewProps) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  // Édition société (réservée aux administrateurs).
+  const canEditCompany =
+    activeUser?.role === UserRole.AdminPlateforme || activeUser?.role === UserRole.AdminEntreprise;
+  const [companyName, setCompanyName] = useState(activeCompany?.name ?? "");
+  const [appName, setAppName] = useState(activeCompany?.appName ?? "Nexus Talent");
+  const [companySaving, setCompanySaving] = useState(false);
+  const [companyError, setCompanyError] = useState<string | null>(null);
+  const [companySuccess, setCompanySuccess] = useState<string | null>(null);
+
+  // Synchronise les champs quand la société change (chargement post-login).
+  useEffect(() => {
+    setCompanyName(activeCompany?.name ?? "");
+    setAppName(activeCompany?.appName ?? "Nexus Talent");
+  }, [activeCompany?.id, activeCompany?.name, activeCompany?.appName]);
+
+  const handleCompanySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (companySaving || !activeCompany) return;
+    setCompanyError(null);
+    setCompanySuccess(null);
+    if (!companyName.trim()) {
+      setCompanyError("Le nom de la société est requis.");
+      return;
+    }
+    setCompanySaving(true);
+    try {
+      const res = await apiFetch(`/api/companies/${activeCompany.id}`, {
+        method: "PUT",
+        body: JSON.stringify({ name: companyName.trim(), appName: appName.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Échec de la mise à jour.");
+      setCompanySuccess("Paramètres de la société mis à jour.");
+      onCompanyUpdated?.(data);
+    } catch (err: any) {
+      setCompanyError(err?.message || "Une erreur est survenue.");
+    } finally {
+      setCompanySaving(false);
+    }
+  };
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -129,16 +171,51 @@ export default function SettingsView({ activeUser, activeCompany }: SettingsView
             <Building2 size={18} className="text-secondary shrink-0" />
             <h3 className="font-bold text-on-surface font-sans text-sm">Entreprise</h3>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className={LABEL_CLS}>Nom</label>
-              <p className="text-sm text-on-surface font-medium">{activeCompany?.name || "—"}</p>
+          {canEditCompany ? (
+            <form onSubmit={handleCompanySubmit} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="company-name" className={LABEL_CLS}>Nom de la société</label>
+                  <input id="company-name" type="text" value={companyName} onChange={e => setCompanyName(e.target.value)} className={INPUT_CLS} placeholder="Ma société" />
+                </div>
+                <div>
+                  <label htmlFor="app-name" className={LABEL_CLS}>Nom de l'application</label>
+                  <input id="app-name" type="text" value={appName} onChange={e => setAppName(e.target.value)} className={INPUT_CLS} placeholder="Nexus Talent" />
+                </div>
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Domaine</label>
+                <p className="text-sm text-on-surface-variant font-medium">{activeCompany?.domain || "—"}</p>
+              </div>
+              {companyError && <p className="text-error text-sm">{companyError}</p>}
+              {companySuccess && <p className="text-secondary text-sm font-medium">{companySuccess}</p>}
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={companySaving}
+                  className="h-10 px-4 bg-accent hover:bg-accent-dark text-white rounded-[8px] text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-50"
+                >
+                  {companySaving && <Loader2 size={16} className="animate-spin" />}
+                  {companySaving ? "Enregistrement…" : "Enregistrer"}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className={LABEL_CLS}>Nom de la société</label>
+                <p className="text-sm text-on-surface font-medium">{activeCompany?.name || "—"}</p>
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Nom de l'application</label>
+                <p className="text-sm text-on-surface font-medium">{activeCompany?.appName || "Nexus Talent"}</p>
+              </div>
+              <div>
+                <label className={LABEL_CLS}>Domaine</label>
+                <p className="text-sm text-on-surface font-medium">{activeCompany?.domain || "—"}</p>
+              </div>
             </div>
-            <div>
-              <label className={LABEL_CLS}>Domaine</label>
-              <p className="text-sm text-on-surface font-medium">{activeCompany?.domain || "—"}</p>
-            </div>
-          </div>
+          )}
         </section>
       </main>
     </div>
