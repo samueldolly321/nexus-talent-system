@@ -1383,18 +1383,25 @@ app.post("/api/public/apply", (req, res) => {
       });
 
       // Trace la candidature dans la boîte de réception (module Emails) pour
-      // qu'elle y soit visible. Statut "Imported" : le candidat existe déjà
-      // (créé ci-dessus), on évite ainsi un ré-import qui le dupliquerait.
-      await prisma.email.create({
-        data: {
-          companyId: job.companyId,
-          from: `${name} <${email}>`,
-          subject: `Candidature — ${job.title}`,
-          body: `Nouvelle candidature reçue de ${name} pour le poste "${job.title}".\n\nPrétention salariale : ${created.salaryExpectation ?? "non renseignée"}\n\nExtrait CV :\n${cvText.slice(0, 500)}`,
-          date: new Date(),
-          status: EmailStatus.Imported,
-        },
-      });
+      // qu'elle y soit visible. Statut "Pending" comme les emails de seed :
+      // GET /api/emails ne filtre pas par statut, l'email apparaît donc en tête
+      // (orderBy date desc). L'échec de cette création est loggé mais ne fait
+      // pas échouer la candidature (le candidat, lui, est déjà enregistré).
+      try {
+        const createdEmail = await prisma.email.create({
+          data: {
+            companyId: job.companyId,
+            from: `${name} <${email}>`,
+            subject: `Candidature — ${job.title}`,
+            body: `Nouvelle candidature reçue de ${name} pour le poste "${job.title}".\n\nPrétention salariale : ${created.salaryExpectation ?? "non renseignée"}\n\nExtrait CV :\n${cvText.slice(0, 500)}`,
+            date: new Date(),
+            status: EmailStatus.Pending,
+          },
+        });
+        console.log(`[public/apply] Email de candidature créé: ${createdEmail.id} (candidat ${created.id}, company ${job.companyId})`);
+      } catch (mailErr) {
+        console.error("[public/apply] Échec création email de candidature:", mailErr);
+      }
 
       logActionFor(
         { companyId: job.companyId, userId: "" },
