@@ -1585,31 +1585,7 @@ app.post("/api/public/apply", (req, res) => {
       });
       const appName = company?.appName || "Nexus Talent";
 
-      // 3. Confirmation au candidat.
-      await sendEmail({
-        to: email,
-        subject: `${company?.name ?? appName} — Candidature reçue pour "${job.title}"`,
-        html: `
-          <div style="font-family:sans-serif;max-width:600px;margin:auto">
-            <h2 style="color:#0f172a">${appName}</h2>
-            <p>Bonjour <strong>${name}</strong>,</p>
-            <p>Nous avons bien reçu votre candidature pour le poste de <strong>${job.title}</strong> chez <strong>${company?.name ?? ""}</strong>.</p>
-            <p>Notre équipe RH examinera votre dossier et vous recontactera dans les meilleurs délais.</p>
-            <div style="background:#f8fafc;border-radius:8px;padding:16px;margin:16px 0">
-              <p style="margin:0;font-size:13px;color:#64748b">
-                <strong>Récapitulatif :</strong><br/>
-                Poste : ${job.title}<br/>
-                Entreprise : ${company?.name ?? ""}<br/>
-                Date : ${new Date().toLocaleDateString("fr-FR")}
-              </p>
-            </div>
-            <p>Cordialement,<br/>L'équipe ${company?.name ?? ""}</p>
-            <hr/>
-            <p style="color:#64748b;font-size:12px">Vous recevez cet email car vous avez postulé via ${appName}.</p>
-          </div>`,
-      });
-
-      // 4. Notification aux recruteurs/admins de la company.
+      // Recruteurs/admins de la company à notifier (requête avant l'envoi parallèle).
       const recruiters = await prisma.user.findMany({
         where: {
           companyId: job.companyId,
@@ -1617,8 +1593,36 @@ app.post("/api/public/apply", (req, res) => {
         },
         select: { email: true, name: true },
       });
-      for (const recruiter of recruiters) {
-        await sendEmail({
+
+      // Tous les emails partent en parallèle → latence = le plus lent (et non la
+      // somme). sendEmail avale ses erreurs, donc aucun envoi ne rejette Promise.all.
+      const sentDate = new Date().toLocaleDateString("fr-FR");
+      await Promise.all([
+        // 3. Confirmation au candidat.
+        sendEmail({
+          to: email,
+          subject: `${company?.name ?? appName} — Candidature reçue pour "${job.title}"`,
+          html: `
+            <div style="font-family:sans-serif;max-width:600px;margin:auto">
+              <h2 style="color:#0f172a">${appName}</h2>
+              <p>Bonjour <strong>${name}</strong>,</p>
+              <p>Nous avons bien reçu votre candidature pour le poste de <strong>${job.title}</strong> chez <strong>${company?.name ?? ""}</strong>.</p>
+              <p>Notre équipe RH examinera votre dossier et vous recontactera dans les meilleurs délais.</p>
+              <div style="background:#f8fafc;border-radius:8px;padding:16px;margin:16px 0">
+                <p style="margin:0;font-size:13px;color:#64748b">
+                  <strong>Récapitulatif :</strong><br/>
+                  Poste : ${job.title}<br/>
+                  Entreprise : ${company?.name ?? ""}<br/>
+                  Date : ${sentDate}
+                </p>
+              </div>
+              <p>Cordialement,<br/>L'équipe ${company?.name ?? ""}</p>
+              <hr/>
+              <p style="color:#64748b;font-size:12px">Vous recevez cet email car vous avez postulé via ${appName}.</p>
+            </div>`,
+        }),
+        // 4. Notification à chaque recruteur/admin.
+        ...recruiters.map(recruiter => sendEmail({
           to: recruiter.email,
           subject: `${appName} — Nouvelle candidature : ${name} pour "${job.title}"`,
           html: `
@@ -1633,15 +1637,15 @@ app.post("/api/public/apply", (req, res) => {
                   <strong>Téléphone :</strong> ${b.phone || "Non renseigné"}<br/>
                   <strong>Poste :</strong> ${job.title}<br/>
                   <strong>Prétention salariale :</strong> ${created.salaryExpectation || "Non renseignée"}<br/>
-                  <strong>Date :</strong> ${new Date().toLocaleDateString("fr-FR")}
+                  <strong>Date :</strong> ${sentDate}
                 </p>
               </div>
               <p>Connectez-vous à ${appName} pour consulter le dossier complet.</p>
               <hr/>
               <p style="color:#64748b;font-size:12px">Notification automatique ${appName}.</p>
             </div>`,
-        });
-      }
+        })),
+      ]);
 
       res.json({ success: true, candidateId: created.id });
     } catch (e) {
