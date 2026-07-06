@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { ChevronRight, Download, Mail, Phone, MapPin, Linkedin, Globe, Sparkles, RefreshCw, GraduationCap, BadgeCheck, Pencil, X, Loader2, Camera } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { ChevronRight, Download, Mail, Phone, MapPin, Linkedin, Globe, Sparkles, RefreshCw, GraduationCap, BadgeCheck, Pencil, X, Loader2, Camera, Calendar } from "lucide-react";
 import {
   RadarChart,
   PolarGrid,
@@ -8,7 +8,7 @@ import {
   ResponsiveContainer
 } from "recharts";
 import TopBar from "./TopBar";
-import { Candidate, Job, PipelineStage, User } from "../types";
+import { Candidate, Job, PipelineStage, User, Interview } from "../types";
 import { getAccessToken, apiFetch } from "../lib/api";
 
 interface CandidateProfileViewProps {
@@ -67,6 +67,72 @@ export default function CandidateProfileView({
   const [shareResult, setShareResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const openShare = () => { setShareEmail(""); setShareMessage(""); setShareResult(null); setShowShareModal(true); };
+
+  // Entretiens planifiés du candidat (onglet Historique).
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  useEffect(() => {
+    apiFetch(`/api/interviews?candidateId=${candidate.id}`)
+      .then(r => (r.ok ? r.json() : []))
+      .then((data) => setInterviews(Array.isArray(data) ? data : []))
+      .catch(() => setInterviews([]));
+  }, [candidate.id]);
+
+  // Envoi d'email au candidat (modal + templates pré-remplis).
+  const jobTitle = job?.title ?? "le poste";
+  const EMAIL_TEMPLATES: Record<string, { subject: string; body: string }> = {
+    convocation: {
+      subject: `Convocation à un entretien — ${jobTitle}`,
+      body: `<p>Suite à l'examen de votre candidature, nous avons le plaisir de vous convier à un entretien.</p>\n<p>Nous reviendrons vers vous prochainement pour vous communiquer la date et l'heure.</p>\n<p>Cordialement,<br/>L'équipe RH</p>`,
+    },
+    refus: {
+      subject: `Suite de votre candidature — ${jobTitle}`,
+      body: `<p>Nous avons bien reçu et examiné votre candidature.</p>\n<p>Après étude attentive, nous avons décidé de ne pas donner suite à votre candidature.</p>\n<p>Nous vous souhaitons bonne chance dans vos recherches.</p>\n<p>Cordialement,<br/>L'équipe RH</p>`,
+    },
+    offre: {
+      subject: `Offre d'emploi — ${jobTitle}`,
+      body: `<p>Nous avons le plaisir de vous proposer de rejoindre notre équipe.</p>\n<p>Veuillez nous contacter pour discuter des modalités.</p>\n<p>Cordialement,<br/>L'équipe RH</p>`,
+    },
+    relance: {
+      subject: `Relance — Votre candidature`,
+      body: `<p>Nous revenons vers vous concernant votre candidature.</p>\n<p>Pouvez-vous confirmer votre intérêt pour le poste ?</p>\n<p>Cordialement,<br/>L'équipe RH</p>`,
+    },
+  };
+
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailTemplate, setEmailTemplate] = useState("convocation");
+  const [emailSubject, setEmailSubject] = useState("");
+  const [emailBody, setEmailBody] = useState("");
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailResult, setEmailResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const applyTemplate = (key: string) => {
+    const t = EMAIL_TEMPLATES[key];
+    setEmailTemplate(key);
+    if (t) { setEmailSubject(t.subject); setEmailBody(t.body); }
+  };
+
+  const openEmail = () => { setEmailResult(null); applyTemplate("convocation"); setShowEmailModal(true); };
+
+  const handleSendEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (emailSending) return;
+    setEmailSending(true);
+    setEmailResult(null);
+    try {
+      const res = await apiFetch(`/api/candidates/${candidate.id}/send-email`, {
+        method: "POST",
+        body: JSON.stringify({ subject: emailSubject, body: emailBody, template: emailTemplate }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Échec de l'envoi.");
+      setEmailResult({ ok: true, msg: "Email envoyé avec succès !" });
+      setTimeout(() => { setShowEmailModal(false); setEmailResult(null); }, 2000);
+    } catch (err: any) {
+      setEmailResult({ ok: false, msg: err?.message || "Erreur lors de l'envoi." });
+    } finally {
+      setEmailSending(false);
+    }
+  };
 
   const handleShare = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -251,6 +317,13 @@ export default function CandidateProfileView({
               <Pencil size={14} />
               Modifier le profil
             </button>
+            <button
+              onClick={openEmail}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-outline-variant rounded-lg text-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-all mt-2"
+            >
+              <Mail size={16} />
+              Envoyer un email
+            </button>
           </div>
 
           {candidate.salaryExpectation && (
@@ -427,6 +500,26 @@ export default function CandidateProfileView({
 
           {activeTab === 3 && (
             <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
+              {interviews.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="font-bold text-on-surface mb-3 flex items-center gap-2">
+                    <Calendar size={16} className="text-secondary" />
+                    Entretiens planifiés
+                  </h4>
+                  {interviews.map(iv => (
+                    <div key={iv.id} className="flex items-center justify-between p-3 mb-2 bg-surface-container border border-outline-variant rounded-lg">
+                      <div>
+                        <span className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant">{iv.type}</span>
+                        <p className="font-medium text-on-surface text-sm mt-0.5">
+                          {new Date(iv.date).toLocaleDateString("fr-FR")} à {iv.time}
+                        </p>
+                        {iv.notes && <p className="text-xs text-on-surface-variant mt-0.5">{iv.notes}</p>}
+                      </div>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-secondary-container text-on-secondary-container">Planifié</span>
+                    </div>
+                  ))}
+                </div>
+              )}
               <h3 className="font-bold text-on-surface mb-3">Historique</h3>
               <p className="text-sm text-on-surface-variant">
                 Candidature reçue le {new Date(candidate.appliedAt).toLocaleDateString("fr-FR")}, actuellement à l'étape <span className="font-semibold text-on-surface">{candidate.stage}</span>.
@@ -655,6 +748,47 @@ export default function CandidateProfileView({
                 <button type="button" onClick={() => setShowShareModal(false)} disabled={shareLoading} className={CANCEL_CLS}>Annuler</button>
                 <button type="submit" disabled={shareLoading || !shareEmail.trim()} className={SUBMIT_CLS}>
                   {shareLoading && <Loader2 size={16} className="animate-spin" />}{shareLoading ? "Envoi…" : "Envoyer"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal : envoyer un email au candidat */}
+      {showEmailModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => !emailSending && setShowEmailModal(false)}>
+          <div className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-surface-container-lowest rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-sans text-lg font-semibold text-on-surface">Envoyer un email — {candidate.name}</h3>
+              <button type="button" onClick={() => setShowEmailModal(false)} disabled={emailSending} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
+            </div>
+            <form onSubmit={handleSendEmail} className="space-y-4">
+              <div>
+                <label htmlFor="email-template" className={LABEL_CLS}>Modèle</label>
+                <select id="email-template" value={emailTemplate} onChange={e => applyTemplate(e.target.value)} className="w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all">
+                  <option value="convocation">Convocation à un entretien</option>
+                  <option value="refus">Refus de candidature</option>
+                  <option value="offre">Offre d'emploi</option>
+                  <option value="relance">Relance</option>
+                </select>
+              </div>
+              <div>
+                <label htmlFor="email-subject" className={LABEL_CLS}>Sujet <span className="text-error">*</span></label>
+                <input id="email-subject" type="text" required value={emailSubject} onChange={e => setEmailSubject(e.target.value)} className="w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all" />
+              </div>
+              <div>
+                <label htmlFor="email-body" className={LABEL_CLS}>Corps du message (HTML simplifié)</label>
+                <textarea id="email-body" rows={8} value={emailBody} onChange={e => setEmailBody(e.target.value)} className="w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface font-mono focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all resize-y" />
+                <p className="text-[11px] text-on-surface-variant mt-1">Envoyé à : {candidate.email}</p>
+              </div>
+              {emailResult && (
+                <p className={`text-sm font-medium ${emailResult.ok ? "text-secondary" : "text-error"}`}>{emailResult.msg}</p>
+              )}
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => setShowEmailModal(false)} disabled={emailSending} className={CANCEL_CLS}>Annuler</button>
+                <button type="submit" disabled={emailSending || !emailSubject.trim()} className={SUBMIT_CLS}>
+                  {emailSending && <Loader2 size={16} className="animate-spin" />}{emailSending ? "Envoi…" : "Envoyer"}
                 </button>
               </div>
             </form>

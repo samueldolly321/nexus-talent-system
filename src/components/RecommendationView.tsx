@@ -72,6 +72,38 @@ export default function RecommendationView({ candidate, job, activeUser, onBack 
     }
   };
 
+  // Planification d'entretien : événement structuré (POST /api/interviews),
+  // qui crée aussi l'audit log côté serveur.
+  const submitInterview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setFormError(null);
+    try {
+      const res = await apiFetch("/api/interviews", {
+        method: "POST",
+        body: JSON.stringify({
+          candidateId: candidate.id,
+          jobId: candidate.jobId,
+          date: interview.date,
+          time: interview.time,
+          type: interview.type,
+          notes: interview.notes.trim() || undefined,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "Échec de la planification.");
+      }
+      setModal(null);
+      setDone(`Entretien ${interview.type} planifié pour ${candidate.name}.`);
+    } catch (err: any) {
+      setFormError(err?.message || "Une erreur est survenue.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const donutData = [
     { name: "score", value: successRate },
     { name: "rest", value: 100 - successRate }
@@ -250,14 +282,7 @@ export default function RecommendationView({ candidate, job, activeUser, onBack 
               <h3 className="font-sans text-lg font-semibold text-on-surface">Planifier un entretien</h3>
               <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
             </div>
-            <form
-              onSubmit={submit(() => ({
-                action: "Entretien planifié",
-                details: `Entretien ${interview.type} planifié pour ${candidate.name} le ${interview.date} à ${interview.time}${interview.notes.trim() ? ` — ${interview.notes.trim()}` : ""}`,
-                confirm: `Entretien ${interview.type} planifié pour ${candidate.name}.`,
-              }))}
-              className="space-y-4"
-            >
+            <form onSubmit={submitInterview} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="intv-date" className={LABEL_CLS}>Date <span className="text-error">*</span></label>

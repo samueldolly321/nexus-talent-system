@@ -140,6 +140,18 @@ export interface Candidate {
   recommendation?: CandidateRecommendation;
 }
 
+export interface Interview {
+  id: string;
+  candidateId: string;
+  jobId?: string;
+  date: string;
+  time: string;
+  type: string;
+  notes?: string;
+  createdAt: string;
+  candidate?: { name: string; jobTitle?: string };
+}
+
 export interface EmailItem {
   id: string;
   companyId: string;

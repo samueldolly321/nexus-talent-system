@@ -92,6 +92,7 @@ model Company {
   candidates Candidate[]
   emails     Email[]
   auditLogs  AuditLog[]
+  interviews Interview[]
 
   @@index([domain])
 }
@@ -177,10 +178,32 @@ model Candidate {
   job     Job?             @relation(fields: [jobId], references: [id], onDelete: SetNull)
   score   CandidateScore? // 1-1, créé après analyse IA
   skills  CandidateSkill[]
+  interviews Interview[]
 
   @@index([companyId])
   @@index([jobId])
   @@index([stage])
+}
+
+// Entretien planifié pour un candidat (événement structuré, visible dans
+// l'historique de la fiche et dans la vue Calendrier).
+model Interview {
+  id          String   @id @default(cuid())
+  companyId   String
+  candidateId String
+  jobId       String?
+  date        String // "YYYY-MM-DD"
+  time        String // "HH:MM"
+  type        String // "RH" | "Technique" | "Final"
+  notes       String?
+  createdAt   DateTime @default(now())
+  createdBy   String?
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  candidate Candidate @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([candidateId])
 }
 
 model CandidateScore {

@@ -1426,6 +1426,121 @@ app.get("/api/reports/sourcing", requireAuth, async (req, res) => {
 });
 
 // ==========================================
+// INTERVIEWS (entretiens planifiés)
+// ==========================================
+app.post("/api/interviews", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  const { companyId, userId } = ctx;
+  const b = req.body ?? {};
+  const candidateId = String(b.candidateId ?? "").trim();
+  const date = String(b.date ?? "").trim();
+  const time = String(b.time ?? "").trim();
+  const type = String(b.type ?? "RH").trim();
+  if (!candidateId || !date || !time) {
+    return res.status(400).json({ error: "candidateId, date et time sont requis." });
+  }
+  try {
+    const cand = await prisma.candidate.findFirst({ where: { id: candidateId, companyId }, select: { id: true } });
+    if (!cand) return res.status(404).json({ error: "Candidat introuvable." });
+
+    const interview = await prisma.interview.create({
+      data: { companyId, candidateId, jobId: b.jobId || null, date, time, type, notes: b.notes || null, createdBy: userId || null },
+    });
+    logActionFor(ctx, "Entretien planifié", `Entretien ${type} planifié le ${date} à ${time}${b.notes ? " — " + b.notes : ""}`);
+    res.json(interview);
+  } catch (err) {
+    console.error("[POST /api/interviews]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
+app.get("/api/interviews", requireAuth, async (req, res) => {
+  const { companyId } = getContext(req);
+  const candidateId = req.query.candidateId as string | undefined;
+  try {
+    const where: Prisma.InterviewWhereInput = { companyId };
+    if (candidateId) where.candidateId = candidateId;
+    const rows = await prisma.interview.findMany({
+      where,
+      orderBy: [{ date: "asc" }, { time: "asc" }],
+      include: { candidate: { select: { name: true, job: { select: { title: true } } } } },
+    });
+    // Aplati candidate.job.title → jobTitle (le front attend candidate.jobTitle).
+    const interviews = rows.map((iv) => ({
+      id: iv.id,
+      candidateId: iv.candidateId,
+      jobId: iv.jobId ?? undefined,
+      date: iv.date,
+      time: iv.time,
+      type: iv.type,
+      notes: iv.notes ?? undefined,
+      createdAt: iv.createdAt.toISOString(),
+      candidate: { name: iv.candidate.name, jobTitle: iv.candidate.job?.title ?? undefined },
+    }));
+    res.json(interviews);
+  } catch (err) {
+    console.error("[GET /api/interviews]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
+app.delete("/api/interviews/:id", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  const { companyId } = ctx;
+  const { id } = req.params;
+  try {
+    const existing = await prisma.interview.findFirst({ where: { id, companyId } });
+    if (!existing) return res.status(404).json({ error: "Entretien introuvable." });
+    await prisma.interview.delete({ where: { id } });
+    logActionFor(ctx, "Entretien annulé", `Entretien du ${existing.date} à ${existing.time} annulé.`);
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error("[DELETE /api/interviews/:id]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
+// Envoi d'un email au candidat depuis sa fiche (via Resend, best-effort).
+app.post("/api/candidates/:id/send-email", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  const { companyId } = ctx;
+  const b = req.body ?? {};
+  const subject = String(b.subject ?? "").trim();
+  const body = String(b.body ?? "");
+  if (!subject) return res.status(400).json({ error: "Le sujet est requis." });
+  try {
+    const candidate = await prisma.candidate.findFirst({
+      where: { id: req.params.id, companyId },
+      include: { job: { select: { title: true } } },
+    });
+    if (!candidate) return res.status(404).json({ error: "Candidat introuvable." });
+    if (!candidate.email) return res.status(400).json({ error: "Ce candidat n'a pas d'adresse email." });
+
+    const company = await prisma.company.findUnique({ where: { id: companyId }, select: { name: true, appName: true } });
+    const appName = company?.appName || "Nexus Talent";
+
+    await sendEmail({
+      to: candidate.email,
+      subject,
+      html: `
+        <div style="font-family:sans-serif;max-width:600px;margin:auto">
+          <h2 style="color:#1A2744">${appName}</h2>
+          <p>Bonjour <strong>${candidate.name}</strong>,</p>
+          ${body}
+          <hr/>
+          <p style="color:#64748b;font-size:12px">Ce message a été envoyé par ${company?.name ?? appName} via ${appName}.</p>
+        </div>`,
+    });
+
+    logActionFor(ctx, "Email envoyé", `Email "${subject}" envoyé à ${candidate.name} (${candidate.email})`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[POST /api/candidates/:id/send-email]", err);
+    res.status(500).json({ error: "Erreur lors de l'envoi." });
+  }
+});
+
+// ==========================================
 // 8. PUBLIC APPLICATION (candidature en ligne, sans authentification)
 // ==========================================
 const cvDir = path.join(process.cwd(), "uploads", "cvs");

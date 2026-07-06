@@ -12,6 +12,7 @@ import {
   LogOut,
   BrainCircuit,
   Archive,
+  CalendarDays,
   Sun,
   Moon,
   X
@@ -51,6 +52,7 @@ export default function Sidebar({
     { id: "archivedJobs", label: "Offres archivées", icon: Archive },
     { id: "candidates", label: "Candidats", icon: Users },
     { id: "pipeline", label: "Pipeline", icon: KanbanSquare },
+    { id: "calendar", label: "Calendrier", icon: CalendarDays },
     { id: "emails", label: "Emails", icon: Mail },
     { id: "ai-search", label: "Recherche IA", icon: BrainCircuit },
     { id: "reports", label: "Rapports", icon: BarChart3 },

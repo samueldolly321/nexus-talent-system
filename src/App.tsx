@@ -11,6 +11,7 @@ import RecommendationView from "./components/RecommendationView";
 import EmailInboxView from "./components/EmailInboxView";
 import SettingsView from "./components/SettingsView";
 import ArchivedJobsView from "./components/ArchivedJobsView";
+import CalendarView from "./components/CalendarView";
 // Vues lourdes (recharts / gros contenus) chargées à la demande → code-splitting
 // pour alléger le bundle principal (chunks séparés générés par Vite).
 const ReportsView = lazy(() => import("./components/ReportsView"));
@@ -540,6 +541,8 @@ export default function App() {
             onSearchChange={setSearchQuery}
           />
         );
+      case "calendar":
+        return <CalendarView activeUser={activeUser} candidates={candidates} />;
       case "ai-search":
         return <AiSearchView candidates={candidates} jobs={jobs} onSelectCandidate={openCandidateFromView} />;
       case "emails":
