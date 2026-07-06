@@ -50,6 +50,19 @@ const formatDeadline = (iso: string) => {
 // Deadline dépassée = strictement avant aujourd'hui (comparaison lexicographique sur YYYY-MM-DD).
 const isDeadlinePassed = (iso: string) => iso < new Date().toISOString().slice(0, 10);
 
+// Normalise chaque montant en Ariary présent dans une chaîne libre de salaire
+// ("1500000AR -2000000Ar" → "1 500 000 Ar - 2 000 000 Ar"). Purement cosmétique
+// (affichage) : la valeur stockée reste le texte saisi par le recruteur.
+const formatSalaryDisplay = (salary: string): string => {
+  if (!salary) return "";
+  return salary.replace(/(\d[\d\s.,]*)\s*(?:ar(?:iary)?|mga)\b/gi, (match, digits) => {
+    const raw = String(digits).replace(/[\s.,]/g, "");
+    const amount = parseInt(raw, 10);
+    if (isNaN(amount)) return match;
+    return amount.toLocaleString("fr-FR").replace(/[  ]/g, " ") + " Ar";
+  });
+};
+
 export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange, onCreateJob, onEditJob, onDeleteJob, loading, openCreateSignal }: JobsViewProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -400,7 +413,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     </div>
                     <div className="flex items-center gap-1.5 text-xs">
                       <Banknote size={14} className="text-on-surface-variant shrink-0" />
-                      <span className="truncate text-on-surface font-medium">{job.salaryRange || "Non précisé"}</span>
+                      <span className="truncate text-on-surface font-medium">{job.salaryRange ? formatSalaryDisplay(job.salaryRange) : "Non précisé"}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs">
                       <Award size={14} className="text-on-surface-variant shrink-0" />
@@ -499,7 +512,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     </div>
                     <div>
                       <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Rémunération</span>
-                      <span className="text-xs font-semibold text-on-surface-variant mt-0.5 block">{selectedJob.salaryRange || "Non précisé"}</span>
+                      <span className="text-xs font-semibold text-on-surface-variant mt-0.5 block">{selectedJob.salaryRange ? formatSalaryDisplay(selectedJob.salaryRange) : "Non précisé"}</span>
                     </div>
                     <div>
                       <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Priorité</span>
