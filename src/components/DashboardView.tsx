@@ -256,7 +256,7 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               {skillDistribution.slice(0, 3).map(s => (
-                <span key={s.name} className="px-2 py-1 bg-surface-container text-secondary text-[10px] font-mono rounded-full">{s.name}</span>
+                <span key={s.name} className="px-2 py-1 bg-secondary-container text-on-secondary-container text-[10px] font-mono rounded-full">{s.name}</span>
               ))}
             </div>
           </div>

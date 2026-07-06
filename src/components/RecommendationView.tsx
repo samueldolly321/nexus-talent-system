@@ -118,7 +118,7 @@ export default function RecommendationView({ candidate, job, activeUser, onBack 
                 <p className="text-on-surface-variant text-sm mt-1">{job?.title || "—"} | {candidate.analysis?.yearsOfExperience ?? "—"}+ ans d'expérience</p>
                 <div className="flex gap-2 mt-3 flex-wrap">
                   {(candidate.analysis?.skills.frameworks || []).slice(0, 3).map(s => (
-                    <span key={s} className="px-2.5 py-1 bg-surface-container text-secondary text-xs font-medium rounded-full">{s}</span>
+                    <span key={s} className="px-2.5 py-1 bg-secondary-container text-on-secondary-container text-xs font-medium rounded-full">{s}</span>
                   ))}
                 </div>
               </div>

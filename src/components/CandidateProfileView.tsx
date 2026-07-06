@@ -332,7 +332,7 @@ export default function CandidateProfileView({
                       ...(candidate.analysis?.skills.frameworks || []),
                       ...(candidate.analysis?.skills.cloud || [])
                     ].map(skill => (
-                      <span key={skill} className="px-2.5 py-1 bg-surface-container text-secondary text-xs font-medium rounded-full">{skill}</span>
+                      <span key={skill} className="px-2.5 py-1 bg-secondary-container text-on-secondary-container text-xs font-medium rounded-full">{skill}</span>
                     ))}
                     {!candidate.analysis && <span className="text-sm text-on-surface-variant">—</span>}
                   </div>

@@ -249,7 +249,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     </div>
                     <div className="flex items-center gap-1.5 text-xs">
                       <Banknote size={14} className="text-on-surface-variant shrink-0" />
-                      <span className="truncate">{job.salaryRange || "Non précisé"}</span>
+                      <span className="truncate text-on-surface font-medium">{job.salaryRange || "Non précisé"}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs">
                       <Award size={14} className="text-on-surface-variant shrink-0" />
@@ -272,7 +272,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                   {/* Skills badges */}
                   <div className="flex flex-wrap gap-1.5 mt-4">
                     {job.skillsRequired.slice(0, 5).map(skill => (
-                      <span key={skill} className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-secondary-container/20 text-cyan-800 font-bold">
+                      <span key={skill} className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-secondary-container text-on-secondary-container">
                         {skill}
                       </span>
                     ))}
@@ -323,7 +323,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant mb-2">Compétences attendues</h4>
                     <div className="flex flex-wrap gap-1.5">
                       {selectedJob.skillsRequired.map(skill => (
-                        <span key={skill} className="px-2.5 py-0.5 rounded-full text-[10px] font-mono bg-secondary-container/20 text-cyan-800 border border-secondary-container font-bold">
+                        <span key={skill} className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-secondary-container text-on-secondary-container">
                           {skill}
                         </span>
                       ))}

@@ -252,7 +252,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
               <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">Compétences</h4>
               <div className="flex flex-wrap gap-2">
                 {allSkills.map(skill => (
-                  <span key={skill} className="px-2.5 py-1 bg-surface-container text-secondary text-xs rounded-full font-medium">{skill}</span>
+                  <span key={skill} className="px-2.5 py-1 bg-secondary-container text-on-secondary-container text-xs rounded-full font-medium">{skill}</span>
                 ))}
                 <span className="px-2.5 py-1 bg-surface-container-low text-on-surface-variant text-xs rounded-full font-medium">+12</span>
               </div>
