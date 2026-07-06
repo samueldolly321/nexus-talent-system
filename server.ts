@@ -790,8 +790,13 @@ app.put("/api/candidates/:id", requireAuth, async (req, res) => {
       // Ré-extraction automatique de la prétention salariale à chaque mise à jour de la lettre.
       data.salaryExpectation = extractSalaryExpectation(b.letterText);
     }
-    // Saisie / correction manuelle : prend le pas sur l'extraction auto si fournie explicitement.
-    if (b.salaryExpectation !== undefined) data.salaryExpectation = b.salaryExpectation || null;
+    // Saisie / correction manuelle : prend le pas sur l'extraction auto si fournie
+    // explicitement, et est normalisée au passage ("1500000Ar" → "1 500 000 Ar").
+    if (b.salaryExpectation !== undefined) {
+      data.salaryExpectation = b.salaryExpectation
+        ? extractSalaryExpectation(b.salaryExpectation) ?? b.salaryExpectation
+        : null;
+    }
 
     const updated = await prisma.candidate.update({
       where: { id },
