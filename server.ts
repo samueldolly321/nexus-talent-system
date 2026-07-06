@@ -14,9 +14,30 @@ import type { User as PrismaUser } from "@prisma/client";
 import { mapCompany, mapUser, mapJob, jobInclude, mapCandidate, mapPipelineStage, candidateInclude, toPrismaPipelineStage, mapEmail, mapAuditLog, toPrismaUserRole } from "./src/lib/mappers.js";
 import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
+import { Resend } from "resend";
 
 // Load environment variables
 dotenv.config();
+
+// Envoi d'emails transactionnels via Resend. Sans clé configurée, l'envoi est
+// désactivé silencieusement (l'app fonctionne normalement, aucun email n'est
+// envoyé). sendEmail ne propage jamais d'erreur → ne fait pas échouer la requête.
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const FROM_EMAIL = process.env.EMAIL_FROM || "onboarding@resend.dev";
+
+async function sendEmail(params: { to: string; subject: string; html: string }): Promise<void> {
+  if (!resend) {
+    console.warn("[email] RESEND_API_KEY non configurée — email non envoyé.");
+    return;
+  }
+  try {
+    await resend.emails.send({ from: FROM_EMAIL, to: params.to, subject: params.subject, html: params.html });
+    console.log(`[email] Envoyé à ${params.to} : ${params.subject}`);
+  } catch (err) {
+    console.error("[email] Erreur Resend :", err);
+    // Volontairement silencieux : ne pas faire échouer la requête principale.
+  }
+}
 
 const app = express();
 const PORT = 3000;
@@ -1304,6 +1325,51 @@ app.post("/api/audit-logs", requireAuth, async (req, res) => {
         details,
       },
     });
+
+    // Emails de partage (best-effort, ne bloque jamais la réponse).
+    // Pipeline : "Pipeline (...) partagé à email. Message : ..."
+    // Profil   : "Profil de {nom} partagé à email — message"
+    if (action === "Pipeline partagé" || action === "Partage de profil") {
+      const toEmail = details.match(/partagé à\s+([\w.+-]+@[\w.-]+\.\w+)/i)?.[1];
+      if (toEmail) {
+        const company = await prisma.company.findUnique({ where: { id: ctx.companyId }, select: { name: true, appName: true } });
+        const appName = company?.appName || "Nexus Talent";
+        const notes = (details.match(/Message\s*:\s*(.+)$/i) || details.match(/\s—\s(.+)$/))?.[1]?.trim();
+        if (action === "Pipeline partagé") {
+          await sendEmail({
+            to: toEmail,
+            subject: `${appName} — Pipeline de recrutement partagé`,
+            html: `
+              <div style="font-family:sans-serif;max-width:600px;margin:auto">
+                <h2 style="color:#0f172a">${appName}</h2>
+                <p>Bonjour,</p>
+                <p>Le pipeline de recrutement de <strong>${company?.name ?? ""}</strong> vous a été partagé.</p>
+                ${notes ? `<p><em>"${notes}"</em></p>` : ""}
+                <p>Connectez-vous à la plateforme pour consulter les candidats.</p>
+                <hr/>
+                <p style="color:#64748b;font-size:12px">Cet email a été envoyé depuis ${appName}.</p>
+              </div>`,
+          });
+        } else {
+          const candidatName = details.match(/Profil de\s+(.+?)\s+partagé à/i)?.[1] || "un candidat";
+          await sendEmail({
+            to: toEmail,
+            subject: `${appName} — Profil candidat partagé : ${candidatName}`,
+            html: `
+              <div style="font-family:sans-serif;max-width:600px;margin:auto">
+                <h2 style="color:#0f172a">${appName}</h2>
+                <p>Bonjour,</p>
+                <p>Le profil de <strong>${candidatName}</strong> vous a été partagé par l'équipe RH de <strong>${company?.name ?? ""}</strong>.</p>
+                ${notes ? `<p>Message : <em>"${notes}"</em></p>` : ""}
+                <p>Connectez-vous à la plateforme pour consulter ce profil.</p>
+                <hr/>
+                <p style="color:#64748b;font-size:12px">Cet email a été envoyé depuis ${appName}.</p>
+              </div>`,
+          });
+        }
+      }
+    }
+
     res.json(mapAuditLog(created));
   } catch (err) {
     console.error("[POST /api/audit-logs]", err);
@@ -1510,6 +1576,72 @@ app.post("/api/public/apply", (req, res) => {
         "Candidature en ligne",
         `Nouvelle candidature reçue de '${name}' pour l'offre '${job.title}'.`
       );
+
+      // Emails transactionnels (best-effort). Confirmation au candidat +
+      // notification aux recruteurs/admins de la company.
+      const company = await prisma.company.findUnique({
+        where: { id: job.companyId },
+        select: { name: true, appName: true },
+      });
+      const appName = company?.appName || "Nexus Talent";
+
+      // 3. Confirmation au candidat.
+      await sendEmail({
+        to: email,
+        subject: `${company?.name ?? appName} — Candidature reçue pour "${job.title}"`,
+        html: `
+          <div style="font-family:sans-serif;max-width:600px;margin:auto">
+            <h2 style="color:#0f172a">${appName}</h2>
+            <p>Bonjour <strong>${name}</strong>,</p>
+            <p>Nous avons bien reçu votre candidature pour le poste de <strong>${job.title}</strong> chez <strong>${company?.name ?? ""}</strong>.</p>
+            <p>Notre équipe RH examinera votre dossier et vous recontactera dans les meilleurs délais.</p>
+            <div style="background:#f8fafc;border-radius:8px;padding:16px;margin:16px 0">
+              <p style="margin:0;font-size:13px;color:#64748b">
+                <strong>Récapitulatif :</strong><br/>
+                Poste : ${job.title}<br/>
+                Entreprise : ${company?.name ?? ""}<br/>
+                Date : ${new Date().toLocaleDateString("fr-FR")}
+              </p>
+            </div>
+            <p>Cordialement,<br/>L'équipe ${company?.name ?? ""}</p>
+            <hr/>
+            <p style="color:#64748b;font-size:12px">Vous recevez cet email car vous avez postulé via ${appName}.</p>
+          </div>`,
+      });
+
+      // 4. Notification aux recruteurs/admins de la company.
+      const recruiters = await prisma.user.findMany({
+        where: {
+          companyId: job.companyId,
+          role: { in: [PrismaUserRole.AdminEntreprise, PrismaUserRole.RH, PrismaUserRole.Manager, PrismaUserRole.ConsultantRecrutement] },
+        },
+        select: { email: true, name: true },
+      });
+      for (const recruiter of recruiters) {
+        await sendEmail({
+          to: recruiter.email,
+          subject: `${appName} — Nouvelle candidature : ${name} pour "${job.title}"`,
+          html: `
+            <div style="font-family:sans-serif;max-width:600px;margin:auto">
+              <h2 style="color:#0f172a">${appName}</h2>
+              <p>Bonjour <strong>${recruiter.name}</strong>,</p>
+              <p>Une nouvelle candidature vient d'être reçue :</p>
+              <div style="background:#f8fafc;border-radius:8px;padding:16px;margin:16px 0">
+                <p style="margin:0;font-size:13px;color:#0f172a">
+                  <strong>Candidat :</strong> ${name}<br/>
+                  <strong>Email :</strong> ${email}<br/>
+                  <strong>Téléphone :</strong> ${b.phone || "Non renseigné"}<br/>
+                  <strong>Poste :</strong> ${job.title}<br/>
+                  <strong>Prétention salariale :</strong> ${created.salaryExpectation || "Non renseignée"}<br/>
+                  <strong>Date :</strong> ${new Date().toLocaleDateString("fr-FR")}
+                </p>
+              </div>
+              <p>Connectez-vous à ${appName} pour consulter le dossier complet.</p>
+              <hr/>
+              <p style="color:#64748b;font-size:12px">Notification automatique ${appName}.</p>
+            </div>`,
+        });
+      }
 
       res.json({ success: true, candidateId: created.id });
     } catch (e) {
