@@ -8,7 +8,7 @@ import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import fs from "fs";
-import { Prisma, ContractType as PrismaContractType, JobStatus, SkillCategory, PipelineStage as PrismaPipelineStage, UserRole as PrismaUserRole } from "@prisma/client";
+import { Prisma, ContractType as PrismaContractType, JobStatus, SkillCategory, PipelineStage as PrismaPipelineStage, UserRole as PrismaUserRole, EmailStatus } from "@prisma/client";
 import { prisma } from "./src/lib/prisma.js";
 import type { User as PrismaUser } from "@prisma/client";
 import { mapCompany, mapUser, mapJob, jobInclude, mapCandidate, mapPipelineStage, candidateInclude, toPrismaPipelineStage, mapEmail, mapAuditLog, toPrismaUserRole } from "./src/lib/mappers.js";
@@ -424,6 +424,37 @@ app.post("/api/users", requireAuth, async (req, res) => {
       return res.status(409).json({ error: "Un utilisateur avec cet email existe déjà." });
     }
     console.error("[POST /api/users]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
+// Changement de mot de passe : un utilisateur ne peut modifier que le sien.
+app.put("/api/users/:id/password", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  const { id } = req.params;
+  const b = req.body ?? {};
+  const currentPassword = String(b.currentPassword ?? "");
+  const newPassword = String(b.newPassword ?? "");
+
+  if (id !== ctx.userId) {
+    return res.status(403).json({ error: "Vous ne pouvez modifier que votre propre mot de passe." });
+  }
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: "Mot de passe actuel et nouveau mot de passe sont requis." });
+  }
+  try {
+    const user = await prisma.user.findFirst({ where: { id, companyId: ctx.companyId } });
+    if (!user) return res.status(404).json({ error: "Utilisateur introuvable." });
+
+    const matches = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!matches) return res.status(401).json({ error: "Mot de passe actuel incorrect." });
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({ where: { id }, data: { passwordHash } });
+    logActionFor(ctx, "Changement de mot de passe", `Mot de passe mis à jour pour '${user.name}'.`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[PUT /api/users/:id/password]", err);
     res.status(500).json({ error: "Erreur base de données." });
   }
 });
@@ -1348,6 +1379,20 @@ app.post("/api/public/apply", (req, res) => {
           cvText,
           letterText,
           salaryExpectation,
+        },
+      });
+
+      // Trace la candidature dans la boîte de réception (module Emails) pour
+      // qu'elle y soit visible. Statut "Imported" : le candidat existe déjà
+      // (créé ci-dessus), on évite ainsi un ré-import qui le dupliquerait.
+      await prisma.email.create({
+        data: {
+          companyId: job.companyId,
+          from: `${name} <${email}>`,
+          subject: `Candidature — ${job.title}`,
+          body: `Nouvelle candidature reçue de ${name} pour le poste "${job.title}".\n\nPrétention salariale : ${created.salaryExpectation ?? "non renseignée"}\n\nExtrait CV :\n${cvText.slice(0, 500)}`,
+          date: new Date(),
+          status: EmailStatus.Imported,
         },
       });
 

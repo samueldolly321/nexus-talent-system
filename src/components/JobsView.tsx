@@ -351,6 +351,32 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                       <span className="text-xs font-semibold text-on-surface-variant mt-0.5 block">{selectedJob.salaryRange || "Non précisé"}</span>
                     </div>
                   </div>
+
+                  <div className="pt-4 border-t border-outline-variant flex items-center gap-2">
+                    {selectedJob.status === "Active" && (
+                      <button
+                        onClick={() => {
+                          if (window.confirm(`Archiver l'offre "${selectedJob.title}" ?`)) {
+                            onEditJob(selectedJob.id, { status: "Archived" });
+                            setSelectedJob(null);
+                          }
+                        }}
+                        className="flex-1 h-9 px-3 rounded-lg text-sm font-bold text-on-surface-variant border border-outline-variant hover:bg-surface-container-low transition-all"
+                      >
+                        Archiver
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (!window.confirm(`Supprimer définitivement "${selectedJob.title}" ?`)) return;
+                        onDeleteJob(selectedJob.id);
+                        setSelectedJob(null);
+                      }}
+                      className="flex-1 h-9 px-3 rounded-lg text-sm font-bold text-red-600 border border-red-200 hover:bg-red-50 transition-all"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -417,7 +443,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     type="text" 
                     value={location}
                     onChange={e => setLocation(e.target.value)}
-                    placeholder="ex: Paris (Hybride)"
+                    placeholder="ex: Antananarivo (Hybride)"
                     className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                   />
                 </div>

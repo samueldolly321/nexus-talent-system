@@ -219,7 +219,7 @@ export default function ApplyView() {
                 type="tel"
                 value={form.phone}
                 onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                placeholder="06 12 34 56 78"
+                placeholder="+261 34 00 111 22"
                 className="w-full bg-surface-container-low border border-outline-variant rounded-lg py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary-container transition-all"
               />
             </div>
@@ -235,7 +235,7 @@ export default function ApplyView() {
                 type="text"
                 value={form.location}
                 onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-                placeholder="Paris, France"
+                placeholder="Antananarivo, Madagascar"
                 className="w-full bg-surface-container-low border border-outline-variant rounded-lg py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary-container transition-all"
               />
             </div>

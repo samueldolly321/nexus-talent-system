@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
 import * as XLSX from "xlsx";
-import { Sparkles, X, Download, LayoutGrid, ArrowUpDown, Plus, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Sparkles, X, Download, LayoutGrid, ArrowUpDown, Plus, Loader2, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import TopBar from "./TopBar";
 import { Candidate, Job, User, PipelineStage } from "../types";
 
@@ -44,6 +44,8 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
   const [showAiBanner, setShowAiBanner] = useState(true);
   // Bascule vue tableau / vue grille (cartes) pour la liste des candidats (>= md).
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
+  // Tri de la liste. "recent" = ordre renvoyé par l'API (pas de re-tri client).
+  const [sortKey, setSortKey] = useState<"recent" | "name_asc" | "name_desc" | "score_asc" | "score_desc">("recent");
 
   // Modal "Ajouter un candidat"
   const [showAddModal, setShowAddModal] = useState(false);
@@ -92,7 +94,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
 
   const filtered = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    return candidates.filter(c => {
+    const result = candidates.filter(c => {
       const score = c.scores?.globalScore ?? 0;
       if (scoreFilter === "excellent" && score < 80) return false;
       if (scoreFilter === "strong" && (score < 60 || score >= 80)) return false;
@@ -113,7 +115,17 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
       )) return false;
       return true;
     });
-  }, [candidates, scoreFilter, minExperience, stageFilter, salaryMin, salaryMax, searchQuery]);
+
+    return [...result].sort((a, b) => {
+      switch (sortKey) {
+        case "name_asc":  return a.name.localeCompare(b.name);
+        case "name_desc": return b.name.localeCompare(a.name);
+        case "score_asc": return (a.scores?.globalScore ?? 0) - (b.scores?.globalScore ?? 0);
+        case "score_desc":return (b.scores?.globalScore ?? 0) - (a.scores?.globalScore ?? 0);
+        default:          return 0; // "recent" → ordre API, pas de re-tri client
+      }
+    });
+  }, [candidates, scoreFilter, minExperience, stageFilter, salaryMin, salaryMax, searchQuery, sortKey]);
 
   const excellentCount = candidates.filter(c => (c.scores?.globalScore ?? 0) >= 80).length;
   const strongCount = candidates.filter(c => (c.scores?.globalScore ?? 0) >= 60 && (c.scores?.globalScore ?? 0) < 80).length;
@@ -302,10 +314,22 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
           <div className="flex justify-between items-center mb-6">
             <h2 className="font-sans text-2xl font-semibold text-on-surface">Candidats <span className="text-on-surface-variant font-normal">({filtered.length})</span></h2>
             <div className="flex items-center gap-3">
-              <button className="px-3 py-1.5 border border-outline-variant rounded-lg text-sm flex items-center gap-2 hover:bg-surface-container-low">
-                <ArrowUpDown size={14} />
-                Trier : Récents
-              </button>
+              <div className="relative flex items-center">
+                <ArrowUpDown size={14} className="absolute left-3 text-on-surface-variant pointer-events-none" />
+                <select
+                  value={sortKey}
+                  onChange={e => setSortKey(e.target.value as typeof sortKey)}
+                  aria-label="Trier les candidats"
+                  className="appearance-none bg-surface-container-lowest border border-outline-variant rounded-lg text-sm pl-8 pr-8 py-1.5 text-on-surface hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-accent transition-all cursor-pointer"
+                >
+                  <option value="recent">Récents</option>
+                  <option value="name_asc">Nom A→Z</option>
+                  <option value="name_desc">Nom Z→A</option>
+                  <option value="score_asc">Score ↑</option>
+                  <option value="score_desc">Score ↓</option>
+                </select>
+                <ChevronDown size={14} className="absolute right-2.5 text-on-surface-variant pointer-events-none" />
+              </div>
               <button
                 onClick={() => setViewMode(m => (m === "table" ? "grid" : "table"))}
                 title={viewMode === "table" ? "Passer en vue grille" : "Passer en vue tableau"}
@@ -337,6 +361,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                     <th className="px-4 py-3 font-medium">Email &amp; Téléphone</th>
                     <th className="px-4 py-3 font-medium">Score IA</th>
                     <th className="px-4 py-3 font-medium w-48">Expérience</th>
+                    <th className="px-4 py-3 font-medium">Prétention sal.</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant">
@@ -386,12 +411,13 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                             <p className="text-xs text-on-surface-variant break-words line-clamp-2 leading-snug mt-0.5">{cand.analysis.experiences[0].company}</p>
                           )}
                         </td>
+                        <td className="px-4 py-4 text-sm text-on-surface whitespace-nowrap">{cand.salaryExpectation ?? "—"}</td>
                       </tr>
                     );
                   })}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-16 text-center text-sm text-on-surface-variant">Aucun candidat ne correspond aux filtres.</td>
+                      <td colSpan={6} className="px-4 py-16 text-center text-sm text-on-surface-variant">Aucun candidat ne correspond aux filtres.</td>
                     </tr>
                   )}
                 </tbody>
@@ -471,6 +497,9 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                         {cand.phone && <span>{cand.phone}</span>}
                         <span>{cand.analysis?.yearsOfExperience ?? "—"} ans d'exp.</span>
                       </div>
+                      {cand.salaryExpectation && (
+                        <p className="text-xs font-medium text-on-surface mt-1.5">Prétention : {cand.salaryExpectation}</p>
+                      )}
                     </button>
                   );
                 })}
@@ -584,7 +613,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                     value={form.phone}
                     onChange={e => updateField("phone", e.target.value)}
                     className={INPUT_CLS}
-                    placeholder="06 12 34 56 78"
+                    placeholder="+261 34 00 111 22"
                   />
                 </div>
               </div>
@@ -597,7 +626,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                   value={form.location}
                   onChange={e => updateField("location", e.target.value)}
                   className={INPUT_CLS}
-                  placeholder="Paris, France"
+                  placeholder="Antananarivo, Madagascar"
                 />
               </div>
 

@@ -12,6 +12,7 @@ import AiSearchView from "./components/AiSearchView";
 import EmailInboxView from "./components/EmailInboxView";
 import ReportsView from "./components/ReportsView";
 import DevCenterView from "./components/DevCenterView";
+import SettingsView from "./components/SettingsView";
 import { Company, User, Job, Candidate, EmailItem, PipelineStage, UserRole } from "./types";
 import { apiFetch, apiJson, setAccessToken } from "./lib/api";
 import { SidebarContext } from "./SidebarContext";
@@ -648,24 +649,7 @@ export default function App() {
         );
       }
       case "settings":
-        return (
-          <div className="flex-1 bg-background min-h-screen flex flex-col">
-            <TopBar activeUser={activeUser} />
-            <main className="p-8 max-w-2xl">
-              <h2 className="font-sans text-2xl font-semibold text-on-surface mb-6">Paramètres</h2>
-              <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 space-y-4">
-                <div>
-                  <label className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold mb-1.5">Entreprise</label>
-                  <p className="text-sm text-on-surface font-medium">{activeCompany?.name}</p>
-                </div>
-                <div>
-                  <label className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold mb-1.5">Domaine</label>
-                  <p className="text-sm text-on-surface font-medium">{activeCompany?.domain}</p>
-                </div>
-              </div>
-            </main>
-          </div>
-        );
+        return <SettingsView activeUser={activeUser} activeCompany={activeCompany} />;
       case "dev-center":
         return <DevCenterView />;
       default:

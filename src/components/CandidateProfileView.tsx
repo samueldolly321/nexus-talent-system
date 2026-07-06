@@ -465,11 +465,11 @@ export default function CandidateProfileView({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="prof-phone" className={LABEL_CLS}>Téléphone</label>
-                  <input id="prof-phone" type="tel" value={profileDraft.phone} onChange={e => setProfileDraft(d => ({ ...d, phone: e.target.value }))} className={INPUT_CLS} placeholder="06 12 34 56 78" />
+                  <input id="prof-phone" type="tel" value={profileDraft.phone} onChange={e => setProfileDraft(d => ({ ...d, phone: e.target.value }))} className={INPUT_CLS} placeholder="+261 34 00 111 22" />
                 </div>
                 <div>
                   <label htmlFor="prof-loc" className={LABEL_CLS}>Localisation</label>
-                  <input id="prof-loc" type="text" value={profileDraft.location} onChange={e => setProfileDraft(d => ({ ...d, location: e.target.value }))} className={INPUT_CLS} placeholder="Paris, France" />
+                  <input id="prof-loc" type="text" value={profileDraft.location} onChange={e => setProfileDraft(d => ({ ...d, location: e.target.value }))} className={INPUT_CLS} placeholder="Antananarivo, Madagascar" />
                 </div>
               </div>
               <div>
