@@ -129,6 +129,7 @@ export interface Candidate {
   stage: PipelineStage;
   cvText?: string;
   letterText?: string;
+  salaryExpectation?: string;
   appliedAt: string;
   analysis?: CandidateAnalysis;
   scores?: CandidateScores;

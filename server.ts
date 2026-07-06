@@ -191,6 +191,16 @@ const logActionFor = (ctx: { companyId: string; userId: string; user?: { name: s
     .catch((err) => console.error("[audit-log]", err));
 };
 
+// Tente d'extraire une prétention salariale d'un texte libre (lettre de motivation).
+// Reconnaît les montants suivis d'une devise malgache : "1 300 000 Ar", "1300000ar",
+// "1 300 000 ariary", "1.300.000 Ar", "1 300 000 MGA"…
+function extractSalaryExpectation(text: string): string | null {
+  if (!text) return null;
+  const match = text.match(/(\d[\d\s.,]*(?:\s*(?:ar|ariary|mga)[\w\s]*?))/i);
+  if (!match) return null;
+  return match[0].trim();
+}
+
 // --- Routes ---
 
 // POST /api/auth/login — verify credentials, issue access + refresh tokens
@@ -754,7 +764,13 @@ app.put("/api/candidates/:id", requireAuth, async (req, res) => {
     if (b.linkedinUrl !== undefined) data.linkedinUrl = b.linkedinUrl || null;
     if (b.avatarUrl !== undefined) data.avatarUrl = b.avatarUrl || null;
     if (b.cvText !== undefined) data.cvText = b.cvText;
-    if (b.letterText !== undefined) data.letterText = b.letterText;
+    if (b.letterText !== undefined) {
+      data.letterText = b.letterText;
+      // Ré-extraction automatique de la prétention salariale à chaque mise à jour de la lettre.
+      data.salaryExpectation = extractSalaryExpectation(b.letterText);
+    }
+    // Saisie / correction manuelle : prend le pas sur l'extraction auto si fournie explicitement.
+    if (b.salaryExpectation !== undefined) data.salaryExpectation = b.salaryExpectation || null;
 
     const updated = await prisma.candidate.update({
       where: { id },
@@ -1253,6 +1269,8 @@ app.post("/api/public/apply", (req, res) => {
         }
       }
 
+      const salaryExpectation = extractSalaryExpectation(letterText);
+
       const created = await prisma.candidate.create({
         data: {
           companyId: job.companyId,
@@ -1265,6 +1283,7 @@ app.post("/api/public/apply", (req, res) => {
           stage: PrismaPipelineStage.Received,
           cvText,
           letterText,
+          salaryExpectation,
         },
       });
 

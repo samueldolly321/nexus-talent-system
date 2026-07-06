@@ -154,6 +154,7 @@ export const mapCandidate = (c: CandidateWithScore) => ({
   stage: mapPipelineStage(c.stage),
   cvText: c.cvText ?? undefined,
   letterText: c.letterText ?? undefined,
+  salaryExpectation: c.salaryExpectation ?? undefined,
   appliedAt: c.appliedAt.toISOString(),
   analysis: (c.analysis ?? undefined) as unknown as CandidateAnalysis | undefined,
   scores: c.score ? mapScore(c.score) : undefined,

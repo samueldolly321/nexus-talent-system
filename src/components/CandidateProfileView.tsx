@@ -52,7 +52,7 @@ export default function CandidateProfileView({
   const [formError, setFormError] = useState<string | null>(null);
 
   // Brouillons par formulaire (initialisés à l'ouverture depuis le candidat).
-  const [profileDraft, setProfileDraft] = useState({ name: "", email: "", phone: "", location: "", linkedinUrl: "" });
+  const [profileDraft, setProfileDraft] = useState({ name: "", email: "", phone: "", location: "", linkedinUrl: "", salaryExpectation: "" });
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [cvDraft, setCvDraft] = useState("");
   const [letterDraft, setLetterDraft] = useState("");
@@ -66,6 +66,7 @@ export default function CandidateProfileView({
       phone: candidate.phone || "",
       location: candidate.location || "",
       linkedinUrl: candidate.linkedinUrl || "",
+      salaryExpectation: candidate.salaryExpectation || "",
     });
     setFormError(null);
     setModal("profile");
@@ -207,6 +208,17 @@ export default function CandidateProfileView({
               Modifier le profil
             </button>
           </div>
+
+          {candidate.salaryExpectation && (
+            <div className="bg-surface-container border border-outline-variant rounded-xl p-4">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1">
+                Prétention salariale
+              </p>
+              <p className="font-sans text-sm font-bold text-on-surface">
+                {candidate.salaryExpectation}
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold mb-1.5">Étape de recrutement</label>
@@ -440,6 +452,7 @@ export default function CandidateProfileView({
               phone: profileDraft.phone.trim(),
               location: profileDraft.location.trim(),
               linkedinUrl: profileDraft.linkedinUrl.trim() || undefined,
+              salaryExpectation: profileDraft.salaryExpectation.trim() || undefined,
             }))} className="space-y-4">
               <div>
                 <label htmlFor="prof-name" className={LABEL_CLS}>Nom <span className="text-error">*</span></label>
@@ -462,6 +475,10 @@ export default function CandidateProfileView({
               <div>
                 <label htmlFor="prof-linkedin" className={LABEL_CLS}>LinkedIn</label>
                 <input id="prof-linkedin" type="text" value={profileDraft.linkedinUrl} onChange={e => setProfileDraft(d => ({ ...d, linkedinUrl: e.target.value }))} className={INPUT_CLS} placeholder="linkedin.com/in/…" />
+              </div>
+              <div>
+                <label htmlFor="prof-salary" className={LABEL_CLS}>Prétention salariale</label>
+                <input id="prof-salary" type="text" value={profileDraft.salaryExpectation} onChange={e => setProfileDraft(d => ({ ...d, salaryExpectation: e.target.value }))} className={INPUT_CLS} placeholder="ex: 1 300 000 Ar" />
               </div>
               {formError && <p className="text-error text-sm">{formError}</p>}
               <div className="flex justify-end gap-3 pt-2">
