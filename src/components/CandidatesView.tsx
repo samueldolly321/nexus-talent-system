@@ -113,7 +113,8 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
       if (q && !(
         c.name.toLowerCase().includes(q) ||
         c.email.toLowerCase().includes(q) ||
-        c.location.toLowerCase().includes(q)
+        c.location.toLowerCase().includes(q) ||
+        (c.phone ?? "").toLowerCase().includes(q)
       )) return false;
       return true;
     });
