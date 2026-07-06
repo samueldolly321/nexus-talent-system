@@ -16,22 +16,27 @@ import { EmailItem, Job } from "../types";
 interface EmailInboxViewProps {
   emails: EmailItem[];
   jobs: Job[];
-  onImportEmail: (emailId: string, jobId: string) => Promise<void>;
+  onImportEmail: (emailId: string, jobId: string) => Promise<{ ok: boolean; status: number; candidateId?: string; error?: string }>;
   onNavigateToView: (view: string) => void;
+  onOpenCandidate?: (candidateId: string) => void;
   loading: boolean;
 }
 
-export default function EmailInboxView({ 
-  emails, 
-  jobs, 
-  onImportEmail, 
+export default function EmailInboxView({
+  emails,
+  jobs,
+  onImportEmail,
   onNavigateToView,
-  loading 
+  onOpenCandidate,
+  loading
 }: EmailInboxViewProps) {
   const [selectedMail, setSelectedMail] = useState<EmailItem | null>(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [targetJobId, setTargetJobId] = useState(jobs[0]?.id || "");
   const [importingId, setImportingId] = useState<string | null>(null);
+  // Candidat déjà existant renvoyé par un import (409) → message + lien fiche.
+  const [duplicate, setDuplicate] = useState<{ candidateId?: string } | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   const handleImportClick = () => {
     if (jobs.length > 0) setTargetJobId(jobs[0].id);
@@ -42,15 +47,31 @@ export default function EmailInboxView({
     if (!selectedMail) return;
     setImportingId(selectedMail.id);
     setShowImportDialog(false);
+    setDuplicate(null);
+    setImportError(null);
     try {
-      await onImportEmail(selectedMail.id, targetJobId);
-      // Update local state copy to show "Imported"
-      selectedMail.status = "Imported";
+      const result = await onImportEmail(selectedMail.id, targetJobId);
+      if (result.ok) {
+        // Update local state copy to show "Imported"
+        selectedMail.status = "Imported";
+      } else if (result.status === 409) {
+        // Candidat déjà existant : on affiche un message doux plutôt qu'une erreur.
+        setDuplicate({ candidateId: result.candidateId });
+      } else {
+        setImportError(result.error || "Impossible d'importer le candidat depuis cet email.");
+      }
     } catch (e) {
       console.error(e);
+      setImportError("Une erreur est survenue lors de l'import.");
     } finally {
       setImportingId(null);
     }
+  };
+
+  const selectMail = (mail: EmailItem) => {
+    setSelectedMail(mail);
+    setDuplicate(null);
+    setImportError(null);
   };
 
   return (
@@ -84,7 +105,7 @@ export default function EmailInboxView({
                   <div
                     key={mail.id}
                     onClick={() => {
-                      setSelectedMail(mail);
+                      selectMail(mail);
                     }}
                     className={`p-4 cursor-pointer transition-colors text-left ${
                       isSelected ? "bg-secondary-container/20/60 border-l-4 border-secondary" : "hover:bg-background/50"
@@ -159,6 +180,26 @@ export default function EmailInboxView({
                   )}
                 </div>
               </div>
+
+              {duplicate && (
+                <div className="mb-4 shrink-0 flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-4 py-3">
+                  <span className="text-xs font-semibold">Candidat déjà existant — cet email correspond à un candidat déjà présent dans l'ATS.</span>
+                  {duplicate.candidateId && onOpenCandidate && (
+                    <button
+                      onClick={() => onOpenCandidate(duplicate.candidateId!)}
+                      className="text-xs font-bold text-secondary hover:underline flex items-center gap-1 shrink-0"
+                    >
+                      Voir la fiche
+                      <ChevronRight size={14} />
+                    </button>
+                  )}
+                </div>
+              )}
+              {importError && (
+                <div className="mb-4 shrink-0 bg-error-container/40 border border-error-container text-error rounded-lg px-4 py-3 text-xs font-semibold">
+                  {importError}
+                </div>
+              )}
 
               {/* Scrollable mail body and CV previews */}
               <div className="flex-1 overflow-y-auto space-y-6">

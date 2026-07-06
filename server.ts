@@ -1141,6 +1141,17 @@ app.post("/api/emails/:id/import", requireAuth, async (req, res) => {
     const email = await prisma.email.findFirst({ where: { id, companyId } });
     if (!email) return res.status(404).json({ error: "Email introuvable" });
 
+    // L'expéditeur peut être au format "Nom <email>" (candidatures /postuler) ou
+    // une adresse brute (emails de sourcing) → on extrait l'adresse réelle.
+    const angle = (email.from || "").match(/<([^>]+)>/);
+    const fromEmail = (angle ? angle[1] : email.from || "").trim();
+
+    // Anti-doublon : ne pas recréer un candidat déjà présent (même email, même tenant).
+    const existing = await prisma.candidate.findFirst({ where: { email: fromEmail, companyId } });
+    if (existing) {
+      return res.status(409).json({ error: "Un candidat avec cet email existe déjà.", candidateId: existing.id });
+    }
+
     // Rattachement à une offre : jobId fourni (scopé tenant) sinon 1re offre du
     // tenant, sinon null — même logique que POST /api/candidates.
     let jobId: string | null = null;

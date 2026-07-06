@@ -356,17 +356,26 @@ export default function App() {
     }
   };
 
-  const handleImportEmail = async (emailId: string, targetJobId: string) => {
+  const handleImportEmail = async (emailId: string, targetJobId: string): Promise<{ ok: boolean; status: number; candidateId?: string; error?: string }> => {
     try {
       const res = await apiFetch(`/api/emails/${emailId}/import`, {
         method: "POST",
         body: JSON.stringify({ jobId: targetJobId })
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) await fetchData();
-      else alert("Impossible d'importer le candidat depuis cet email.");
+      return { ok: res.ok, status: res.status, candidateId: data.candidateId, error: data.error };
     } catch (e) {
       console.error(e);
+      return { ok: false, status: 0, error: "Impossible de joindre le serveur." };
     }
+  };
+
+  // Ouvre la fiche d'un candidat depuis une autre vue (ex. email déjà importé).
+  const openCandidateById = (candidateId: string) => {
+    setActiveView("candidates");
+    setSelectedCandidateId(candidateId);
+    setShowRecommendation(false);
   };
 
   if (authenticated === null) {
@@ -489,6 +498,7 @@ export default function App() {
             jobs={jobs}
             onImportEmail={handleImportEmail}
             onNavigateToView={navigateTo}
+            onOpenCandidate={openCandidateById}
             loading={loading}
           />
         );
