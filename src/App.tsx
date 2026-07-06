@@ -534,6 +534,8 @@ export default function App() {
             onSelectCandidate={openCandidateProfile}
             onUpdateStage={handleUpdateStage}
             loading={loading}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
           />
         );
       case "ai-search":
