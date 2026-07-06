@@ -706,6 +706,15 @@ app.post("/api/candidates", requireAuth, async (req, res) => {
       jobId = first?.id ?? null;
     }
 
+    const letterText = b.letterText || "";
+    // Prétention salariale : valeur fournie (normalisée) sinon extraite de la lettre.
+    let salaryExpectation: string | null = null;
+    if (b.salaryExpectation) {
+      salaryExpectation = extractSalaryExpectation(b.salaryExpectation) ?? b.salaryExpectation;
+    } else if (letterText) {
+      salaryExpectation = extractSalaryExpectation(letterText);
+    }
+
     const created = await prisma.candidate.create({
       data: {
         companyId,
@@ -717,7 +726,8 @@ app.post("/api/candidates", requireAuth, async (req, res) => {
         linkedinUrl: b.linkedinUrl || null,
         stage: PrismaPipelineStage.Received,
         cvText: b.cvText || "",
-        letterText: b.letterText || "",
+        letterText,
+        salaryExpectation,
       },
       include: candidateInclude,
     });

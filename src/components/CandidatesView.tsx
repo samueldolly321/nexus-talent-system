@@ -20,7 +20,7 @@ interface CandidatesViewProps {
 }
 
 // Champs de formulaire "Ajouter un candidat".
-const EMPTY_FORM = { name: "", email: "", phone: "", location: "", jobId: "", cvText: "" };
+const EMPTY_FORM = { name: "", email: "", phone: "", location: "", jobId: "", cvText: "", letterText: "", salaryExpectation: "" };
 
 // Styles partagés (DESIGN.md) : label mono 10px au-dessus, input ghost bordure 1px focus turquoise 2px.
 const LABEL_CLS = "block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5";
@@ -37,6 +37,9 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
   const [minExperience, setMinExperience] = useState(0);
   const [scoreFilter, setScoreFilter] = useState<"all" | "excellent" | "strong">("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
+  // Filtre par prétention salariale (bornes en Ariary, null = pas de borne).
+  const [salaryMin, setSalaryMin] = useState<number | null>(null);
+  const [salaryMax, setSalaryMax] = useState<number | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showAiBanner, setShowAiBanner] = useState(true);
   // Bascule vue tableau / vue grille (cartes) pour la liste des candidats (>= md).
@@ -67,6 +70,9 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
         location: form.location.trim(),
         jobId: form.jobId || undefined,
         cvText: form.cvText.trim(),
+        letterText: form.letterText.trim(),
+        // Envoyé brut : le backend normalise / extrait depuis la lettre si vide.
+        salaryExpectation: form.salaryExpectation.trim() || undefined,
       });
       setForm(EMPTY_FORM);
       setShowAddModal(false);
@@ -92,6 +98,14 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
       if (scoreFilter === "strong" && (score < 60 || score >= 80)) return false;
       if ((c.analysis?.yearsOfExperience ?? 0) < minExperience) return false;
       if (stageFilter !== "all" && c.stage !== stageFilter) return false;
+      if (salaryMin !== null || salaryMax !== null) {
+        if (!c.salaryExpectation) return false;
+        // Extraire le nombre depuis une valeur normalisée "1 300 000 Ar".
+        const num = parseInt(c.salaryExpectation.replace(/[\s.,]/g, "").replace(/ar.*/i, ""), 10);
+        if (isNaN(num)) return false;
+        if (salaryMin !== null && num < salaryMin) return false;
+        if (salaryMax !== null && num > salaryMax) return false;
+      }
       if (q && !(
         c.name.toLowerCase().includes(q) ||
         c.email.toLowerCase().includes(q) ||
@@ -99,7 +113,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
       )) return false;
       return true;
     });
-  }, [candidates, scoreFilter, minExperience, stageFilter, searchQuery]);
+  }, [candidates, scoreFilter, minExperience, stageFilter, salaryMin, salaryMax, searchQuery]);
 
   const excellentCount = candidates.filter(c => (c.scores?.globalScore ?? 0) >= 80).length;
   const strongCount = candidates.filter(c => (c.scores?.globalScore ?? 0) >= 60 && (c.scores?.globalScore ?? 0) < 80).length;
@@ -180,7 +194,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
           <div className="flex justify-between items-center mb-6">
             <h3 className="font-bold text-on-surface">Filtres</h3>
             <button
-              onClick={() => { setScoreFilter("all"); setMinExperience(0); setStageFilter("all"); }}
+              onClick={() => { setScoreFilter("all"); setMinExperience(0); setStageFilter("all"); setSalaryMin(null); setSalaryMax(null); }}
               className="text-secondary text-xs font-bold hover:underline"
             >
               Tout effacer
@@ -254,6 +268,32 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                 </label>
               ))}
             </div>
+          </div>
+
+          <div className="mt-6">
+            <h4 className="font-mono text-[11px] uppercase tracking-wider text-on-surface-variant font-semibold mb-3">Prétention salariale</h4>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={0}
+                value={salaryMin ?? ""}
+                onChange={e => setSalaryMin(e.target.value === "" ? null : Number(e.target.value))}
+                placeholder="0"
+                aria-label="Prétention salariale minimum (Ar)"
+                className="w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-2.5 py-1.5 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+              />
+              <span className="text-on-surface-variant text-sm">–</span>
+              <input
+                type="number"
+                min={0}
+                value={salaryMax ?? ""}
+                onChange={e => setSalaryMax(e.target.value === "" ? null : Number(e.target.value))}
+                placeholder="2 000 000"
+                aria-label="Prétention salariale maximum (Ar)"
+                className="w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-2.5 py-1.5 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+              />
+            </div>
+            <p className="text-[10px] text-on-surface-variant font-mono mt-1.5">Montants en Ariary</p>
           </div>
         </aside>
 
@@ -585,6 +625,30 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                   onChange={e => updateField("cvText", e.target.value)}
                   className={`${INPUT_CLS} resize-y`}
                   placeholder="Collez le texte du CV ici"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="cand-letter" className={LABEL_CLS}>Lettre de motivation</label>
+                <textarea
+                  id="cand-letter"
+                  rows={5}
+                  value={form.letterText}
+                  onChange={e => updateField("letterText", e.target.value)}
+                  className={`${INPUT_CLS} resize-y`}
+                  placeholder="Collez le texte de la lettre de motivation ici"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="cand-salary" className={LABEL_CLS}>Prétention salariale</label>
+                <input
+                  id="cand-salary"
+                  type="text"
+                  value={form.salaryExpectation}
+                  onChange={e => updateField("salaryExpectation", e.target.value)}
+                  className={INPUT_CLS}
+                  placeholder="ex: 1 300 000 Ar"
                 />
               </div>
 
