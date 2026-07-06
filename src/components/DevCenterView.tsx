@@ -1,19 +1,44 @@
 import React, { useState } from "react";
-import { 
-  Terminal, 
-  Code, 
-  Database, 
-  Layers, 
-  Copy, 
-  Check, 
-  BookOpen, 
+import {
+  Terminal,
+  Code,
+  Database,
+  Layers,
+  Copy,
+  Check,
+  BookOpen,
   HardDriveUpload,
-  Cpu
+  Cpu,
+  Loader2
 } from "lucide-react";
+import { apiFetch } from "../lib/api";
 
 export default function DevCenterView() {
   const [activeTab, setActiveTab] = useState<"architecture" | "dbcontext" | "controller" | "docker">("architecture");
   const [copied, setCopied] = useState(false);
+
+  // Maintenance : backfill one-shot des prétentions salariales (candidats
+  // dont la lettre a été importée avant l'ajout de l'extraction automatique).
+  const [backfilling, setBackfilling] = useState(false);
+  const [backfillMsg, setBackfillMsg] = useState<string | null>(null);
+  const [backfillError, setBackfillError] = useState<string | null>(null);
+
+  const handleBackfill = async () => {
+    setBackfilling(true);
+    setBackfillMsg(null);
+    setBackfillError(null);
+    try {
+      const res = await apiFetch("/api/admin/backfill-salary-expectations", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Échec du backfill.");
+      const names = (data.results || []).map((r: { name: string; salaryExpectation: string }) => `${r.name} (${r.salaryExpectation})`).join(", ");
+      setBackfillMsg(`${data.updated} candidat(s) mis à jour${names ? " : " + names : "."}`);
+    } catch (e: any) {
+      setBackfillError(e?.message || "Une erreur est survenue.");
+    } finally {
+      setBackfilling(false);
+    }
+  };
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -168,6 +193,27 @@ volumes:
         <p className="text-sm text-on-surface-variant mt-1">
           Centre de ressources techniques de l'application SaaS. Modèles de données PostgreSQL, contrôleurs C# ASP.NET Core, CQRS et environnements de déploiement Docker.
         </p>
+      </div>
+
+      {/* Maintenance : outils d'administration ponctuels */}
+      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-5 shadow-sm mb-8">
+        <div className="flex items-center gap-2 mb-1">
+          <HardDriveUpload size={18} className="text-secondary shrink-0" />
+          <h3 className="font-bold text-on-surface font-sans text-sm">Maintenance — Prétentions salariales</h3>
+        </div>
+        <p className="text-xs text-on-surface-variant mb-4">
+          Renseigne <code className="font-mono">salaryExpectation</code> pour les candidats existants dont la lettre de motivation a été importée avant l'ajout de l'extraction automatique. Opération ponctuelle, réexécutable sans effet de bord.
+        </p>
+        <button
+          onClick={handleBackfill}
+          disabled={backfilling}
+          className="h-9 px-4 bg-accent hover:bg-accent-dark text-white rounded-[8px] text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-50"
+        >
+          {backfilling ? <Loader2 size={15} className="animate-spin" /> : <HardDriveUpload size={15} />}
+          {backfilling ? "Backfill en cours…" : "Lancer le backfill"}
+        </button>
+        {backfillMsg && <p className="text-xs text-secondary font-medium mt-3">{backfillMsg}</p>}
+        {backfillError && <p className="text-xs text-error font-medium mt-3">{backfillError}</p>}
       </div>
 
       {/* Tabs */}

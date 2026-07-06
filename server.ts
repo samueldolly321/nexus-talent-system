@@ -974,6 +974,7 @@ app.post("/api/candidates/ai-search", requireAuth, async (req, res) => {
       name: c.name,
       location: c.location,
       stage: c.stage,
+      salaryExpectation: c.salaryExpectation || null,
       yearsOfExperience: c.analysis?.yearsOfExperience || 0,
       skills: c.analysis?.skills ? [
         ...(c.analysis.skills.languages || []),
@@ -1011,6 +1012,33 @@ Réponds uniquement avec le bloc JSON brut. Pas de markdown.`;
   } catch (error: any) {
     console.error("AI Search Error:", error);
     res.status(500).json({ error: "Erreur lors de la recherche intelligente: " + error.message });
+  }
+});
+
+// Backfill one-shot : renseigne salaryExpectation pour les candidats existants
+// dont la lettre avait été importée avant l'ajout de l'extraction automatique.
+// Scopé au tenant courant (isolation multi-tenant) ; réexécutable sans effet de bord.
+app.post("/api/admin/backfill-salary-expectations", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  const { companyId } = ctx;
+  try {
+    const rows = await prisma.candidate.findMany({
+      where: { companyId, salaryExpectation: null, letterText: { not: null } },
+      select: { id: true, name: true, letterText: true },
+    });
+    const results: { id: string; name: string; salaryExpectation: string }[] = [];
+    for (const c of rows) {
+      const salaryExpectation = extractSalaryExpectation(c.letterText || "");
+      if (salaryExpectation) {
+        await prisma.candidate.update({ where: { id: c.id }, data: { salaryExpectation } });
+        results.push({ id: c.id, name: c.name, salaryExpectation });
+      }
+    }
+    logActionFor(ctx, "Backfill prétention salariale", `${results.length} candidat(s) mis à jour.`);
+    res.json({ updated: results.length, results });
+  } catch (err) {
+    console.error("[POST /api/admin/backfill-salary-expectations]", err);
+    res.status(500).json({ error: "Erreur base de données." });
   }
 });
 
