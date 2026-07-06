@@ -199,6 +199,10 @@ export default function CandidateProfileView({
               {candidate.linkedinUrl && (
                 <p className="flex items-center gap-2 text-sm text-secondary truncate"><Linkedin size={14} className="shrink-0" />{candidate.linkedinUrl}</p>
               )}
+              <p className="flex items-center gap-2 text-sm">
+                <span className="font-mono text-[10px] uppercase tracking-wider text-on-surface-variant shrink-0">Source</span>
+                <span className="text-on-surface font-medium">{candidate.source ?? "—"}</span>
+              </p>
             </div>
             <button
               onClick={openProfile}

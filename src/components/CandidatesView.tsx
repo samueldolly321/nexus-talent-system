@@ -17,10 +17,13 @@ interface CandidatesViewProps {
   totalPages: number;
   totalCandidates: number;
   onPageChange: (page: number) => void;
+  // Tri serveur : clé courante + notification de changement (refetch côté App).
+  sortKey: string;
+  onSortChange: (sortKey: string) => void;
 }
 
 // Champs de formulaire "Ajouter un candidat".
-const EMPTY_FORM = { name: "", email: "", phone: "", location: "", jobId: "", cvText: "", letterText: "", salaryExpectation: "" };
+const EMPTY_FORM = { name: "", email: "", phone: "", location: "", jobId: "", cvText: "", letterText: "", salaryExpectation: "", source: "Manuel" };
 
 // Styles partagés (DESIGN.md) : label mono 10px au-dessus, input ghost bordure 1px focus turquoise 2px.
 const LABEL_CLS = "block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5";
@@ -33,7 +36,7 @@ const scoreTone = (score: number) => {
   return "bg-red-50 text-red-600";
 };
 
-export default function CandidatesView({ candidates, jobs, activeUser, onSelectCandidate, onAddCandidate, loading, searchQuery, onSearchChange, page, totalPages, totalCandidates, onPageChange }: CandidatesViewProps) {
+export default function CandidatesView({ candidates, jobs, activeUser, onSelectCandidate, onAddCandidate, loading, searchQuery, onSearchChange, page, totalPages, totalCandidates, onPageChange, sortKey, onSortChange }: CandidatesViewProps) {
   const [minExperience, setMinExperience] = useState(0);
   const [scoreFilter, setScoreFilter] = useState<"all" | "excellent" | "strong">("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
@@ -44,8 +47,6 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
   const [showAiBanner, setShowAiBanner] = useState(true);
   // Bascule vue tableau / vue grille (cartes) pour la liste des candidats (>= md).
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
-  // Tri de la liste. "recent" = ordre renvoyé par l'API (pas de re-tri client).
-  const [sortKey, setSortKey] = useState<"recent" | "name_asc" | "name_desc" | "score_asc" | "score_desc">("recent");
 
   // Modal "Ajouter un candidat"
   const [showAddModal, setShowAddModal] = useState(false);
@@ -75,6 +76,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
         letterText: form.letterText.trim(),
         // Envoyé brut : le backend normalise / extrait depuis la lettre si vide.
         salaryExpectation: form.salaryExpectation.trim() || undefined,
+        source: form.source || undefined,
       });
       setForm(EMPTY_FORM);
       setShowAddModal(false);
@@ -116,16 +118,9 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
       return true;
     });
 
-    return [...result].sort((a, b) => {
-      switch (sortKey) {
-        case "name_asc":  return a.name.localeCompare(b.name);
-        case "name_desc": return b.name.localeCompare(a.name);
-        case "score_asc": return (a.scores?.globalScore ?? 0) - (b.scores?.globalScore ?? 0);
-        case "score_desc":return (b.scores?.globalScore ?? 0) - (a.scores?.globalScore ?? 0);
-        default:          return 0; // "recent" → ordre API, pas de re-tri client
-      }
-    });
-  }, [candidates, scoreFilter, minExperience, stageFilter, salaryMin, salaryMax, searchQuery, sortKey]);
+    // Le tri est appliqué côté serveur (sur toute la base) ; ici on ne fait que filtrer.
+    return result;
+  }, [candidates, scoreFilter, minExperience, stageFilter, salaryMin, salaryMax, searchQuery]);
 
   const excellentCount = candidates.filter(c => (c.scores?.globalScore ?? 0) >= 80).length;
   const strongCount = candidates.filter(c => (c.scores?.globalScore ?? 0) >= 60 && (c.scores?.globalScore ?? 0) < 80).length;
@@ -318,7 +313,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                 <ArrowUpDown size={14} className="absolute left-3 text-on-surface-variant pointer-events-none" />
                 <select
                   value={sortKey}
-                  onChange={e => setSortKey(e.target.value as typeof sortKey)}
+                  onChange={e => onSortChange(e.target.value)}
                   aria-label="Trier les candidats"
                   className="appearance-none bg-surface-container-lowest border border-outline-variant rounded-lg text-sm pl-8 pr-8 py-1.5 text-on-surface hover:bg-surface-container-low focus:outline-none focus:ring-2 focus:ring-accent transition-all cursor-pointer"
                 >
@@ -641,6 +636,20 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                   <option value="">— Sélectionner une offre —</option>
                   {jobs.map(job => (
                     <option key={job.id} value={job.id}>{job.title}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="cand-source" className={LABEL_CLS}>Source</label>
+                <select
+                  id="cand-source"
+                  value={form.source}
+                  onChange={e => updateField("source", e.target.value)}
+                  className={INPUT_CLS}
+                >
+                  {["Manuel", "LinkedIn", "Indeed", "Jobteaser", "Référence", "Autre"].map(s => (
+                    <option key={s} value={s}>{s}</option>
                   ))}
                 </select>
               </div>

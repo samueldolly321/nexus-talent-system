@@ -702,13 +702,23 @@ app.delete("/api/jobs/:id", requireAuth, async (req, res) => {
 app.get("/api/candidates", requireAuth, async (req, res) => {
   const { companyId } = getContext(req);
   const { page, limit, skip } = getPagination(req);
+  // Tri serveur (porte sur toute la base, pas seulement la page courante).
+  // "createdAt" est mappé sur appliedAt (le modèle Candidate n'a pas de createdAt).
+  const sortOrder = (req.query.sortOrder as string) === "asc" ? "asc" : "desc";
+  const sortField = (req.query.sortField as string) || "createdAt";
+  const validSortFields: Record<string, Prisma.CandidateOrderByWithRelationInput> = {
+    createdAt: { appliedAt: sortOrder },
+    name: { name: sortOrder },
+    score: { score: { globalScore: sortOrder } },
+  };
+  const orderBy = validSortFields[sortField] ?? { appliedAt: "desc" };
   try {
     const [total, rows] = await Promise.all([
       prisma.candidate.count({ where: { companyId } }),
       prisma.candidate.findMany({
         where: { companyId },
         include: candidateInclude,
-        orderBy: { appliedAt: "desc" },
+        orderBy,
         skip,
         take: limit,
       }),
@@ -773,6 +783,7 @@ app.post("/api/candidates", requireAuth, async (req, res) => {
         cvText: b.cvText || "",
         letterText,
         salaryExpectation,
+        source: b.source || "Manuel",
       },
       include: candidateInclude,
     });
@@ -842,6 +853,7 @@ app.put("/api/candidates/:id", requireAuth, async (req, res) => {
         ? extractSalaryExpectation(b.salaryExpectation) ?? b.salaryExpectation
         : null;
     }
+    if (b.source !== undefined) data.source = b.source || null;
 
     const updated = await prisma.candidate.update({
       where: { id },
@@ -1190,6 +1202,7 @@ app.post("/api/emails/:id/import", requireAuth, async (req, res) => {
           stage: PrismaPipelineStage.Received,
           cvText: email.attachmentContent || email.body,
           letterText: email.body,
+          source: "Email",
         },
       });
       await tx.email.update({ where: { id }, data: { status: "Imported" } });
@@ -1273,6 +1286,25 @@ app.get("/api/reports/funnel", requireAuth, async (req, res) => {
     res.json({ funnel });
   } catch (err) {
     console.error("[GET /api/reports/funnel]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
+// Canaux de sourcing réels : répartition des candidats par champ "source".
+app.get("/api/reports/sourcing", requireAuth, async (req, res) => {
+  const { companyId } = getContext(req);
+  try {
+    const grouped = await prisma.candidate.groupBy({
+      by: ["source"],
+      where: { companyId },
+      _count: { _all: true },
+    });
+    const channels = grouped
+      .map((g) => ({ source: g.source ?? "Non précisé", count: g._count._all }))
+      .sort((a, b) => b.count - a.count);
+    res.json({ channels });
+  } catch (err) {
+    console.error("[GET /api/reports/sourcing]", err);
     res.status(500).json({ error: "Erreur base de données." });
   }
 });
@@ -1404,6 +1436,7 @@ app.post("/api/public/apply", (req, res) => {
           cvText,
           letterText,
           salaryExpectation,
+          source: "/postuler",
         },
       });
 

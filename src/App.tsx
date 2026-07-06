@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, lazy, Suspense } from "react";
 import Sidebar from "./components/Sidebar";
 import TopBar from "./components/TopBar";
 import LoginView from "./components/LoginView";
@@ -8,11 +8,13 @@ import CandidatesView from "./components/CandidatesView";
 import CandidateProfileView from "./components/CandidateProfileView";
 import PipelineView from "./components/PipelineView";
 import RecommendationView from "./components/RecommendationView";
-import AiSearchView from "./components/AiSearchView";
 import EmailInboxView from "./components/EmailInboxView";
-import ReportsView from "./components/ReportsView";
-import DevCenterView from "./components/DevCenterView";
 import SettingsView from "./components/SettingsView";
+// Vues lourdes (recharts / gros contenus) chargées à la demande → code-splitting
+// pour alléger le bundle principal (chunks séparés générés par Vite).
+const ReportsView = lazy(() => import("./components/ReportsView"));
+const AiSearchView = lazy(() => import("./components/AiSearchView"));
+const DevCenterView = lazy(() => import("./components/DevCenterView"));
 import { Company, User, Job, Candidate, EmailItem, PipelineStage, UserRole } from "./types";
 import { apiFetch, apiJson, setAccessToken } from "./lib/api";
 import { SidebarContext } from "./SidebarContext";
@@ -74,6 +76,21 @@ export default function App() {
     limit: CANDIDATES_PAGE_SIZE,
     totalPages: 1,
   });
+  // Tri serveur des candidats (porte sur toute la base). "sortKey" pilote le <select>.
+  const [candidatesSortKey, setCandidatesSortKey] = useState("recent");
+  const sortParamsFor = (sortKey: string): { field: string; order: "asc" | "desc" } => {
+    switch (sortKey) {
+      case "name_asc":   return { field: "name", order: "asc" };
+      case "name_desc":  return { field: "name", order: "desc" };
+      case "score_asc":  return { field: "score", order: "asc" };
+      case "score_desc": return { field: "score", order: "desc" };
+      default:           return { field: "createdAt", order: "desc" }; // "recent"
+    }
+  };
+  const candidatesQuery = (page: number, sortKey: string) => {
+    const { field, order } = sortParamsFor(sortKey);
+    return `/api/candidates?page=${page}&limit=${CANDIDATES_PAGE_SIZE}&sortField=${field}&sortOrder=${order}`;
+  };
 
   const fetchData = async (candPage = candidatesPage) => {
     setLoading(true);
@@ -88,7 +105,7 @@ export default function App() {
       setJobs(await apiJson("/api/jobs"));
 
       // candidates & emails sont désormais paginés → on extrait .data.
-      const candidatesRes = await apiJson(`/api/candidates?page=${candPage}&limit=${CANDIDATES_PAGE_SIZE}`);
+      const candidatesRes = await apiJson(candidatesQuery(candPage, candidatesSortKey));
       setCandidates(candidatesRes.data);
       setCandidatesMeta(candidatesRes.meta);
       setCandidatesPage(candidatesRes.meta.page);
@@ -107,11 +124,24 @@ export default function App() {
   const handleCandidatesPageChange = async (page: number) => {
     setCandidatesPage(page);
     try {
-      const res = await apiJson(`/api/candidates?page=${page}&limit=${CANDIDATES_PAGE_SIZE}`);
+      const res = await apiJson(candidatesQuery(page, candidatesSortKey));
       setCandidates(res.data);
       setCandidatesMeta(res.meta);
     } catch (error) {
       console.error("Error loading candidates page:", error);
+    }
+  };
+
+  // Changement de tri : refetch depuis la page 1 avec les nouveaux params serveur.
+  const handleCandidatesSortChange = async (sortKey: string) => {
+    setCandidatesSortKey(sortKey);
+    setCandidatesPage(1);
+    try {
+      const res = await apiJson(candidatesQuery(1, sortKey));
+      setCandidates(res.data);
+      setCandidatesMeta(res.meta);
+    } catch (error) {
+      console.error("Error loading sorted candidates:", error);
     }
   };
 
@@ -489,6 +519,8 @@ export default function App() {
             totalPages={candidatesMeta.totalPages}
             totalCandidates={candidatesMeta.total}
             onPageChange={handleCandidatesPageChange}
+            sortKey={candidatesSortKey}
+            onSortChange={handleCandidatesSortChange}
           />
         );
       case "pipeline":
@@ -699,7 +731,15 @@ export default function App() {
           onToggleDarkMode={() => setDarkMode(d => !d)}
         />
         <div className="flex-1 flex flex-col h-screen overflow-y-auto">
-          {renderMainContent()}
+          <Suspense
+            fallback={
+              <div className="flex-1 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-secondary" />
+              </div>
+            }
+          >
+            {renderMainContent()}
+          </Suspense>
         </div>
       </div>
     </SidebarContext.Provider>

@@ -130,6 +130,7 @@ export interface Candidate {
   cvText?: string;
   letterText?: string;
   salaryExpectation?: string;
+  source?: string;
   appliedAt: string;
   analysis?: CandidateAnalysis;
   scores?: CandidateScores;

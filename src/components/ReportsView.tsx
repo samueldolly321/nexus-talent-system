@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import * as XLSX from "xlsx";
 import { apiFetch } from "../lib/api";
+import { PipelineStage } from "../types";
 import {
   BarChart3,
   FileSpreadsheet,
@@ -40,6 +41,7 @@ interface ReportsViewProps {
 export default function ReportsView({ stats, companyName, onNavigateToView }: ReportsViewProps) {
   const [exporting, setExporting] = useState<string | null>(null);
   const [funnel, setFunnel] = useState<{ stage: string; count: number }[]>([]);
+  const [sourcing, setSourcing] = useState<{ source: string; count: number }[]>([]);
 
   // Entonnoir réel : nombre de candidats par stage, chargé au montage.
   useEffect(() => {
@@ -49,8 +51,20 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
       .catch(() => { /* silencieux : l'entonnoir reste vide */ });
   }, []);
 
-  // Format attendu par le BarChart et l'export PDF.
-  const funnelData = funnel.map(f => ({ name: f.stage, valeur: f.count }));
+  // Canaux de sourcing réels : répartition des candidats par champ "source".
+  useEffect(() => {
+    apiFetch("/api/reports/sourcing")
+      .then(res => (res.ok ? res.json() : null))
+      .then(data => { if (data?.channels) setSourcing(data.channels); })
+      .catch(() => { /* silencieux : la répartition reste vide */ });
+  }, []);
+
+  // Format attendu par le BarChart et l'export PDF. On exclut le stage "Rejeté"
+  // de l'entonnoir (ce n'est pas une étape de progression) ; les autres stats
+  // (taux de conversion, etc.) continuent d'inclure les rejetés.
+  const funnelData = funnel
+    .filter(f => f.stage !== PipelineStage.Rejected)
+    .map(f => ({ name: f.stage, valeur: f.count }));
 
   // KPIs dérivés des stats réelles (prop). "--" si donnée absente.
   const kpis = stats?.kpis;
@@ -61,12 +75,12 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
   const aiScore =
     kpis && kpis.avgMatchingScore != null ? Number(kpis.avgMatchingScore).toFixed(1) : null;
 
-  const channelDistribution = [
-    { name: "LinkedIn Recruiter", pourcentage: 54 },
-    { name: "Cooptation Interne", pourcentage: 22 },
-    { name: "Sourcing Email", pourcentage: 14 },
-    { name: "Indeed / Monster", pourcentage: 10 }
-  ];
+  // Répartition réelle des canaux de sourcing (pourcentages dérivés des comptes).
+  const sourcingTotal = sourcing.reduce((sum, c) => sum + c.count, 0);
+  const channelDistribution = sourcing.map(c => ({
+    name: c.source,
+    pourcentage: sourcingTotal > 0 ? Math.round((c.count / sourcingTotal) * 100) : 0,
+  }));
 
   // Échappe le texte injecté dans le HTML du registre PDF (évite un HTML cassé/injection).
   const escapeHtml = (value: unknown) =>
@@ -269,11 +283,13 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
         <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-sans font-bold text-on-surface text-sm mb-1">Canaux de Sourcing</h3>
-            <p className="text-[10px] font-mono text-on-surface-variant/70 mb-1">Données indicatives — champ source à venir</p>
-            <p className="text-xs text-on-surface-variant mb-6">Répartition par origine des candidatures reçues.</p>
+            <p className="text-xs text-on-surface-variant mb-6">Répartition réelle par origine des candidatures reçues.</p>
           </div>
 
           <div className="space-y-4">
+            {channelDistribution.length === 0 && (
+              <p className="text-xs text-on-surface-variant">Aucune donnée de sourcing pour le moment.</p>
+            )}
             {channelDistribution.map((ch, i) => (
               <div key={ch.name}>
                 <div className="flex justify-between text-xs text-on-surface-variant font-medium mb-1.5">

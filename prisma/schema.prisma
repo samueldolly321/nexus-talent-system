@@ -163,6 +163,7 @@ model Candidate {
   cvText      String?
   letterText  String?
   salaryExpectation String? // prétention salariale (extraite de la lettre ou saisie manuellement)
+  source      String? // canal de sourcing : "LinkedIn", "Indeed", "/postuler", "Email", "Manuel"…
   appliedAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
