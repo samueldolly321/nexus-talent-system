@@ -3,7 +3,7 @@ import {
   Plus,
   MapPin,
   Clock,
-  DollarSign,
+  Banknote,
   Award,
   FileText,
   Check,
@@ -248,7 +248,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                       <span className="truncate">{job.location}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs">
-                      <DollarSign size={14} className="text-on-surface-variant shrink-0" />
+                      <Banknote size={14} className="text-on-surface-variant shrink-0" />
                       <span className="truncate">{job.salaryRange || "Non précisé"}</span>
                     </div>
                     <div className="flex items-center gap-1.5 text-xs">
