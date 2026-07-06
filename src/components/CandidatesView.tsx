@@ -545,7 +545,12 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
               <p className="text-sm text-inverse-on-surface/90 mb-4">
                 J'ai identifié <span className="font-bold text-white">{excellentCount} candidats</span> correspondant à vos critères avec un score supérieur à 80 %. Souhaitez-vous planifier une prise de contact groupée ?
               </p>
-              <button className="w-full bg-secondary text-white py-2 rounded-lg text-sm font-bold hover:brightness-110">Voir la sélection</button>
+              <button
+                onClick={() => { setScoreFilter("excellent"); setShowAiBanner(false); }}
+                className="w-full bg-secondary text-white py-2 rounded-lg text-sm font-bold hover:brightness-110"
+              >
+                Voir la sélection
+              </button>
             </div>
           )}
         </main>
