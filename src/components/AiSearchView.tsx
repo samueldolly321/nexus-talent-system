@@ -76,7 +76,7 @@ export default function AiSearchView({ candidates, jobs, onSelectCandidate }: Ai
       </div>
 
       {/* Main Search Bar Wrapper */}
-      <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm mb-8">
+      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm mb-8">
         <div className="flex gap-2">
           <div className="relative flex-1">
             <input
@@ -85,7 +85,7 @@ export default function AiSearchView({ candidates, jobs, onSelectCandidate }: Ai
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch(query)}
               placeholder="ex: Trouve les développeurs React avec plus de 5 ans d'expérience..."
-              className="w-full bg-background text-xs border border-outline-variant rounded-lg p-3.5 pl-10 focus:bg-white focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary font-medium"
+              className="w-full bg-background text-xs border border-outline-variant rounded-lg p-3.5 pl-10 focus:bg-surface-container-lowest focus:border-secondary focus:outline-none focus:ring-1 focus:ring-secondary font-medium"
             />
             <Search className="absolute left-3.5 top-3.5 text-on-surface-variant" size={16} />
           </div>
@@ -156,13 +156,13 @@ export default function AiSearchView({ candidates, jobs, onSelectCandidate }: Ai
             <h3 className="text-xs font-mono font-bold text-on-surface-variant uppercase tracking-wider mb-4">Profils retenus ({matchedCandidates.length})</h3>
             
             {matchedCandidates.length === 0 ? (
-              <div className="bg-white rounded-xl border border-dashed border-outline-variant p-8 text-center text-on-surface-variant">
+              <div className="bg-surface-container-lowest rounded-xl border border-dashed border-outline-variant p-8 text-center text-on-surface-variant">
                 <p className="text-xs font-sans">Aucun candidat ne correspond exactement sémantiquement à cette requête.</p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {matchedCandidates.map(cand => (
-                  <div key={cand.id} onClick={() => onSelectCandidate(cand)} className="bg-white rounded-xl border border-outline-variant p-5 shadow-sm hover:shadow-md hover:border-secondary transition-all cursor-pointer">
+                  <div key={cand.id} onClick={() => onSelectCandidate(cand)} className="bg-surface-container-lowest rounded-xl border border-outline-variant p-5 shadow-sm hover:shadow-md hover:border-secondary transition-all cursor-pointer">
                     <div className="flex justify-between items-start mb-3">
                       <div>
                         <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-surface-container text-on-surface-variant uppercase tracking-wider">

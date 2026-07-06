@@ -65,7 +65,7 @@ export default function EmailInboxView({
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         {/* Left Side: Emails List */}
-        <div className="xl:col-span-1 bg-white rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col h-[calc(100vh-230px)]">
+        <div className="xl:col-span-1 bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm overflow-hidden flex flex-col h-[calc(100vh-230px)]">
           <div className="p-4 bg-background border-b border-outline-variant flex items-center gap-2">
             <Inbox size={16} className="text-on-surface-variant" />
             <span className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant">Emails Entrants Reçus</span>
@@ -127,7 +127,7 @@ export default function EmailInboxView({
         {/* Right Side: Selected Email Content Viewer */}
         <div className="xl:col-span-2">
           {selectedMail ? (
-            <div className="bg-white rounded-xl border border-outline-variant shadow-sm p-6 flex flex-col h-[calc(100vh-230px)] overflow-hidden">
+            <div className="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm p-6 flex flex-col h-[calc(100vh-230px)] overflow-hidden">
               {/* Header */}
               <div className="flex justify-between items-start border-b border-slate-150 pb-4 mb-4 shrink-0">
                 <div>
@@ -211,7 +211,7 @@ export default function EmailInboxView({
       {/* Target Job Selector Dialog for Sourcing Import */}
       {showImportDialog && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl border border-outline-variant shadow-xl max-w-md w-full">
+          <div className="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-xl max-w-md w-full">
             <div className="p-5 border-b border-outline-variant flex justify-between items-center">
               <h4 className="font-bold text-sm text-on-surface flex items-center gap-1.5">
                 <Sparkles size={16} className="text-secondary" />

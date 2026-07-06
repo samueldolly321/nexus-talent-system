@@ -75,6 +75,40 @@ body {
   color: var(--color-on-background);
 }
 
+/* ==========================================
+   DARK MODE — override des tokens de surface/texte.
+   Le reste des composants utilise déjà ces variables (bg-surface,
+   text-on-surface, border-outline-variant, bg-surface-container-lowest…),
+   donc les basculer ici suffit à adapter toute l'application sans toucher
+   aux composants. Les couleurs d'accent (secondary, error, primary utilisé
+   pour les boutons bg-primary + text-white) restent volontairement stables
+   pour garder un bon contraste et l'identité visuelle de la marque.
+*/
+.dark {
+  --color-background: #0e1420;
+  --color-on-background: #e6ebf5;
+
+  --color-surface: #0e1420;
+  --color-surface-dim: #0b0f17;
+  --color-surface-bright: #1c2433;
+  --color-surface-container-lowest: #141b28;
+  --color-surface-container-low: #171f2d;
+  --color-surface-container: #1c2433;
+  --color-surface-container-high: #232c3d;
+  --color-surface-container-highest: #2b3547;
+  --color-surface-variant: #2b3547;
+
+  --color-on-surface: #e6ebf5;
+  --color-on-surface-variant: #a3aebd;
+
+  --color-outline: #5b6473;
+  --color-outline-variant: #333e50;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: var(--color-outline-variant);
+}
+
 .glass-ai {
   background: rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(8px);

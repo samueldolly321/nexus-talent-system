@@ -23,7 +23,7 @@ interface RecommendationViewProps {
 
 // Classes partagées des modals (cohérentes avec le reste de l'app).
 const LABEL_CLS = "block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5";
-const INPUT_CLS = "w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all";
+const INPUT_CLS = "w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all";
 const CANCEL_CLS = "h-10 px-4 rounded-[8px] text-sm font-bold text-on-surface-variant hover:bg-surface-container-low transition-all disabled:opacity-40";
 const SUBMIT_CLS = "h-10 px-4 bg-primary text-white rounded-[8px] text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed";
 
@@ -103,7 +103,7 @@ export default function RecommendationView({ candidate, job, activeUser, onBack 
 
       <main className="flex-1 p-6 grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
         <div className="space-y-6 min-w-0">
-          <div className="bg-white border border-outline-variant rounded-xl p-6">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
             <div className="flex items-start gap-4 flex-wrap">
               <div className="w-16 h-16 rounded-full bg-primary-fixed-dim flex items-center justify-center font-bold text-xl text-on-primary-fixed shrink-0">
                 {candidate.name.substring(0, 2).toUpperCase()}
@@ -138,7 +138,7 @@ export default function RecommendationView({ candidate, job, activeUser, onBack 
 
           {rec && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white border border-outline-variant rounded-xl p-6">
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
                 <h3 className="font-bold text-on-surface mb-4 flex items-center gap-2"><TrendingUp size={16} className="text-secondary" />Points forts</h3>
                 <ul className="space-y-2.5">
                   {rec.strengths.map((s, i) => (
@@ -149,7 +149,7 @@ export default function RecommendationView({ candidate, job, activeUser, onBack 
                   ))}
                 </ul>
               </div>
-              <div className="bg-white border border-outline-variant rounded-xl p-6">
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
                 <h3 className="font-bold text-on-surface mb-4 flex items-center gap-2"><TrendingUp size={16} className="text-on-surface-variant" />Axes de progression</h3>
                 <ul className="space-y-2.5">
                   {rec.weaknesses.map((w, i) => (
@@ -164,7 +164,7 @@ export default function RecommendationView({ candidate, job, activeUser, onBack 
           )}
 
           {rec && rec.attentionPoints.length > 0 && (
-            <div className="bg-white border border-outline-variant rounded-xl p-6">
+            <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
               <h3 className="font-bold text-on-surface mb-4 flex items-center gap-2"><AlertTriangle size={18} className="text-red-500" />Risques potentiels</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {rec.attentionPoints.map((point, i) => (
@@ -202,13 +202,13 @@ export default function RecommendationView({ candidate, job, activeUser, onBack 
           </div>
 
           {scores && (
-            <div className="bg-white border border-outline-variant rounded-xl p-6">
+            <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
               <h3 className="font-bold text-on-surface mb-2">Indice de compatibilité</h3>
               <div className="h-44">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={compatData} outerRadius="70%">
-                    <PolarGrid stroke="#E2E8F0" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: "#45464d" }} />
+                    <PolarGrid stroke="var(--color-outline-variant)" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: "var(--color-on-surface-variant)" }} />
                     <Radar dataKey="value" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.25} />
                   </RadarChart>
                 </ResponsiveContainer>
@@ -245,9 +245,9 @@ export default function RecommendationView({ candidate, job, activeUser, onBack 
       {/* Modal : planifier un entretien */}
       {modal === "interview" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
-          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-surface-container-lowest rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-sans text-lg font-semibold text-primary">Planifier un entretien</h3>
+              <h3 className="font-sans text-lg font-semibold text-on-surface">Planifier un entretien</h3>
               <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
             </div>
             <form
@@ -295,9 +295,9 @@ export default function RecommendationView({ candidate, job, activeUser, onBack 
       {/* Modal : partager aux décideurs */}
       {modal === "share" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
-          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-surface-container-lowest rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-sans text-lg font-semibold text-primary">Partager aux décideurs</h3>
+              <h3 className="font-sans text-lg font-semibold text-on-surface">Partager aux décideurs</h3>
               <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
             </div>
             <form

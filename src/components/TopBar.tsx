@@ -137,9 +137,9 @@ export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, righ
       {notifOpen && (
         <>
           <div className="fixed inset-0 z-50 bg-black/20" onClick={() => setNotifOpen(false)} aria-hidden="true" />
-          <aside className="fixed inset-y-0 right-0 z-50 w-80 max-w-[85vw] bg-white shadow-xl border-l border-outline-variant flex flex-col">
+          <aside className="fixed inset-y-0 right-0 z-50 w-80 max-w-[85vw] bg-surface-container-lowest shadow-xl border-l border-outline-variant flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-outline-variant">
-              <h3 className="font-sans font-semibold text-primary">Notifications</h3>
+              <h3 className="font-sans font-semibold text-on-surface">Notifications</h3>
               <button onClick={() => setNotifOpen(false)} className="text-on-surface-variant hover:text-on-surface transition-colors">
                 <X size={18} />
               </button>
@@ -164,9 +164,9 @@ export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, righ
       {/* Modal d'aide centré : Raccourcis + Aide rapide */}
       {helpOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setHelpOpen(false)}>
-          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-surface-container-lowest rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-sans text-lg font-semibold text-primary">Aide — Nexus Talent</h3>
+              <h3 className="font-sans text-lg font-semibold text-on-surface">Aide — Nexus Talent</h3>
               <button onClick={() => setHelpOpen(false)} className="text-on-surface-variant hover:text-on-surface transition-colors">
                 <X size={20} />
               </button>

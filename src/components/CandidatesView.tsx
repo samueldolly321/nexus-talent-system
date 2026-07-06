@@ -25,7 +25,7 @@ const EMPTY_FORM = { name: "", email: "", phone: "", location: "", jobId: "", cv
 // Styles partagés (DESIGN.md) : label mono 10px au-dessus, input ghost bordure 1px focus turquoise 2px.
 const LABEL_CLS = "block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5";
 const INPUT_CLS =
-  "w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all";
+  "w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all";
 
 const scoreTone = (score: number) => {
   if (score >= 80) return "bg-secondary-container text-on-secondary-container";
@@ -39,6 +39,8 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [showAiBanner, setShowAiBanner] = useState(true);
+  // Bascule vue tableau / vue grille (cartes) pour la liste des candidats (>= md).
+  const [viewMode, setViewMode] = useState<"table" | "grid">("table");
 
   // Modal "Ajouter un candidat"
   const [showAddModal, setShowAddModal] = useState(false);
@@ -258,13 +260,22 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
         {/* Main list */}
         <main className="flex-1 min-w-0 p-4 md:p-6 overflow-y-auto relative">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="font-sans text-2xl font-semibold text-primary">Candidats <span className="text-on-surface-variant font-normal">({filtered.length})</span></h2>
+            <h2 className="font-sans text-2xl font-semibold text-on-surface">Candidats <span className="text-on-surface-variant font-normal">({filtered.length})</span></h2>
             <div className="flex items-center gap-3">
               <button className="px-3 py-1.5 border border-outline-variant rounded-lg text-sm flex items-center gap-2 hover:bg-surface-container-low">
                 <ArrowUpDown size={14} />
                 Trier : Récents
               </button>
-              <button className="p-2 border border-outline-variant rounded-lg hover:bg-surface-container-low">
+              <button
+                onClick={() => setViewMode(m => (m === "table" ? "grid" : "table"))}
+                title={viewMode === "table" ? "Passer en vue grille" : "Passer en vue tableau"}
+                aria-pressed={viewMode === "grid"}
+                className={`p-2 border rounded-lg transition-all ${
+                  viewMode === "grid"
+                    ? "bg-secondary-container border-secondary text-on-secondary-container"
+                    : "border-outline-variant hover:bg-surface-container-low"
+                }`}
+              >
                 <LayoutGrid size={16} />
               </button>
             </div>
@@ -275,16 +286,17 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
               <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-secondary mx-auto" />
             </div>
           ) : (
-            <div className="bg-white border border-outline-variant rounded-xl overflow-hidden">
+            <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
               {/* Vue tableau (>= md) */}
-              <table className="hidden md:table w-full text-left">
+              <div className="hidden md:block overflow-x-auto">
+              <table className={viewMode === "table" ? "w-full min-w-[760px] text-left" : "hidden"}>
                 <thead className="bg-surface-container-low text-on-surface-variant font-mono text-[10px] uppercase tracking-wider">
                   <tr>
                     <th className="px-4 py-3 w-10"><input type="checkbox" className="rounded border-outline-variant" /></th>
                     <th className="px-4 py-3 font-medium">Profil</th>
                     <th className="px-4 py-3 font-medium">Email &amp; Téléphone</th>
                     <th className="px-4 py-3 font-medium">Score IA</th>
-                    <th className="px-4 py-3 font-medium">Expérience</th>
+                    <th className="px-4 py-3 font-medium w-48">Expérience</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant">
@@ -328,10 +340,10 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                             <span className="text-xs font-mono text-amber-600">Non analysé</span>
                           )}
                         </td>
-                        <td className="px-4 py-4 text-sm text-on-surface">
-                          {cand.analysis?.yearsOfExperience ?? "—"} ans
+                        <td className="px-4 py-4 text-sm text-on-surface align-top">
+                          <span>{cand.analysis?.yearsOfExperience ?? "—"} ans</span>
                           {cand.analysis?.experiences?.[0] && (
-                            <p className="text-xs text-on-surface-variant truncate max-w-[160px]">{cand.analysis.experiences[0].company}</p>
+                            <p className="text-xs text-on-surface-variant break-words line-clamp-2 leading-snug mt-0.5">{cand.analysis.experiences[0].company}</p>
                           )}
                         </td>
                       </tr>
@@ -344,6 +356,49 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
                   )}
                 </tbody>
               </table>
+
+              {/* Vue grille (>= md), affichée quand viewMode === "grid" */}
+              {viewMode === "grid" && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 p-4">
+                  {filtered.map(cand => {
+                    const score = cand.scores?.globalScore ?? 0;
+                    return (
+                      <button
+                        key={cand.id}
+                        onClick={() => onSelectCandidate(cand)}
+                        className="text-left border border-outline-variant rounded-xl p-4 hover:border-secondary hover:shadow-sm transition-all bg-surface-container-lowest"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-full bg-primary-fixed-dim flex items-center justify-center font-bold text-on-primary-fixed text-xs shrink-0">
+                            {cand.name.substring(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-on-surface text-sm truncate">{cand.name}</p>
+                            <p className="text-xs text-on-surface-variant truncate">
+                              {jobs.find(j => j.id === cand.jobId)?.title || "—"}
+                            </p>
+                          </div>
+                          {cand.scores ? (
+                            <span className={`shrink-0 px-2.5 py-1 rounded-full font-mono text-xs font-bold ${scoreTone(score)}`}>{score}%</span>
+                          ) : (
+                            <span className="shrink-0 text-xs font-mono text-amber-600">Non analysé</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-on-surface-variant truncate mb-1">{cand.email}</p>
+                        {cand.phone && <p className="text-xs text-on-surface-variant mb-1">{cand.phone}</p>}
+                        <p className="text-xs text-on-surface-variant break-words line-clamp-2">
+                          {cand.analysis?.yearsOfExperience ?? "—"} ans d'exp.
+                          {cand.analysis?.experiences?.[0] && ` — ${cand.analysis.experiences[0].company}`}
+                        </p>
+                      </button>
+                    );
+                  })}
+                  {filtered.length === 0 && (
+                    <p className="col-span-full py-16 text-center text-sm text-on-surface-variant">Aucun candidat ne correspond aux filtres.</p>
+                  )}
+                </div>
+              )}
+              </div>
 
               {/* Vue cards empilées (< md) */}
               <div className="md:hidden divide-y divide-outline-variant">
@@ -439,11 +494,11 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
           onClick={closeModal}
         >
           <div
-            className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-white rounded-xl p-8 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]"
+            className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-surface-container-lowest rounded-xl p-8 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]"
             onClick={e => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="font-sans text-xl font-semibold text-primary">Ajouter un candidat</h3>
+              <h3 className="font-sans text-xl font-semibold text-on-surface">Ajouter un candidat</h3>
               <button
                 type="button"
                 onClick={closeModal}

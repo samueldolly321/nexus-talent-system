@@ -27,7 +27,7 @@ const tabs = ["Analyse IA", "Expérience & CV", "Lettre de motivation", "Histori
 
 // Classes partagées des modals (cohérentes avec le reste de l'app).
 const LABEL_CLS = "block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5";
-const INPUT_CLS = "w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all";
+const INPUT_CLS = "w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all";
 const CANCEL_CLS = "h-10 px-4 rounded-[8px] text-sm font-bold text-on-surface-variant hover:bg-surface-container-low transition-all disabled:opacity-40";
 const SUBMIT_CLS = "h-10 px-4 bg-primary text-white rounded-[8px] text-sm font-bold flex items-center gap-2 hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed";
 
@@ -160,7 +160,7 @@ export default function CandidateProfileView({
       <main className="flex-1 p-4 md:p-6 grid grid-cols-1 lg:grid-cols-[280px_1fr_280px] gap-6 items-start">
         {/* Left: identity card */}
         <div className="space-y-4">
-          <div className="bg-white border border-outline-variant rounded-xl p-6 text-center">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 text-center">
             <div className="relative w-20 h-20 mx-auto mb-4">
               {candidate.avatarUrl ? (
                 <img
@@ -213,7 +213,7 @@ export default function CandidateProfileView({
             <select
               value={candidate.stage}
               onChange={e => onUpdateStage(candidate.id, e.target.value as PipelineStage)}
-              className="w-full bg-white border border-outline-variant rounded-lg p-2.5 text-sm font-medium focus:outline-none focus:border-secondary"
+              className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg p-2.5 text-sm font-medium focus:outline-none focus:border-secondary"
             >
               {Object.values(PipelineStage).map(s => <option key={s} value={s}>{s}</option>)}
             </select>
@@ -245,7 +245,7 @@ export default function CandidateProfileView({
 
           {activeTab === 0 && (
             <div className="space-y-6">
-              <div className="bg-white border border-outline-variant rounded-xl p-6">
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles size={18} className="text-secondary" />
                   <h3 className="font-bold text-on-surface">Synthèse IA</h3>
@@ -280,7 +280,7 @@ export default function CandidateProfileView({
               </div>
 
               {candidate.analysis?.experiences && candidate.analysis.experiences.length > 0 && (
-                <div className="bg-white border border-outline-variant rounded-xl p-6">
+                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
                   <h3 className="font-bold text-on-surface mb-5">Parcours professionnel</h3>
                   <div className="space-y-5">
                     {candidate.analysis.experiences.map((exp, i) => (
@@ -300,7 +300,7 @@ export default function CandidateProfileView({
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {candidate.analysis?.educations && candidate.analysis.educations.length > 0 && (
-                  <div className="bg-white border border-outline-variant rounded-xl p-6">
+                  <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
                     <h3 className="font-bold text-on-surface mb-4 flex items-center gap-2"><GraduationCap size={16} />Formation</h3>
                     <div className="space-y-3">
                       {candidate.analysis.educations.map((edu, i) => (
@@ -312,7 +312,7 @@ export default function CandidateProfileView({
                     </div>
                   </div>
                 )}
-                <div className="bg-white border border-outline-variant rounded-xl p-6">
+                <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
                   <h3 className="font-bold text-on-surface mb-4 flex items-center gap-2"><BadgeCheck size={16} />Compétences clés</h3>
                   <div className="flex flex-wrap gap-2">
                     {[
@@ -330,7 +330,7 @@ export default function CandidateProfileView({
           )}
 
           {activeTab === 1 && (
-            <div className="bg-white border border-outline-variant rounded-xl p-6">
+            <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
               <div className="flex items-center justify-between mb-3 gap-3">
                 <h3 className="font-bold text-on-surface">CV Original</h3>
                 <button
@@ -350,7 +350,7 @@ export default function CandidateProfileView({
           )}
 
           {activeTab === 2 && (
-            <div className="bg-white border border-outline-variant rounded-xl p-6">
+            <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
               <div className="flex items-center justify-between mb-3 gap-3">
                 <h3 className="font-bold text-on-surface">Lettre de Motivation</h3>
                 <button
@@ -370,7 +370,7 @@ export default function CandidateProfileView({
           )}
 
           {activeTab === 3 && (
-            <div className="bg-white border border-outline-variant rounded-xl p-6">
+            <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
               <h3 className="font-bold text-on-surface mb-3">Historique</h3>
               <p className="text-sm text-on-surface-variant">
                 Candidature reçue le {new Date(candidate.appliedAt).toLocaleDateString("fr-FR")}, actuellement à l'étape <span className="font-semibold text-on-surface">{candidate.stage}</span>.
@@ -410,13 +410,13 @@ export default function CandidateProfileView({
           </div>
 
           {scores && (
-            <div className="bg-white border border-outline-variant rounded-xl p-6">
+            <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
               <h3 className="font-bold text-on-surface mb-2">Profil d'aptitudes</h3>
               <div className="h-48">
                 <ResponsiveContainer width="100%" height="100%">
                   <RadarChart data={aptitudeData} outerRadius="70%">
-                    <PolarGrid stroke="#E2E8F0" />
-                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: "#45464d" }} />
+                    <PolarGrid stroke="var(--color-outline-variant)" />
+                    <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: "var(--color-on-surface-variant)" }} />
                     <Radar dataKey="value" stroke="#06b6d4" fill="#06b6d4" fillOpacity={0.25} />
                   </RadarChart>
                 </ResponsiveContainer>
@@ -429,9 +429,9 @@ export default function CandidateProfileView({
       {/* Modal : modifier le profil (nom, email, téléphone, localisation, LinkedIn) */}
       {modal === "profile" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
-          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-surface-container-lowest rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="font-sans text-lg font-semibold text-primary">Modifier le profil</h3>
+              <h3 className="font-sans text-lg font-semibold text-on-surface">Modifier le profil</h3>
               <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
             </div>
             <form onSubmit={handleSubmit(() => ({
@@ -478,9 +478,9 @@ export default function CandidateProfileView({
       {/* Modal : changer la photo (URL) */}
       {modal === "avatar" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
-          <div className="w-full max-w-sm bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-sm bg-surface-container-lowest rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-sans text-lg font-semibold text-primary">Changer la photo</h3>
+              <h3 className="font-sans text-lg font-semibold text-on-surface">Changer la photo</h3>
               <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
             </div>
             <form onSubmit={handleAvatarSubmit} className="space-y-4">
@@ -511,14 +511,14 @@ export default function CandidateProfileView({
       {/* Modal : éditer le CV */}
       {modal === "cv" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
-          <div className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-surface-container-lowest rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-sans text-lg font-semibold text-primary">Modifier le CV — {candidate.name}</h3>
+              <h3 className="font-sans text-lg font-semibold text-on-surface">Modifier le CV — {candidate.name}</h3>
               <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
             </div>
             <form onSubmit={handleSubmit(() => ({ cvText: cvDraft }))} className="flex flex-col min-h-0 flex-1">
               <label htmlFor="cv-edit" className={LABEL_CLS}>Texte du CV</label>
-              <textarea id="cv-edit" autoFocus value={cvDraft} onChange={e => setCvDraft(e.target.value)} className="w-full flex-1 min-h-[240px] bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm font-mono text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all resize-y" placeholder="Collez ou éditez le texte du CV ici…" />
+              <textarea id="cv-edit" autoFocus value={cvDraft} onChange={e => setCvDraft(e.target.value)} className="w-full flex-1 min-h-[240px] bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm font-mono text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all resize-y" placeholder="Collez ou éditez le texte du CV ici…" />
               {formError && <p className="text-error text-sm mt-2">{formError}</p>}
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={closeModal} disabled={saving} className={CANCEL_CLS}>Annuler</button>
@@ -534,14 +534,14 @@ export default function CandidateProfileView({
       {/* Modal : lettre de motivation */}
       {modal === "letter" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeModal}>
-          <div className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
+          <div className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-surface-container-lowest rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-sans text-lg font-semibold text-primary">Lettre de motivation — {candidate.name}</h3>
+              <h3 className="font-sans text-lg font-semibold text-on-surface">Lettre de motivation — {candidate.name}</h3>
               <button type="button" onClick={closeModal} disabled={saving} className="text-on-surface-variant hover:text-on-surface transition-colors disabled:opacity-40"><X size={20} /></button>
             </div>
             <form onSubmit={handleSubmit(() => ({ letterText: letterDraft }))} className="flex flex-col min-h-0 flex-1">
               <label htmlFor="letter-edit" className={LABEL_CLS}>Texte de la lettre</label>
-              <textarea id="letter-edit" autoFocus value={letterDraft} onChange={e => setLetterDraft(e.target.value)} className="w-full flex-1 min-h-[240px] bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all resize-y" placeholder="Saisissez la lettre de motivation…" />
+              <textarea id="letter-edit" autoFocus value={letterDraft} onChange={e => setLetterDraft(e.target.value)} className="w-full flex-1 min-h-[240px] bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-secondary focus:border-secondary transition-all resize-y" placeholder="Saisissez la lettre de motivation…" />
               {formError && <p className="text-error text-sm mt-2">{formError}</p>}
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={closeModal} disabled={saving} className={CANCEL_CLS}>Annuler</button>

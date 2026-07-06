@@ -18,7 +18,7 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
   };
 
   return (
-    <div className="w-screen h-screen flex bg-white overflow-hidden">
+    <div className="w-screen h-screen flex bg-surface-container-lowest overflow-hidden">
       {/* Left: form */}
       <div className="w-full md:w-1/2 flex flex-col px-8 sm:px-16 py-10 overflow-y-auto">
         <div className="flex items-center gap-3 mb-16">
@@ -26,13 +26,13 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
             <span className="font-mono text-on-primary text-xs font-bold">NT</span>
           </div>
           <div>
-            <h1 className="font-sans font-bold text-lg text-primary leading-tight">Nexus Talent</h1>
+            <h1 className="font-sans font-bold text-lg text-on-surface leading-tight">Nexus Talent</h1>
             <p className="font-mono text-[10px] text-on-surface-variant tracking-widest uppercase">Espace Recruteur</p>
           </div>
         </div>
 
         <div className="max-w-sm w-full mx-auto md:mx-0 flex-1 flex flex-col justify-center">
-          <h2 className="font-sans text-[32px] font-semibold text-primary tracking-tight mb-2">Bon retour</h2>
+          <h2 className="font-sans text-[32px] font-semibold text-on-surface tracking-tight mb-2">Bon retour</h2>
           <p className="text-on-surface-variant mb-8">Accédez à vos insights de recrutement prédictifs.</p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -106,6 +106,13 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
           <p className="mt-6 text-center font-mono text-[10px] text-on-surface-variant bg-surface-container-low rounded-lg py-2 px-3">
             Démo : sarah.j@techcorp.io / password123
           </p>
+
+          <a
+            href="/postuler"
+            className="mt-4 block text-center text-sm font-bold text-secondary hover:underline"
+          >
+            Vous êtes candidat ? Postulez ici →
+          </a>
         </div>
 
         <div className="pt-8 mt-8 border-t border-outline-variant flex justify-between items-center max-w-sm w-full mx-auto md:mx-0">

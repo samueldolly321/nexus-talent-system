@@ -23,6 +23,22 @@ export default function App() {
   const [activeView, setActiveView] = useState<string>("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  // Mode sombre : préférence persistée en local, appliquée via la classe
+  // "dark" sur <html> (les tokens de couleur basculent alors via index.css).
+  const [darkMode, setDarkMode] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    const stored = window.localStorage.getItem("nexus-dark-mode");
+    if (stored !== null) return stored === "true";
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+  });
+  // Compteur incrémenté par le bouton "Nouvelle Offre" de la sidebar, pour
+  // déclencher l'ouverture du modal de création dans JobsView (voir plus bas).
+  const [openJobCreateSignal, setOpenJobCreateSignal] = useState(0);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", darkMode);
+    window.localStorage.setItem("nexus-dark-mode", String(darkMode));
+  }, [darkMode]);
 
   // Modal "Ajouter un utilisateur" (vue Utilisateurs)
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -432,6 +448,7 @@ export default function App() {
             onEditJob={handleEditJob}
             onDeleteJob={handleDeleteJob}
             loading={loading}
+            openCreateSignal={openJobCreateSignal}
           />
         );
       case "candidates":
@@ -489,7 +506,7 @@ export default function App() {
             <TopBar activeUser={activeUser} searchValue={searchQuery} onSearchChange={setSearchQuery} />
             <main className="p-4 md:p-8">
               <div className="flex justify-between items-center mb-6 gap-3 flex-wrap">
-                <h2 className="font-sans text-2xl font-semibold text-primary">Utilisateurs</h2>
+                <h2 className="font-sans text-2xl font-semibold text-on-surface">Utilisateurs</h2>
                 {canManageUsers && (
                   <button
                     onClick={openAddUserModal}
@@ -500,7 +517,7 @@ export default function App() {
                   </button>
                 )}
               </div>
-              <div className="bg-white border border-outline-variant rounded-xl overflow-hidden">
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
                 <table className="w-full text-left">
                   <thead className="bg-surface-container-low text-on-surface-variant font-mono text-[10px] uppercase tracking-wider">
                     <tr>
@@ -534,11 +551,11 @@ export default function App() {
                 onClick={closeAddUserModal}
               >
                 <div
-                  className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]"
+                  className="w-full max-w-md max-h-[90vh] overflow-y-auto bg-surface-container-lowest rounded-xl p-6 shadow-[0px_10px_25px_rgba(15,23,42,0.08)]"
                   onClick={e => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between mb-5">
-                    <h3 className="font-sans text-lg font-semibold text-primary">Ajouter un utilisateur</h3>
+                    <h3 className="font-sans text-lg font-semibold text-on-surface">Ajouter un utilisateur</h3>
                     <button
                       type="button"
                       onClick={closeAddUserModal}
@@ -559,7 +576,7 @@ export default function App() {
                         autoFocus
                         value={userForm.name}
                         onChange={e => setUserForm(f => ({ ...f, name: e.target.value }))}
-                        className="w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+                        className="w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
                         placeholder="Jean Dupont"
                       />
                     </div>
@@ -572,7 +589,7 @@ export default function App() {
                         required
                         value={userForm.email}
                         onChange={e => setUserForm(f => ({ ...f, email: e.target.value }))}
-                        className="w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+                        className="w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
                         placeholder="jean@exemple.com"
                       />
                     </div>
@@ -585,7 +602,7 @@ export default function App() {
                         required
                         value={userForm.password}
                         onChange={e => setUserForm(f => ({ ...f, password: e.target.value }))}
-                        className="w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+                        className="w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
                         placeholder="••••••••"
                       />
                     </div>
@@ -596,7 +613,7 @@ export default function App() {
                         id="user-role"
                         value={userForm.role}
                         onChange={e => setUserForm(f => ({ ...f, role: e.target.value as UserRole }))}
-                        className="w-full bg-white border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
+                        className="w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all"
                       >
                         {Object.values(UserRole).map(r => (
                           <option key={r} value={r}>{r}</option>
@@ -635,8 +652,8 @@ export default function App() {
           <div className="flex-1 bg-background min-h-screen flex flex-col">
             <TopBar activeUser={activeUser} />
             <main className="p-8 max-w-2xl">
-              <h2 className="font-sans text-2xl font-semibold text-primary mb-6">Paramètres</h2>
-              <div className="bg-white border border-outline-variant rounded-xl p-6 space-y-4">
+              <h2 className="font-sans text-2xl font-semibold text-on-surface mb-6">Paramètres</h2>
+              <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 space-y-4">
                 <div>
                   <label className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold mb-1.5">Entreprise</label>
                   <p className="text-sm text-on-surface font-medium">{activeCompany?.name}</p>
@@ -667,10 +684,12 @@ export default function App() {
           allCompanies={allCompanies}
           allUsers={allUsers}
           onSwitchContext={handleSwitchContext}
-          onCreateJob={() => navigateTo("jobs")}
+          onCreateJob={() => { navigateTo("jobs"); setOpenJobCreateSignal(s => s + 1); }}
           onLogout={handleLogout}
           isOpen={sidebarOpen}
           onClose={() => setSidebarOpen(false)}
+          darkMode={darkMode}
+          onToggleDarkMode={() => setDarkMode(d => !d)}
         />
         <div className="flex-1 flex flex-col h-screen overflow-y-auto">
           {renderMainContent()}

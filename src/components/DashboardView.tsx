@@ -150,7 +150,7 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
         {/* Welcome */}
         <div className="flex justify-between items-end mb-8 flex-wrap gap-4">
           <div>
-            <h2 className="font-sans text-2xl md:text-[32px] font-semibold text-primary tracking-tight leading-tight">Tableau de bord Recruteur</h2>
+            <h2 className="font-sans text-2xl md:text-[32px] font-semibold text-on-surface tracking-tight leading-tight">Tableau de bord Recruteur</h2>
             <p className="text-on-surface-variant mt-1">Insights intelligents sur votre pipeline de talents.</p>
           </div>
           <div className="flex gap-3">
@@ -175,34 +175,34 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
 
         {/* KPI grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <button onClick={() => onNavigateToView("jobs")} className="text-left bg-white border border-outline-variant rounded-xl p-6 transition-all hover:border-secondary">
+          <button onClick={() => onNavigateToView("jobs")} className="text-left bg-surface-container-lowest border border-outline-variant rounded-xl p-6 transition-all hover:border-secondary">
             <div className="flex justify-between items-start mb-4">
               <span className="p-2 bg-surface-container text-secondary rounded-lg"><Briefcase size={20} /></span>
               <span className="text-green-600 font-mono text-[11px] font-medium">+12%</span>
             </div>
             <h3 className="text-on-surface-variant font-mono text-[11px] uppercase tracking-wider mb-1">Offres actives</h3>
-            <p className="font-sans text-[40px] leading-none font-bold text-primary">{kpis.activeJobs}</p>
+            <p className="font-sans text-[40px] leading-none font-bold text-on-surface">{kpis.activeJobs}</p>
           </button>
 
-          <button onClick={() => onNavigateToView("candidates")} className="text-left bg-white border border-outline-variant rounded-xl p-6 transition-all hover:border-secondary">
+          <button onClick={() => onNavigateToView("candidates")} className="text-left bg-surface-container-lowest border border-outline-variant rounded-xl p-6 transition-all hover:border-secondary">
             <div className="flex justify-between items-start mb-4">
               <span className="p-2 bg-surface-container text-secondary rounded-lg"><Users size={20} /></span>
               <span className="text-green-600 font-mono text-[11px] font-medium">+8.4%</span>
             </div>
             <h3 className="text-on-surface-variant font-mono text-[11px] uppercase tracking-wider mb-1">Total candidats</h3>
-            <p className="font-sans text-[40px] leading-none font-bold text-primary">{kpis.totalCandidates.toLocaleString("fr-FR")}</p>
+            <p className="font-sans text-[40px] leading-none font-bold text-on-surface">{kpis.totalCandidates.toLocaleString("fr-FR")}</p>
           </button>
 
-          <div className="bg-white border border-outline-variant rounded-xl p-6 transition-all hover:border-secondary">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 transition-all hover:border-secondary">
             <div className="flex justify-between items-start mb-4">
               <span className="p-2 bg-surface-container text-secondary rounded-lg"><CheckCircle2 size={20} /></span>
               <span className="text-on-surface-variant font-mono text-[11px]">Ce mois-ci</span>
             </div>
             <h3 className="text-on-surface-variant font-mono text-[11px] uppercase tracking-wider mb-1">Embauché(e)s</h3>
-            <p className="font-sans text-[40px] leading-none font-bold text-primary">{kpis.hiredCandidates}</p>
+            <p className="font-sans text-[40px] leading-none font-bold text-on-surface">{kpis.hiredCandidates}</p>
           </div>
 
-          <div className="bg-white border border-outline-variant rounded-xl p-6 relative overflow-hidden transition-all hover:border-secondary">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 relative overflow-hidden transition-all hover:border-secondary">
             <div className="relative z-10">
               <div className="flex justify-between items-start mb-4">
                 <span className="p-2 bg-secondary-container text-on-secondary-fixed-variant rounded-lg"><BrainCircuit size={20} /></span>
@@ -216,9 +216,9 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
 
         {/* Charts bento */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2 bg-white border border-outline-variant rounded-xl p-6">
+          <div className="lg:col-span-2 bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
             <div className="flex justify-between items-center mb-6">
-              <h3 className="font-sans text-2xl font-semibold text-primary">Candidatures mensuelles</h3>
+              <h3 className="font-sans text-2xl font-semibold text-on-surface">Candidatures mensuelles</h3>
               <select className="bg-surface-container-low border border-outline-variant text-sm rounded-lg py-1 px-3 focus:outline-none">
                 <option>6 derniers mois</option>
                 <option>12 derniers mois</option>
@@ -233,9 +233,9 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
                       <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="name" stroke="#76777d" fontSize={11} />
-                  <YAxis stroke="#76777d" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant)" />
+                  <XAxis dataKey="name" stroke="var(--color-on-surface-variant)" fontSize={11} />
+                  <YAxis stroke="var(--color-on-surface-variant)" fontSize={11} />
                   <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                   <Area type="monotone" dataKey="candidatures" stroke="#06b6d4" strokeWidth={2} fillOpacity={1} fill="url(#colorCandidatures)" dot={{ r: 4, fill: "#fff", stroke: "#06b6d4", strokeWidth: 2 }} />
                 </AreaChart>
@@ -243,13 +243,13 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
             </div>
           </div>
 
-          <div className="bg-white border border-outline-variant rounded-xl p-6">
-            <h3 className="font-sans text-2xl font-semibold text-primary mb-6">Compétences demandées</h3>
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
+            <h3 className="font-sans text-2xl font-semibold text-on-surface mb-6">Compétences demandées</h3>
             <div className="h-64 flex justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={radarData} outerRadius="75%">
-                  <PolarGrid stroke="#E2E8F0" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: "#45464d" }} />
+                  <PolarGrid stroke="var(--color-outline-variant)" />
+                  <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: "var(--color-on-surface-variant)" }} />
                   <Radar dataKey="value" stroke="#00687a" fill="#00687a" fillOpacity={0.2} />
                 </RadarChart>
               </ResponsiveContainer>
@@ -261,16 +261,16 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
             </div>
           </div>
 
-          <div className="lg:col-span-3 bg-white border border-outline-variant rounded-xl p-6">
-            <h3 className="font-sans text-2xl font-semibold text-primary mb-6">Répartition par expérience</h3>
+          <div className="lg:col-span-3 bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
+            <h3 className="font-sans text-2xl font-semibold text-on-surface mb-6">Répartition par expérience</h3>
             <div className="h-48">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={expDistribution} margin={{ top: 0, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis dataKey="name" stroke="#76777d" fontSize={11} />
-                  <YAxis stroke="#76777d" fontSize={11} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant)" />
+                  <XAxis dataKey="name" stroke="var(--color-on-surface-variant)" fontSize={11} />
+                  <YAxis stroke="var(--color-on-surface-variant)" fontSize={11} />
                   <Tooltip contentStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="value" fill="#131b2e" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="value" fill="var(--color-secondary)" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -279,9 +279,9 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
 
         {/* Bottom grid */}
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <div className="bg-white border border-outline-variant rounded-xl overflow-hidden">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
             <div className="p-6 border-b border-outline-variant flex justify-between items-center">
-              <h3 className="font-sans text-2xl font-semibold text-primary">Candidats récents</h3>
+              <h3 className="font-sans text-2xl font-semibold text-on-surface">Candidats récents</h3>
               <button onClick={() => onNavigateToView("candidates")} className="text-secondary font-mono text-xs font-semibold hover:underline">Voir tout</button>
             </div>
             <div className="overflow-x-auto custom-scrollbar">
@@ -342,9 +342,9 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
             </div>
           </div>
 
-          <div className="bg-white border border-outline-variant rounded-xl overflow-hidden">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden">
             <div className="p-6 border-b border-outline-variant flex justify-between items-center">
-              <h3 className="font-sans text-2xl font-semibold text-primary">Dernières offres publiées</h3>
+              <h3 className="font-sans text-2xl font-semibold text-on-surface">Dernières offres publiées</h3>
               <button onClick={() => onNavigateToView("jobs")} className="text-secondary font-mono text-xs font-semibold hover:underline">Gérer tout</button>
             </div>
             <div className="p-6 space-y-4">

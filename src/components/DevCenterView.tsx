@@ -212,7 +212,7 @@ volumes:
 
       {/* Tab Panels */}
       {activeTab === "architecture" && (
-        <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm space-y-6 text-left">
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm space-y-6 text-left">
           <div className="flex items-center gap-3 border-b border-outline-variant pb-4">
             <Layers className="text-secondary" size={20} />
             <h3 className="font-bold text-on-surface font-sans">Patrons d'Architecture du Nexus Talent System</h3>
@@ -260,7 +260,7 @@ volumes:
 
       {activeTab === "dbcontext" && (
         <div className="space-y-4 text-left">
-          <div className="flex justify-between items-center bg-white rounded-xl border border-outline-variant p-4 shadow-sm">
+          <div className="flex justify-between items-center bg-surface-container-lowest rounded-xl border border-outline-variant p-4 shadow-sm">
             <span className="text-xs font-mono text-on-surface-variant font-semibold">NexusTalentDbContext.cs (EF Core & PostgreSQL)</span>
             <button
               onClick={() => handleCopy(dbContextCode)}
@@ -288,7 +288,7 @@ volumes:
 
       {activeTab === "controller" && (
         <div className="space-y-4 text-left">
-          <div className="flex justify-between items-center bg-white rounded-xl border border-outline-variant p-4 shadow-sm">
+          <div className="flex justify-between items-center bg-surface-container-lowest rounded-xl border border-outline-variant p-4 shadow-sm">
             <span className="text-xs font-mono text-on-surface-variant font-semibold">CandidateController.cs (C# REST Controllers)</span>
             <button
               onClick={() => handleCopy(controllerCode)}
@@ -316,7 +316,7 @@ volumes:
 
       {activeTab === "docker" && (
         <div className="space-y-4 text-left">
-          <div className="flex justify-between items-center bg-white rounded-xl border border-outline-variant p-4 shadow-sm">
+          <div className="flex justify-between items-center bg-surface-container-lowest rounded-xl border border-outline-variant p-4 shadow-sm">
             <span className="text-xs font-mono text-on-surface-variant font-semibold">docker-compose.yml (Déploiement Local / Production)</span>
             <button
               onClick={() => handleCopy(dockerCode)}

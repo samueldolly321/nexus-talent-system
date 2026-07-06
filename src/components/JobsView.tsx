@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Plus,
   MapPin,
@@ -26,6 +26,9 @@ interface JobsViewProps {
   onEditJob: (id: string, jobData: Partial<Job>) => void;
   onDeleteJob: (id: string) => void;
   loading: boolean;
+  // Incrémenté par App (ex. bouton "Nouvelle Offre" de la sidebar) pour
+  // déclencher l'ouverture du modal de création depuis l'extérieur du composant.
+  openCreateSignal?: number;
 }
 
 // Formate une date ISO "YYYY-MM-DD" en "JJ/MM/AAAA" (indépendant du fuseau horaire).
@@ -37,7 +40,7 @@ const formatDeadline = (iso: string) => {
 // Deadline dépassée = strictement avant aujourd'hui (comparaison lexicographique sur YYYY-MM-DD).
 const isDeadlinePassed = (iso: string) => iso < new Date().toISOString().slice(0, 10);
 
-export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange, onCreateJob, onEditJob, onDeleteJob, loading }: JobsViewProps) {
+export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange, onCreateJob, onEditJob, onDeleteJob, loading, openCreateSignal }: JobsViewProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -100,6 +103,15 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
     setIsEditing(false);
     resetForm();
   };
+
+  // Déclenché par le bouton "Nouvelle Offre" de la sidebar : ouvre le modal
+  // de création même si on n'était pas déjà sur cette page. Le signal est un
+  // compteur (et non un booléen) pour se redéclencher à chaque clic, y
+  // compris si l'utilisateur est déjà sur la page Offres.
+  useEffect(() => {
+    if (openCreateSignal) openCreateModal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openCreateSignal]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -165,7 +177,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
           {/* Left / Middle: Jobs List */}
           <div className="xl:col-span-2 space-y-4">
             {filteredJobs.length === 0 ? (
-              <div className="bg-white rounded-xl border border-dashed border-outline-variant p-12 text-center">
+              <div className="bg-surface-container-lowest rounded-xl border border-dashed border-outline-variant p-12 text-center">
                 <Briefcase className="mx-auto text-slate-300 mb-4" size={44} />
                 <h3 className="font-sans font-bold text-on-surface-variant text-sm">
                   {q ? "Aucune offre ne correspond à la recherche" : "Aucune offre d'emploi active"}
@@ -181,7 +193,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                 <div 
                   key={job.id} 
                   onClick={() => setSelectedJob(job)}
-                  className={`bg-white rounded-xl border p-6 cursor-pointer shadow-sm hover:shadow-md transition-all ${
+                  className={`bg-surface-container-lowest rounded-xl border p-6 cursor-pointer shadow-sm hover:shadow-md transition-all ${
                     selectedJob?.id === job.id ? "border-secondary ring-2 ring-secondary/10" : "border-outline-variant"
                   }`}
                 >
@@ -278,7 +290,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
           {/* Right Panel: Selected Job Details */}
           <div className="xl:col-span-1">
             {selectedJob ? (
-              <div className="bg-white rounded-xl border border-outline-variant shadow-sm p-6 sticky top-8">
+              <div className="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm p-6 sticky top-8">
                 <div className="border-b border-outline-variant pb-5 mb-5">
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-secondary-container/20 text-on-secondary-container uppercase tracking-wider">
                     Fiche de Poste
@@ -355,7 +367,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
       {/* Add Job Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl border border-outline-variant shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-outline-variant flex justify-between items-center">
               <div className="flex items-center gap-2 text-on-surface">
                 {isEditing ? <Pencil size={20} className="text-secondary" /> : <PlusCircle size={20} className="text-secondary" />}
@@ -379,7 +391,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     value={title}
                     onChange={e => setTitle(e.target.value)}
                     placeholder="ex: Lead Developer React"
-                    className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                    className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                   />
                 </div>
                 <div>
@@ -387,7 +399,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                   <select 
                     value={contractType}
                     onChange={e => setContractType(e.target.value as ContractType)}
-                    className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                    className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                   >
                     <option value={ContractType.CDI}>CDI</option>
                     <option value={ContractType.CDD}>CDD</option>
@@ -406,7 +418,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     value={location}
                     onChange={e => setLocation(e.target.value)}
                     placeholder="ex: Paris (Hybride)"
-                    className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                    className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                   />
                 </div>
                 <div>
@@ -416,7 +428,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     value={salaryRange}
                     onChange={e => setSalaryRange(e.target.value)}
                     placeholder="ex: 55k€ - 65k€"
-                    className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                    className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                   />
                 </div>
                 <div>
@@ -425,7 +437,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     type="number"
                     value={minExperienceYears}
                     onChange={e => setMinExperienceYears(Number(e.target.value))}
-                    className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                    className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                   />
                 </div>
               </div>
@@ -436,7 +448,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                   type="date"
                   value={deadline}
                   onChange={e => setDeadline(e.target.value)}
-                  className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                  className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                 />
               </div>
 
@@ -447,7 +459,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                   value={educationRequired}
                   onChange={e => setEducationRequired(e.target.value)}
                   placeholder="ex: Bac +5 Université ou École d'Ingénieur"
-                  className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                  className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                 />
               </div>
 
@@ -458,7 +470,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                   placeholder="Présentez brièvement le projet, le contexte de recrutement et l'équipe..."
-                  className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                  className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                 />
               </div>
 
@@ -469,7 +481,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                   value={missions}
                   onChange={e => setMissions(e.target.value)}
                   placeholder="ex: Concevoir l'architecture de la console d'administration.&#10;Mentorer l'équipe junior..."
-                  className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                  className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                 />
               </div>
 
@@ -481,7 +493,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     value={skillsRequired}
                     onChange={e => setSkillsRequired(e.target.value)}
                     placeholder="React, TypeScript, Redux, Docker"
-                    className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                    className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                   />
                 </div>
                 <div>
@@ -491,7 +503,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     value={languagesRequired}
                     onChange={e => setLanguagesRequired(e.target.value)}
                     placeholder="Français (Courant), Anglais (Technique)"
-                    className="w-full bg-white text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                    className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                   />
                 </div>
               </div>

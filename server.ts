@@ -12,6 +12,7 @@ import { Prisma, ContractType as PrismaContractType, JobStatus, SkillCategory, P
 import { prisma } from "./src/lib/prisma.js";
 import type { User as PrismaUser } from "@prisma/client";
 import { mapCompany, mapUser, mapJob, jobInclude, mapCandidate, mapPipelineStage, candidateInclude, toPrismaPipelineStage, mapEmail, mapAuditLog, toPrismaUserRole } from "./src/lib/mappers.js";
+import { PDFParse } from "pdf-parse";
 
 // Load environment variables
 dotenv.config();
@@ -1137,6 +1138,104 @@ app.get("/api/reports/funnel", requireAuth, async (req, res) => {
     console.error("[GET /api/reports/funnel]", err);
     res.status(500).json({ error: "Erreur base de données." });
   }
+});
+
+// ==========================================
+// 8. PUBLIC APPLICATION (candidature en ligne, sans authentification)
+// ==========================================
+const cvDir = path.join(process.cwd(), "uploads", "cvs");
+fs.mkdirSync(cvDir, { recursive: true });
+
+const uploadCv = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, cvDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || ".pdf";
+      cb(null, `cv-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 Mo max
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype === "application/pdf") cb(null, true);
+    else cb(new Error("Seuls les fichiers PDF sont acceptés."));
+  },
+});
+
+// GET /api/public/jobs — offres actives visibles publiquement (sans données sensibles).
+app.get("/api/public/jobs", async (req, res) => {
+  try {
+    const rows = await prisma.job.findMany({
+      where: { status: JobStatus.Active },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, title: true, location: true, contractType: true, companyId: true },
+    });
+    res.json(rows);
+  } catch (err) {
+    console.error("[GET /api/public/jobs]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
+// POST /api/public/apply — candidature en ligne avec upload de CV (PDF).
+app.post("/api/public/apply", (req, res) => {
+  uploadCv.single("cv")(req, res, async (err: unknown) => {
+    if (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : "Upload invalide." });
+    }
+    const b = req.body ?? {};
+    const name = String(b.name ?? "").trim();
+    const email = String(b.email ?? "").trim();
+    const jobId = String(b.jobId ?? "").trim();
+
+    if (!name || !email || !jobId) {
+      return res.status(400).json({ error: "Nom, email et offre sont requis." });
+    }
+    if (!req.file) {
+      return res.status(400).json({ error: "Le CV (PDF) est requis." });
+    }
+
+    try {
+      const job = await prisma.job.findFirst({ where: { id: jobId, status: JobStatus.Active } });
+      if (!job) return res.status(404).json({ error: "Offre introuvable ou inactive." });
+
+      const fileBuffer = fs.readFileSync(req.file.path);
+      let cvText = "";
+      try {
+        const parser = new PDFParse({ data: fileBuffer });
+        const result = await parser.getText();
+        await parser.destroy();
+        cvText = result.text || "";
+      } catch (parseErr) {
+        console.error("[pdf-parse]", parseErr);
+        return res.status(400).json({ error: "Impossible de lire le contenu du PDF." });
+      }
+
+      const created = await prisma.candidate.create({
+        data: {
+          companyId: job.companyId,
+          jobId: job.id,
+          name,
+          email,
+          phone: String(b.phone ?? ""),
+          location: String(b.location ?? "Non spécifiée"),
+          linkedinUrl: b.linkedinUrl || null,
+          stage: PrismaPipelineStage.Received,
+          cvText,
+        },
+      });
+
+      logActionFor(
+        { companyId: job.companyId, userId: "" },
+        "Candidature en ligne",
+        `Nouvelle candidature reçue de '${name}' pour l'offre '${job.title}'.`
+      );
+
+      res.json({ success: true, candidateId: created.id });
+    } catch (e) {
+      console.error("[POST /api/public/apply]", e);
+      res.status(500).json({ error: "Erreur lors de l'enregistrement de la candidature." });
+    }
+  });
 });
 
 // ==========================================

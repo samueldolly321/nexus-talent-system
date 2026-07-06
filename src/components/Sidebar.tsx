@@ -13,6 +13,8 @@ import {
   ChevronDown,
   LogOut,
   BrainCircuit,
+  Sun,
+  Moon,
   X
 } from "lucide-react";
 import { Company, User } from "../types";
@@ -30,6 +32,8 @@ interface SidebarProps {
   // Drawer mobile : contrôlé par App (statique ≥ md, coulissant < md).
   isOpen?: boolean;
   onClose?: () => void;
+  darkMode?: boolean;
+  onToggleDarkMode?: () => void;
 }
 
 export default function Sidebar({
@@ -43,7 +47,9 @@ export default function Sidebar({
   onCreateJob,
   onLogout,
   isOpen = false,
-  onClose
+  onClose,
+  darkMode = false,
+  onToggleDarkMode
 }: SidebarProps) {
   const menuItems = [
     { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -89,7 +95,7 @@ export default function Sidebar({
           <span className="font-mono text-on-primary text-[10px] font-bold tracking-tight">NT</span>
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="font-sans font-bold text-lg text-primary leading-tight truncate">Nexus Talent</h1>
+          <h1 className="font-sans font-bold text-lg text-on-surface leading-tight truncate">Nexus Talent</h1>
           <p className="font-mono text-[10px] text-on-surface-variant tracking-widest uppercase">Espace Recruteur</p>
         </div>
         {/* Fermeture du drawer (mobile uniquement) */}
@@ -112,7 +118,7 @@ export default function Sidebar({
           <select
             value={activeCompany?.id || ""}
             onChange={handleCompanyChange}
-            className="w-full appearance-none bg-white text-xs text-on-surface rounded-md border border-outline-variant py-1.5 pl-2 pr-6 focus:border-secondary focus:outline-none font-medium"
+            className="w-full appearance-none bg-surface-container-lowest text-xs text-on-surface rounded-md border border-outline-variant py-1.5 pl-2 pr-6 focus:border-secondary focus:outline-none font-medium"
           >
             {allCompanies.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
@@ -124,7 +130,7 @@ export default function Sidebar({
           <select
             value={activeUser?.id || ""}
             onChange={handleUserChange}
-            className="w-full appearance-none bg-white text-xs text-on-surface rounded-md border border-outline-variant py-1.5 pl-2 pr-6 focus:border-secondary focus:outline-none font-medium"
+            className="w-full appearance-none bg-surface-container-lowest text-xs text-on-surface rounded-md border border-outline-variant py-1.5 pl-2 pr-6 focus:border-secondary focus:outline-none font-medium"
           >
             {allUsers.filter(u => u.companyId === activeCompany?.id).map(u => (
               <option key={u.id} value={u.id}>{u.name} — {u.role}</option>
@@ -156,6 +162,33 @@ export default function Sidebar({
         })}
       </nav>
 
+      {/* Mode sombre */}
+      {onToggleDarkMode && (
+        <div className="px-6 mt-4">
+          <button
+            onClick={onToggleDarkMode}
+            aria-pressed={darkMode}
+            className="w-full flex items-center justify-between gap-2 px-4 py-2.5 border border-outline-variant rounded-lg text-sm font-medium text-on-surface-variant hover:bg-surface-container-low transition-all"
+          >
+            <span className="flex items-center gap-2">
+              {darkMode ? <Moon size={16} /> : <Sun size={16} />}
+              Mode sombre
+            </span>
+            <span
+              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors shrink-0 ${
+                darkMode ? "bg-secondary" : "bg-outline-variant"
+              }`}
+            >
+              <span
+                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                  darkMode ? "translate-x-[18px]" : "translate-x-1"
+                }`}
+              />
+            </span>
+          </button>
+        </div>
+      )}
+
       {/* CTA */}
       <div className="px-6 mt-4">
         <button
@@ -163,7 +196,7 @@ export default function Sidebar({
           className="w-full bg-accent text-white py-2.5 rounded-lg font-bold text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-sm"
         >
           <Plus size={18} />
-          Post New Job
+          Nouvelle Offre
         </button>
       </div>
 

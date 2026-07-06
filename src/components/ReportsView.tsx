@@ -213,7 +213,7 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
 
       {/* KPI Performance Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm flex items-center gap-4">
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm flex items-center gap-4">
           <div className="p-3 bg-secondary-container/20 text-secondary rounded-lg shrink-0">
             <Clock size={22} />
           </div>
@@ -224,7 +224,7 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm flex items-center gap-4">
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm flex items-center gap-4">
           <div className="p-3 bg-indigo-50 text-indigo-600 rounded-lg shrink-0">
             <Target size={22} />
           </div>
@@ -235,7 +235,7 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm flex items-center gap-4">
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm flex items-center gap-4">
           <div className="p-3 bg-emerald-50 text-emerald-600 rounded-lg shrink-0">
             <CheckCircle2 size={22} />
           </div>
@@ -250,14 +250,14 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
       {/* Main Charts Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
         {/* Recruitment Funnel Conversion Bar chart */}
-        <div className="lg:col-span-2 bg-white rounded-xl border border-outline-variant p-6 shadow-sm">
+        <div className="lg:col-span-2 bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm">
           <h3 className="font-sans font-bold text-on-surface text-sm mb-4">Entonnoir de Recrutement (Fidélité de conversion)</h3>
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={funnelData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} className="font-mono" />
-                <YAxis stroke="#94a3b8" fontSize={11} className="font-mono" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-outline-variant)" />
+                <XAxis dataKey="name" stroke="var(--color-on-surface-variant)" fontSize={11} className="font-mono" />
+                <YAxis stroke="var(--color-on-surface-variant)" fontSize={11} className="font-mono" />
                 <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                 <Bar dataKey="valeur" fill="#0ea5e9" radius={[4, 4, 0, 0]} barSize={24} />
               </BarChart>
@@ -266,7 +266,7 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
         </div>
 
         {/* Acquisition channels pie chart representation */}
-        <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm flex flex-col justify-between">
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="font-sans font-bold text-on-surface text-sm mb-1">Canaux de Sourcing</h3>
             <p className="text-[10px] font-mono text-on-surface-variant/70 mb-1">Données indicatives — champ source à venir</p>
@@ -300,7 +300,7 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
       </div>
 
       {/* Export Reports Panel */}
-      <div className="bg-white rounded-xl border border-outline-variant p-6 shadow-sm">
+      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant p-6 shadow-sm">
         <h3 className="font-sans font-bold text-on-surface text-sm mb-1">Génération de Rapports Officiels</h3>
         <p className="text-xs text-on-surface-variant mb-6">Exportez le registre complet des candidatures, les analyses et les décisions recommandées par le moteur IA.</p>
 

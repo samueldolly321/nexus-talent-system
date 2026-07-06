@@ -36,7 +36,7 @@ export default function PipelineView({ candidates, jobs, activeUser, onSelectCan
       <main className="flex-1 p-4 md:p-6 overflow-hidden flex flex-col min-h-0">
         <div className="flex justify-between items-start mb-6 flex-wrap gap-4">
           <div>
-            <h2 className="font-sans text-2xl md:text-[32px] font-semibold text-primary tracking-tight leading-tight">Pipeline de recrutement</h2>
+            <h2 className="font-sans text-2xl md:text-[32px] font-semibold text-on-surface tracking-tight leading-tight">Pipeline de recrutement</h2>
             <div className="flex items-center gap-2 mt-2">
               <span className="px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-[10px] font-mono uppercase rounded-full font-bold">Poste actif</span>
               <select
@@ -95,7 +95,7 @@ export default function PipelineView({ candidates, jobs, activeUser, onSelectCan
                           draggable
                           onDragStart={() => setDraggedId(cand.id)}
                           onClick={() => onSelectCandidate(cand)}
-                          className="bg-white border border-outline-variant rounded-xl p-4 cursor-pointer hover:border-secondary transition-all shadow-sm"
+                          className="bg-surface-container-lowest border border-outline-variant rounded-xl p-4 cursor-pointer hover:border-secondary transition-all shadow-sm"
                         >
                           <div className="flex items-center gap-3 mb-3">
                             <div className="w-9 h-9 rounded-full bg-primary-fixed-dim flex items-center justify-center font-bold text-on-primary-fixed text-xs shrink-0">
