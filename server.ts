@@ -15,6 +15,9 @@ import { mapCompany, mapUser, mapJob, jobInclude, mapCandidate, mapPipelineStage
 import { PDFParse } from "pdf-parse";
 import mammoth from "mammoth";
 import { Resend } from "resend";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import cors from "cors";
 
 // Load environment variables
 dotenv.config();
@@ -41,6 +44,71 @@ async function sendEmail(params: { to: string; subject: string; html: string }):
 
 const app = express();
 const PORT = 3000;
+
+// ==========================================
+// SÉCURITÉ (Helmet, CORS restreint, rate limiting)
+// ==========================================
+// Helmet : headers de sécurité HTTP. CSP élargie aux sources réellement
+// utilisées par l'app (Google Fonts + images externes type avatars), sinon
+// polices et photos seraient bloquées.
+app.use(helmet({
+  crossOriginEmbedderPolicy: false, // nécessaire pour Vite en dev
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Vite HMR
+      styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc: ["'self'", "https://fonts.gstatic.com"],
+      imgSrc: ["'self'", "data:", "blob:", "https:"], // avatars/photos externes
+      connectSrc: ["'self'", "ws:", "wss:"], // WebSocket Vite
+    },
+  },
+}));
+
+// CORS restreint aux origines autorisées (le front est servi par ce même
+// serveur → même origine ; la liste couvre aussi le dev Vite sur 5173).
+const allowedOrigins = process.env.FRONTEND_URL
+  ? [process.env.FRONTEND_URL]
+  : ["http://localhost:3000", "http://localhost:5173"];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true); // Postman, curl, requêtes serveur
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error(`Origine non autorisée : ${origin}`));
+  },
+  credentials: true, // cookies (refresh token JWT)
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+}));
+
+// Rate limiting : limite générale sur l'API + limites strictes login/candidature.
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Trop de requêtes. Réessayez dans 15 minutes." },
+  skip: (req) => req.ip === "127.0.0.1" || req.ip === "::1" || req.ip === "::ffff:127.0.0.1",
+});
+app.use("/api", globalLimiter);
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Trop de tentatives de connexion. Réessayez dans 15 minutes." },
+});
+app.use("/api/auth/login", loginLimiter);
+
+const applyLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Trop de candidatures. Réessayez dans 1 heure." },
+});
+app.use("/api/public/apply", applyLimiter);
 
 app.use(express.json());
 app.use(cookieParser());
