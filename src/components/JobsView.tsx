@@ -422,12 +422,12 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">Salaire / Fourchette</label>
-                  <input 
-                    type="text" 
+                  <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">Salaire / Fourchette (Ariary)</label>
+                  <input
+                    type="text"
                     value={salaryRange}
                     onChange={e => setSalaryRange(e.target.value)}
-                    placeholder="ex: 55k€ - 65k€"
+                    placeholder="ex: 1 000 000 Ar - 2 000 000 Ar"
                     className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                   />
                 </div>

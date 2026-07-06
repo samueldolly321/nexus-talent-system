@@ -21,6 +21,7 @@ export default function ApplyView() {
     linkedinUrl: "",
   });
   const [cvFile, setCvFile] = useState<File | null>(null);
+  const [letterFile, setLetterFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -55,6 +56,20 @@ export default function ApplyView() {
     setCvFile(file);
   };
 
+  const handleLetterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    const isDocx =
+      file?.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file?.name.toLowerCase().endsWith(".docx");
+    if (file && file.type !== "application/pdf" && !isDocx) {
+      setError("La lettre de motivation doit être au format PDF ou Word (.docx).");
+      setLetterFile(null);
+      return;
+    }
+    setError(null);
+    setLetterFile(file);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -78,6 +93,7 @@ export default function ApplyView() {
       fd.append("location", form.location);
       fd.append("linkedinUrl", form.linkedinUrl);
       fd.append("cv", cvFile);
+      if (letterFile) fd.append("letter", letterFile);
 
       const res = await fetch("/api/public/apply", { method: "POST", body: fd });
       const data = await res.json();
@@ -255,6 +271,28 @@ export default function ApplyView() {
               </span>
             </label>
             <input id="cv-upload" type="file" accept="application/pdf" onChange={handleFileChange} className="hidden" />
+          </div>
+
+          <div>
+            <label className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5 font-semibold">
+              Lettre de motivation (PDF ou Word) <span className="text-on-surface-variant/70 normal-case tracking-normal">(optionnel)</span>
+            </label>
+            <label
+              htmlFor="letter-upload"
+              className="flex items-center gap-3 border border-dashed border-outline-variant rounded-lg py-4 px-4 cursor-pointer hover:bg-surface-container-low transition-all"
+            >
+              {letterFile ? <FileText size={20} className="text-secondary shrink-0" /> : <UploadCloud size={20} className="text-on-surface-variant shrink-0" />}
+              <span className="text-sm text-on-surface truncate">
+                {letterFile ? letterFile.name : "Cliquez pour choisir votre lettre (PDF ou Word, 10 Mo max)"}
+              </span>
+            </label>
+            <input
+              id="letter-upload"
+              type="file"
+              accept="application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleLetterChange}
+              className="hidden"
+            />
           </div>
 
           {error && (

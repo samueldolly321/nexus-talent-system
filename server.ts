@@ -13,6 +13,7 @@ import { prisma } from "./src/lib/prisma.js";
 import type { User as PrismaUser } from "@prisma/client";
 import { mapCompany, mapUser, mapJob, jobInclude, mapCandidate, mapPipelineStage, candidateInclude, toPrismaPipelineStage, mapEmail, mapAuditLog, toPrismaUserRole } from "./src/lib/mappers.js";
 import { PDFParse } from "pdf-parse";
+import mammoth from "mammoth";
 
 // Load environment variables
 dotenv.config();
@@ -1156,8 +1157,20 @@ const uploadCv = multer({
   }),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 Mo max
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype === "application/pdf") cb(null, true);
-    else cb(new Error("Seuls les fichiers PDF sont acceptés."));
+    const isPdf = file.mimetype === "application/pdf";
+    const isDocx =
+      file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      path.extname(file.originalname).toLowerCase() === ".docx";
+    // Le CV reste strictement PDF ; la lettre de motivation accepte PDF ou Word (.docx).
+    if (file.fieldname === "cv") {
+      return isPdf ? cb(null, true) : cb(new Error("Le CV doit être au format PDF."));
+    }
+    if (file.fieldname === "letter") {
+      return isPdf || isDocx
+        ? cb(null, true)
+        : cb(new Error("La lettre de motivation doit être au format PDF ou Word (.docx)."));
+    }
+    cb(new Error("Champ de fichier inattendu."));
   },
 });
 
@@ -1178,7 +1191,10 @@ app.get("/api/public/jobs", async (req, res) => {
 
 // POST /api/public/apply — candidature en ligne avec upload de CV (PDF).
 app.post("/api/public/apply", (req, res) => {
-  uploadCv.single("cv")(req, res, async (err: unknown) => {
+  uploadCv.fields([
+    { name: "cv", maxCount: 1 },
+    { name: "letter", maxCount: 1 },
+  ])(req, res, async (err: unknown) => {
     if (err) {
       return res.status(400).json({ error: err instanceof Error ? err.message : "Upload invalide." });
     }
@@ -1187,10 +1203,13 @@ app.post("/api/public/apply", (req, res) => {
     const email = String(b.email ?? "").trim();
     const jobId = String(b.jobId ?? "").trim();
 
+    const cvFile = (req.files as any)?.["cv"]?.[0];
+    const letterFile = (req.files as any)?.["letter"]?.[0];
+
     if (!name || !email || !jobId) {
       return res.status(400).json({ error: "Nom, email et offre sont requis." });
     }
-    if (!req.file) {
+    if (!cvFile) {
       return res.status(400).json({ error: "Le CV (PDF) est requis." });
     }
 
@@ -1198,7 +1217,7 @@ app.post("/api/public/apply", (req, res) => {
       const job = await prisma.job.findFirst({ where: { id: jobId, status: JobStatus.Active } });
       if (!job) return res.status(404).json({ error: "Offre introuvable ou inactive." });
 
-      const fileBuffer = fs.readFileSync(req.file.path);
+      const fileBuffer = fs.readFileSync(cvFile.path);
       let cvText = "";
       try {
         const parser = new PDFParse({ data: fileBuffer });
@@ -1208,6 +1227,30 @@ app.post("/api/public/apply", (req, res) => {
       } catch (parseErr) {
         console.error("[pdf-parse]", parseErr);
         return res.status(400).json({ error: "Impossible de lire le contenu du PDF." });
+      }
+
+      // Lettre de motivation optionnelle : PDF (pdf-parse) ou Word .docx (mammoth).
+      // Si l'extraction échoue, on n'interrompt pas la candidature.
+      let letterText = "";
+      if (letterFile) {
+        const ext = path.extname(letterFile.originalname).toLowerCase();
+        const isDocx =
+          ext === ".docx" ||
+          letterFile.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+        try {
+          if (isDocx) {
+            const result = await mammoth.extractRawText({ path: letterFile.path });
+            letterText = result.value || "";
+          } else {
+            const letterBuffer = fs.readFileSync(letterFile.path);
+            const parser = new PDFParse({ data: letterBuffer });
+            const result = await parser.getText();
+            await parser.destroy();
+            letterText = result.text || "";
+          }
+        } catch (parseErr) {
+          console.error("[letter parse]", parseErr);
+        }
       }
 
       const created = await prisma.candidate.create({
@@ -1221,6 +1264,7 @@ app.post("/api/public/apply", (req, res) => {
           linkedinUrl: b.linkedinUrl || null,
           stage: PrismaPipelineStage.Received,
           cvText,
+          letterText,
         },
       });
 
