@@ -72,6 +72,8 @@ enum SkillCategory {
   Tool
   Cloud
   SoftSkill
+  Domain        // compétence métier / sectorielle (comptabilité, fiscalité, RH, juridique…)
+  Certification // certification / habilitation (DSCG, CACES, AWS Certified…)
 }
 
 // ============================================================================
@@ -133,6 +135,7 @@ model Job {
   contractType       ContractType
   status             JobStatus    @default(Draft)
   priority           String?      @default("Normal") // "Urgent", "Haute", "Normal", "Basse"
+  domain             String?      @default("IT") // "IT" | "Autre" — pilote la grille de compétences de l'analyse IA
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 

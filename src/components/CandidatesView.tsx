@@ -89,6 +89,7 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
 
   const allSkills = useMemo(() => {
     const set = new Set<string>();
+    candidates.forEach(c => c.analysis?.skills?.domain?.forEach(s => set.add(s)));
     candidates.forEach(c => c.analysis?.skills?.frameworks?.forEach(s => set.add(s)));
     candidates.forEach(c => c.analysis?.skills?.languages?.forEach(s => set.add(s)));
     return Array.from(set).slice(0, 4);

@@ -50,6 +50,7 @@ export interface Job {
   contractType: ContractType;
   status: "Active" | "Archived" | "Draft";
   priority?: string;
+  domain?: "IT" | "Autre"; // pilote la grille de compétences de l'analyse IA
   createdAt: string;
   updatedAt?: string;
 }
@@ -94,6 +95,8 @@ export interface CandidateAnalysis {
     tools: string[];
     cloud: string[];
     softSkills: string[];
+    domain?: string[];         // compétences métier (offres "Autre" : compta, RH, juridique…)
+    certifications?: string[]; // certifications / habilitations (offres "Autre")
   };
   educations: CandidateEducation[];
   experiences: CandidateExperience[];

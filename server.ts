@@ -614,12 +614,12 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
           return { name: d.toLocaleString("en-US", { month: "short" }), candidatures: 0 };
         });
 
-    // Distribution des compétences (depuis analysis.skills : languages+frameworks+tools+cloud), top 7.
+    // Distribution des compétences (depuis analysis.skills : IT + métier), top 7.
     const skillCounts: Record<string, number> = {};
     for (const c of candidates) {
       const s = c.analysis?.skills;
       if (s) {
-        for (const name of [...(s.languages || []), ...(s.frameworks || []), ...(s.tools || []), ...(s.cloud || [])]) {
+        for (const name of [...(s.languages || []), ...(s.frameworks || []), ...(s.tools || []), ...(s.cloud || []), ...(s.domain || []), ...(s.certifications || [])]) {
           skillCounts[name] = (skillCounts[name] || 0) + 1;
         }
       }
@@ -748,6 +748,7 @@ app.post("/api/jobs", requireAuth, async (req, res) => {
           contractType: isValidContractType(b.contractType) ? b.contractType : PrismaContractType.CDI,
           status: JobStatus.Active,
           priority: b.priority || "Normal",
+          domain: b.domain === "Autre" ? "Autre" : "IT",
         },
       });
       await replaceJobSkills(tx, created.id, skills);
@@ -785,6 +786,7 @@ app.put("/api/jobs/:id", requireAuth, async (req, res) => {
     if (isValidContractType(b.contractType)) data.contractType = b.contractType;
     if (isValidJobStatus(b.status)) data.status = b.status;
     if (b.priority !== undefined) data.priority = b.priority || "Normal";
+    if (b.domain !== undefined) data.domain = b.domain === "Autre" ? "Autre" : "IT";
 
     const full = await prisma.$transaction(async (tx) => {
       await tx.job.update({ where: { id }, data });
@@ -1071,6 +1073,20 @@ app.post("/api/candidates/:id/analyze", requireAuth, async (req, res) => {
       ? `Poste : ${job.title}\nDescription : ${job.description}\nCompétences requises : ${job.skills.map((js) => js.skill.name).join(", ")}\nExpérience requise : ${job.minExperienceYears} ans`
       : "Poste : Développeur Web Généraliste";
 
+    // Le domaine de l'offre pilote la grille de compétences : IT garde les cases
+    // techniques (langages, frameworks…) ; "Autre" ouvre les compétences métier
+    // et certifications pour les postes non-informatiques (compta, RH, juridique…).
+    const isNonIt = job?.domain === "Autre";
+    const skillsInstruction = isNonIt
+      ? `- "skills" : { "languages": [], "frameworks": [], "databases": [], "tools": [], "cloud": [], "softSkills": [], "domain": [], "certifications": [] }
+     Ce poste N'EST PAS informatique. Utilise EN PRIORITÉ :
+       • "domain" pour les compétences métier/sectorielles (ex. comptabilité générale, fiscalité, paie, contrôle de gestion, droit social, gestion administrative…) ;
+       • "tools" pour les logiciels et outils maîtrisés (ex. Sage, SAP, Excel, Cegid, EBP…) ;
+       • "certifications" pour les diplômes et habilitations professionnels (ex. DSCG, DCG, CACES, TOEIC…) ;
+       • "softSkills" pour le savoir-être.
+     Laisse "languages", "frameworks", "databases", "cloud" VIDES (ils ne concernent que l'informatique).`
+      : `- "skills" : { "languages": [], "frameworks": [], "databases": [], "tools": [], "cloud": [], "softSkills": [], "domain": [], "certifications": [] } (Répartis les compétences techniques extraites du CV dans les cases adéquates ; "domain" et "certifications" restent vides pour un poste informatique)`;
+
     const prompt = `Tu es un expert d'un système ATS de recrutement RH intelligent.
 Analyse le CV ci-dessous par rapport au descriptif du poste proposé. Extrais de manière structurée les informations au format JSON respectant EXACTEMENT la structure spécifiée.
 
@@ -1084,7 +1100,7 @@ REQUIS DE SORTIE - FORMAT JSON UNIQUEMENT :
 Tu dois renvoyer un objet JSON valide contenant exactement les clés suivantes :
 1. "analysis" : contenant :
    - "personalInfo" : { "name", "email", "phone", "location", "linkedin" } (S'ils ne sont pas trouvés, laisse vide)
-   - "skills" : { "languages": [], "frameworks": [], "databases": [], "tools": [], "cloud": [], "softSkills": [] } (Répartis les compétences extraites du CV)
+   ${skillsInstruction}
    - "educations" : un tableau d'objets { "degree", "school", "year" }
    - "experiences" : un tableau d'objets { "years", "company", "role", "description" }
    - "languages" : un tableau de chaînes de caractères (les langues parlées, ex: ["Français", "Anglais"])
@@ -1196,7 +1212,9 @@ app.post("/api/candidates/ai-search", requireAuth, async (req, res) => {
         ...(c.analysis.skills.languages || []),
         ...(c.analysis.skills.frameworks || []),
         ...(c.analysis.skills.tools || []),
-        ...(c.analysis.skills.cloud || [])
+        ...(c.analysis.skills.cloud || []),
+        ...(c.analysis.skills.domain || []),
+        ...(c.analysis.skills.certifications || [])
       ] : [],
       scores: c.scores
     }));

@@ -103,6 +103,7 @@ export const mapJob = (j: JobWithSkills) => ({
   contractType: mapContractType(j.contractType),
   status: mapJobStatus(j.status),
   priority: j.priority ?? "Normal",
+  domain: (j.domain === "Autre" ? "Autre" : "IT") as "IT" | "Autre",
   createdAt: j.createdAt.toISOString(),
   updatedAt: j.updatedAt.toISOString(),
 });

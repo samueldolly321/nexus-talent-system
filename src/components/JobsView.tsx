@@ -81,6 +81,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
   const [skillsRequired, setSkillsRequired] = useState("");
   const [languagesRequired, setLanguagesRequired] = useState("");
   const [priority, setPriority] = useState("Normal");
+  const [domain, setDomain] = useState<"IT" | "Autre">("IT");
 
   // Filtres avancés (panneau repliable).
   const [showFilters, setShowFilters] = useState(false);
@@ -105,6 +106,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
     setSkillsRequired("");
     setLanguagesRequired("");
     setPriority("Normal");
+    setDomain("IT");
   };
 
   // Ouvre le modal en mode création (formulaire vierge).
@@ -131,6 +133,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
     setSkillsRequired(job.skillsRequired.join(", "));
     setLanguagesRequired(job.languagesRequired.join(", "));
     setPriority(job.priority || "Normal");
+    setDomain(job.domain === "Autre" ? "Autre" : "IT");
     setShowAddModal(true);
   };
 
@@ -163,7 +166,8 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
       missions: missions.split("\n").filter(Boolean),
       skillsRequired: skillsRequired.split(",").map(s => s.trim()).filter(Boolean),
       languagesRequired: languagesRequired.split(",").map(l => l.trim()).filter(Boolean),
-      priority
+      priority,
+      domain
     };
     if (isEditing && selectedJob) {
       onEditJob(selectedJob.id, jobData);
@@ -520,6 +524,12 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                         {selectedJob.priority ?? "Normal"}
                       </span>
                     </div>
+                    <div>
+                      <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Domaine</span>
+                      <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-surface-container-high text-on-surface">
+                        {selectedJob.domain === "Autre" ? "Autre" : "IT"}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="pt-4 border-t border-outline-variant flex items-center gap-2">
@@ -606,18 +616,32 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">Priorité</label>
-                <select
-                  value={priority}
-                  onChange={e => setPriority(e.target.value)}
-                  className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
-                >
-                  <option value="Normal">Normal</option>
-                  <option value="Haute">Haute priorité</option>
-                  <option value="Urgent">🔴 Urgent</option>
-                  <option value="Basse">Basse priorité</option>
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">Priorité</label>
+                  <select
+                    value={priority}
+                    onChange={e => setPriority(e.target.value)}
+                    className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                  >
+                    <option value="Normal">Normal</option>
+                    <option value="Haute">Haute priorité</option>
+                    <option value="Urgent">🔴 Urgent</option>
+                    <option value="Basse">Basse priorité</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">Domaine de l'offre</label>
+                  <select
+                    value={domain}
+                    onChange={e => setDomain(e.target.value as "IT" | "Autre")}
+                    className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                  >
+                    <option value="IT">💻 Informatique / IT</option>
+                    <option value="Autre">🏢 Autre (compta, admin, RH…)</option>
+                  </select>
+                  <p className="mt-1 text-[10px] text-on-surface-variant">Adapte l'analyse IA des compétences au type de poste.</p>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

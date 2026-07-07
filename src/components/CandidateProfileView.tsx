@@ -443,16 +443,26 @@ export default function CandidateProfileView({
                 )}
                 <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
                   <h3 className="font-bold text-on-surface mb-4 flex items-center gap-2"><BadgeCheck size={16} />Compétences clés</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      ...(candidate.analysis?.skills.languages || []),
-                      ...(candidate.analysis?.skills.frameworks || []),
-                      ...(candidate.analysis?.skills.cloud || [])
-                    ].map(skill => (
-                      <span key={skill} className="px-2.5 py-1 bg-secondary-container text-on-secondary-container text-xs font-medium rounded-full">{skill}</span>
-                    ))}
-                    {!candidate.analysis && <span className="text-sm text-on-surface-variant">—</span>}
-                  </div>
+                  {(() => {
+                    const s = candidate.analysis?.skills;
+                    const allSkills = s ? [...new Set([
+                      ...(s.domain || []),
+                      ...(s.languages || []),
+                      ...(s.frameworks || []),
+                      ...(s.databases || []),
+                      ...(s.tools || []),
+                      ...(s.cloud || []),
+                      ...(s.certifications || []),
+                    ])] : [];
+                    return (
+                      <div className="flex flex-wrap gap-2">
+                        {allSkills.map(skill => (
+                          <span key={skill} className="px-2.5 py-1 bg-secondary-container text-on-secondary-container text-xs font-medium rounded-full">{skill}</span>
+                        ))}
+                        {allSkills.length === 0 && <span className="text-sm text-on-surface-variant">—</span>}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
