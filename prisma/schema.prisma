@@ -107,6 +107,10 @@ model User {
   role         UserRole
   avatarUrl    String?
   passwordHash String
+  // Réinitialisation de mot de passe : on ne stocke QUE le hash SHA-256 du token
+  // (jamais le token en clair) + son expiration. Effacés après usage.
+  resetTokenHash   String?
+  resetTokenExpiry DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

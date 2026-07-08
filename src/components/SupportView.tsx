@@ -11,7 +11,7 @@ const faq = [
   },
   {
     q: "J'ai oublié mon mot de passe.",
-    a: "Contactez votre administrateur pour réinitialiser votre mot de passe depuis la vue Paramètres.",
+    a: "Sur l'écran de connexion, cliquez sur « Mot de passe oublié ? », saisissez votre email professionnel et suivez le lien reçu par email pour en définir un nouveau.",
   },
   {
     q: "Comment modifier mon profil candidat ?",

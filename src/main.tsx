@@ -4,6 +4,7 @@ import App from './App.tsx';
 import ApplyView from './components/ApplyView.tsx';
 import PrivacyView from './components/PrivacyView.tsx';
 import SupportView from './components/SupportView.tsx';
+import ResetPasswordView from './components/ResetPasswordView.tsx';
 import './index.css';
 
 // Pas de librairie de routage dans ce projet : on associe simplement quelques
@@ -12,6 +13,7 @@ const pageMap: Record<string, ReactElement> = {
   '/postuler': <ApplyView />,
   '/confidentialite': <PrivacyView />,
   '/support': <SupportView />,
+  '/reset-password': <ResetPasswordView />,
 };
 const publicPage = pageMap[window.location.pathname];
 

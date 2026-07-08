@@ -153,6 +153,27 @@ export default function App() {
     }
   };
 
+  // Messages de retour des redirections OAuth/SSO (?authError=... posé par le
+  // serveur après un callback échoué). Nettoie l'URL une fois lu.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("authError");
+    if (code) {
+      const messages: Record<string, string> = {
+        compte_introuvable: "Aucun compte n'est associé à cette adresse. Contactez votre administrateur pour être invité(e).",
+        oauth_email: "Le fournisseur n'a pas renvoyé d'adresse email vérifiée.",
+        google_indisponible: "La connexion Google n'est pas encore configurée sur ce serveur.",
+        sso_indisponible: "Le SSO n'est pas encore configuré sur ce serveur.",
+        sso_config: "Configuration SSO invalide. Contactez votre administrateur.",
+      };
+      setAuthError(messages[code] || "La connexion via le fournisseur a échoué. Réessayez.");
+    }
+    if (code || params.get("auth")) {
+      // Retire les paramètres pour éviter de rejouer le message au rechargement.
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   // On first mount, try to silently restore a session from the httpOnly
   // refresh cookie (e.g. after a page reload). If it fails, show the login screen.
   useEffect(() => {

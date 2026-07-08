@@ -8,6 +8,7 @@ import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import multer from "multer";
 import fs from "fs";
+import crypto from "crypto";
 import { Prisma, ContractType as PrismaContractType, JobStatus, SkillCategory, PipelineStage as PrismaPipelineStage, UserRole as PrismaUserRole, EmailStatus } from "@prisma/client";
 import { prisma } from "./src/lib/prisma.js";
 import type { User as PrismaUser } from "@prisma/client";
@@ -100,6 +101,8 @@ const loginLimiter = rateLimit({
   message: { error: "Trop de tentatives de connexion. Réessayez dans 15 minutes." },
 });
 app.use("/api/auth/login", loginLimiter);
+// Même plafond strict pour la demande de réinitialisation (anti-abus / email-bombing).
+app.use("/api/auth/forgot-password", loginLimiter);
 
 const applyLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -145,6 +148,21 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || "dev-refresh-secret
 const ACCESS_TOKEN_TTL = "15m";
 const REFRESH_TOKEN_TTL = "30d";
 const REFRESH_COOKIE_NAME = "nexus_refresh_token";
+
+// URL publique de base : sert à construire les redirect_uri OAuth et les liens
+// de réinitialisation. En dev, le serveur écoute sur localhost:3000.
+const BASE_URL = process.env.FRONTEND_URL || `http://localhost:${PORT}`;
+
+// OAuth Google + SSO (OIDC générique). Tous OPTIONNELS : si les identifiants ne
+// sont pas fournis, les boutons correspondants restent désactivés côté front
+// (voir GET /api/auth/providers). Aucun code externe requis — échanges en HTTP.
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
+const SSO_ISSUER = (process.env.SSO_ISSUER || "").replace(/\/$/, ""); // ex. https://votre-tenant.okta.com
+const SSO_CLIENT_ID = process.env.SSO_CLIENT_ID || "";
+const SSO_CLIENT_SECRET = process.env.SSO_CLIENT_SECRET || "";
+const googleConfigured = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+const ssoConfigured = Boolean(SSO_ISSUER && SSO_CLIENT_ID && SSO_CLIENT_SECRET);
 
 // Initialize GoogleGenAI server-side with key
 const ai = new GoogleGenAI({
@@ -380,6 +398,279 @@ app.post("/api/auth/logout", (req, res) => {
 app.get("/api/auth/me", requireAuth, (req, res) => {
   const ctx = getContext(req);
   res.json({ user: mapUser(ctx.user) });
+});
+
+// ==========================================
+// MOT DE PASSE OUBLIÉ (flux email via Resend)
+// ==========================================
+
+// POST /api/auth/forgot-password — envoie un lien de réinitialisation si l'email
+// correspond à un compte. Réponse TOUJOURS générique (aucune énumération d'users).
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const email = String(req.body?.email ?? "").toLowerCase().trim();
+  if (!email) return res.status(400).json({ error: "Email requis." });
+
+  // Réponse identique que l'utilisateur existe ou non.
+  const generic = () => res.json({ success: true });
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { company: true },
+    });
+
+    if (user) {
+      // Token en clair envoyé par email ; seul son hash SHA-256 est stocké.
+      const rawToken = crypto.randomBytes(32).toString("hex");
+      const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+      const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 heure
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { resetTokenHash: tokenHash, resetTokenExpiry: expiry },
+      });
+
+      const appName = user.company?.appName || "Nexus Talent";
+      const link = `${BASE_URL}/reset-password?token=${rawToken}`;
+
+      await sendEmail({
+        to: user.email,
+        subject: `Réinitialisation de votre mot de passe — ${appName}`,
+        html: `
+          <div style="font-family:sans-serif;max-width:480px;margin:auto;color:#0f172a">
+            <h2 style="color:#0f172a">Réinitialisation de mot de passe</h2>
+            <p>Bonjour ${user.name},</p>
+            <p>Vous avez demandé à réinitialiser votre mot de passe sur <strong>${appName}</strong>.
+            Cliquez sur le bouton ci-dessous. Ce lien expire dans <strong>1 heure</strong>.</p>
+            <p style="text-align:center;margin:28px 0">
+              <a href="${link}" style="background:#2563eb;color:#fff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:bold;display:inline-block">Réinitialiser mon mot de passe</a>
+            </p>
+            <p style="font-size:13px;color:#64748b">Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br/>
+            <a href="${link}" style="color:#2563eb;word-break:break-all">${link}</a></p>
+            <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0"/>
+            <p style="font-size:12px;color:#64748b">Vous n'êtes pas à l'origine de cette demande ? Ignorez cet email, votre mot de passe reste inchangé.</p>
+          </div>`,
+      });
+    }
+
+    return generic();
+  } catch (err) {
+    console.error("[POST /api/auth/forgot-password]", err);
+    // Ne rien divulguer : réponse générique même en cas d'erreur interne.
+    return generic();
+  }
+});
+
+// POST /api/auth/reset-password — consomme le token et fixe le nouveau mot de passe.
+app.post("/api/auth/reset-password", async (req, res) => {
+  const token = String(req.body?.token ?? "");
+  const newPassword = String(req.body?.password ?? "");
+
+  if (!token || !newPassword) {
+    return res.status(400).json({ error: "Token et nouveau mot de passe requis." });
+  }
+  if (newPassword.length < 8) {
+    return res.status(400).json({ error: "Le mot de passe doit contenir au moins 8 caractères." });
+  }
+
+  try {
+    const tokenHash = crypto.createHash("sha256").update(token).digest("hex");
+    const user = await prisma.user.findFirst({
+      where: { resetTokenHash: tokenHash, resetTokenExpiry: { gt: new Date() } },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: "Lien invalide ou expiré. Veuillez refaire une demande." });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, resetTokenHash: null, resetTokenExpiry: null },
+    });
+
+    logActionFor({ companyId: user.companyId, userId: user.id, user }, "Mot de passe réinitialisé", `${user.name} a réinitialisé son mot de passe.`);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[POST /api/auth/reset-password]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
+// ==========================================
+// OAuth GOOGLE + SSO (OIDC générique)
+// ==========================================
+// Modèle de LIAISON DE COMPTE : un login OAuth/SSO ne réussit que si l'email
+// vérifié correspond à un utilisateur déjà provisionné (pas d'auto-inscription,
+// car en multi-tenant il n'y aurait aucune société à rattacher).
+
+// GET /api/auth/providers — indique au front quels boutons activer.
+app.get("/api/auth/providers", (_req, res) => {
+  res.json({ google: googleConfigured, sso: ssoConfigured });
+});
+
+// State anti-CSRF : JWT court-vécu qui lie le provider au cycle OAuth.
+const signOAuthState = (provider: string) =>
+  jwt.sign({ provider, n: crypto.randomBytes(8).toString("hex") }, JWT_ACCESS_SECRET, { expiresIn: "10m" });
+
+const verifyOAuthState = (state: unknown, provider: string): boolean => {
+  try {
+    const s = jwt.verify(String(state), JWT_ACCESS_SECRET) as { provider?: string };
+    return s.provider === provider;
+  } catch {
+    return false;
+  }
+};
+
+// Finalise un login OAuth : retrouve l'utilisateur par email vérifié, pose le
+// cookie de session et redirige vers l'app (connectée). Redirige vers le login
+// avec un code d'erreur explicite en cas d'échec.
+async function completeOAuthLogin(
+  res: express.Response,
+  p: { email?: string; emailVerified?: boolean | string; name?: string; picture?: string; provider: string }
+) {
+  const email = String(p.email ?? "").toLowerCase().trim();
+  // Google renvoie email_verified en booléen ; certains IdP en chaîne "true".
+  const verified = p.emailVerified === undefined || p.emailVerified === true || p.emailVerified === "true";
+  if (!email || !verified) return res.redirect("/?authError=oauth_email");
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) {
+    // Aucun compte pour cet email → pas d'auto-inscription.
+    return res.redirect("/?authError=compte_introuvable");
+  }
+
+  // Récupère la photo de profil du fournisseur si l'utilisateur n'en a pas.
+  if (!user.avatarUrl && p.picture) {
+    await prisma.user.update({ where: { id: user.id }, data: { avatarUrl: p.picture } }).catch(() => {});
+  }
+
+  const refreshToken = signRefreshToken(user.id);
+  setRefreshCookie(res, refreshToken);
+  logActionFor({ companyId: user.companyId, userId: user.id, user }, "Connexion", `${user.name} s'est connecté(e) via ${p.provider}.`);
+  return res.redirect("/?auth=success");
+}
+
+// --- Google ---
+app.get("/api/auth/google", (_req, res) => {
+  if (!googleConfigured) return res.redirect("/?authError=google_indisponible");
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: `${BASE_URL}/api/auth/google/callback`,
+    response_type: "code",
+    scope: "openid email profile",
+    state: signOAuthState("google"),
+    prompt: "select_account",
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+});
+
+app.get("/api/auth/google/callback", async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    if (!verifyOAuthState(state, "google")) return res.redirect("/?authError=oauth_state");
+    if (!code) return res.redirect("/?authError=oauth_code");
+
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code: String(code),
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: `${BASE_URL}/api/auth/google/callback`,
+        grant_type: "authorization_code",
+      }),
+    });
+    if (!tokenRes.ok) return res.redirect("/?authError=oauth_token");
+    const tokens = (await tokenRes.json()) as { access_token?: string };
+
+    const profileRes = await fetch("https://openidconnect.googleapis.com/v1/userinfo", {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+    if (!profileRes.ok) return res.redirect("/?authError=oauth_userinfo");
+    const profile = (await profileRes.json()) as any;
+
+    return await completeOAuthLogin(res, {
+      email: profile.email,
+      emailVerified: profile.email_verified,
+      name: profile.name,
+      picture: profile.picture,
+      provider: "Google",
+    });
+  } catch (err) {
+    console.error("[GET /api/auth/google/callback]", err);
+    return res.redirect("/?authError=oauth_error");
+  }
+});
+
+// --- SSO (OIDC générique via découverte .well-known) ---
+let ssoDiscoveryCache: { authorization_endpoint: string; token_endpoint: string; userinfo_endpoint: string } | null = null;
+async function getSsoDiscovery() {
+  if (ssoDiscoveryCache) return ssoDiscoveryCache;
+  const r = await fetch(`${SSO_ISSUER}/.well-known/openid-configuration`);
+  if (!r.ok) throw new Error(`SSO discovery ${r.status}`);
+  ssoDiscoveryCache = (await r.json()) as typeof ssoDiscoveryCache;
+  return ssoDiscoveryCache!;
+}
+
+app.get("/api/auth/sso", async (_req, res) => {
+  if (!ssoConfigured) return res.redirect("/?authError=sso_indisponible");
+  try {
+    const disco = await getSsoDiscovery();
+    const params = new URLSearchParams({
+      client_id: SSO_CLIENT_ID,
+      redirect_uri: `${BASE_URL}/api/auth/sso/callback`,
+      response_type: "code",
+      scope: "openid email profile",
+      state: signOAuthState("sso"),
+    });
+    res.redirect(`${disco.authorization_endpoint}?${params.toString()}`);
+  } catch (err) {
+    console.error("[GET /api/auth/sso]", err);
+    res.redirect("/?authError=sso_config");
+  }
+});
+
+app.get("/api/auth/sso/callback", async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    if (!verifyOAuthState(state, "sso")) return res.redirect("/?authError=oauth_state");
+    if (!code) return res.redirect("/?authError=oauth_code");
+
+    const disco = await getSsoDiscovery();
+    const tokenRes = await fetch(disco.token_endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code: String(code),
+        client_id: SSO_CLIENT_ID,
+        client_secret: SSO_CLIENT_SECRET,
+        redirect_uri: `${BASE_URL}/api/auth/sso/callback`,
+        grant_type: "authorization_code",
+      }),
+    });
+    if (!tokenRes.ok) return res.redirect("/?authError=oauth_token");
+    const tokens = (await tokenRes.json()) as { access_token?: string };
+
+    const profileRes = await fetch(disco.userinfo_endpoint, {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    });
+    if (!profileRes.ok) return res.redirect("/?authError=oauth_userinfo");
+    const profile = (await profileRes.json()) as any;
+
+    return await completeOAuthLogin(res, {
+      email: profile.email,
+      emailVerified: profile.email_verified,
+      name: profile.name,
+      picture: profile.picture,
+      provider: "SSO",
+    });
+  } catch (err) {
+    console.error("[GET /api/auth/sso/callback]", err);
+    return res.redirect("/?authError=oauth_error");
+  }
 });
 
 // ==========================================
