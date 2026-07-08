@@ -44,7 +44,8 @@ async function sendEmail(params: { to: string; subject: string; html: string }):
 }
 
 const app = express();
-const PORT = 3000;
+// Port injecté par l'hébergeur (Render, Railway…) en production ; 3000 en local.
+const PORT = Number(process.env.PORT) || 3000;
 
 // ==========================================
 // SÉCURITÉ (Helmet, CORS restreint, rate limiting)

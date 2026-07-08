@@ -1,0 +1,36 @@
+# Blueprint Render — déploiement de Nexus Talent (serveur Node + SPA).
+# Base PostgreSQL fournie séparément par Neon (variable DATABASE_URL).
+# Utilisation : Render → New → Blueprint → sélectionner ce dépôt.
+services:
+  - type: web
+    name: nexus-talent
+    runtime: node
+    plan: free
+    # devDependencies (esbuild, prisma, tsx, vite…) requis pour le build → --include=dev.
+    # Applique les migrations, crée le compte de démo (seed idempotent), puis build.
+    buildCommand: >-
+      npm ci --include=dev &&
+      npx prisma generate &&
+      npx prisma migrate deploy &&
+      npx prisma db seed &&
+      npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Secrets à renseigner dans le dashboard Render (non versionnés).
+      - key: DATABASE_URL      # chaîne de connexion Neon
+        sync: false
+      - key: FRONTEND_URL      # URL publique Render, ex. https://nexus-talent.onrender.com
+        sync: false
+      - key: GEMINI_API_KEY    # optionnel (analyse IA)
+        sync: false
+      - key: RESEND_API_KEY    # optionnel (emails)
+        sync: false
+      - key: EMAIL_FROM
+        value: onboarding@resend.dev
+      # Secrets JWT générés automatiquement par Render (aléatoires, sécurisés).
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
