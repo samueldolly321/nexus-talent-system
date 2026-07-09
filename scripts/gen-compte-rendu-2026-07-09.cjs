@@ -70,9 +70,23 @@ b.push(bullet([{ t: "Ouvrez la page de connexion : le texte affiche " }, { t: "D
 b.push(bullet([{ t: "Connectez-vous avec " }, { t: "samuel@test.io", code: true }, { t: " / " }, { t: "password123", code: true }, { t: " : l'accès à l'espace recruteur doit fonctionner." }]));
 b.push(spacer());
 
-b.push(h1("5. À noter"));
-b.push(bullet([{ t: "Prod (Render + Neon) : ", b: true }, { t: "relancez le seed sur la base en ligne pour que samuel@test.io y existe aussi." }]));
+b.push(h1("5. Mise en ligne — FAIT le 09/07/2026"));
+b.push(p([{ t: "L'application est désormais déployée et fonctionnelle en ligne." }]));
+b.push(bullet([{ t: "URL de production : ", b: true }, { t: "https://nexus-talent-zk0a.onrender.com" }]));
+b.push(bullet([{ t: "Connexion démo : ", b: true }, { t: "samuel@test.io / password123 (testée, HTTP 200)." }]));
+b.push(bullet([{ t: "Hébergement : ", b: true }, { t: "Render (serveur Node + front) + Neon (PostgreSQL). Migrations + seed appliqués au build." }]));
+b.push(p([{ t: "Correctifs apportés pendant le déploiement (commités et poussés) :" }]));
+b.push(bullet([{ t: "3923fd7", code: true }, { t: " — CORS tolère FRONTEND_URL avec ou sans slash final." }]));
+b.push(bullet([{ t: "b56654f", code: true }, { t: " — CORS : normalisation agressive (trim espaces + slash + minuscules) et log de diagnostic des origines autorisées." }]));
+b.push(p([{ t: "Cause racine du blocage de connexion : ", b: true }, { t: "une faute de frappe dans la variable FRONTEND_URL sur Render (.con au lieu de .com). Le log « [CORS] Origines autorisées » au démarrage permet de la repérer." }]));
+b.push(spacer());
+
+b.push(h1("6. À noter"));
+b.push(bullet([{ t: "Re-seed en prod : ", b: true }, { t: "si vous recréez la base, relancez le seed pour que samuel@test.io existe." }]));
+b.push(bullet([{ t: "Bouton Google grisé : ", b: true }, { t: "normal tant que GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET ne sont pas renseignés sur Render." }]));
+b.push(bullet([{ t: "Plan gratuit : ", b: true }, { t: "le serveur s'endort après 15 min d'inactivité (réveil ~30-60 s au 1er accès) ; photos uploadées non persistantes." }]));
 b.push(bullet([{ t: "SSO côté serveur : ", b: true }, { t: "seule l'interface a changé. La route serveur /api/auth/sso et la config SSO_* de .env.example existent toujours (inutilisées). À supprimer plus tard si souhaité." }]));
+b.push(bullet([{ t: "Sécurité : ", b: true }, { t: "révoquer l'ancien token GitHub exposé (ghp_JLBr…) s'il ne l'est pas déjà." }]));
 
 // ---- OOXML ----
 const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
