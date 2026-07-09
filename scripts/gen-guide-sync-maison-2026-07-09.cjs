@@ -41,6 +41,7 @@ b.push(bullet([{ t: "Données : ", b: true }, { t: "utilisateurs Sarah Jenkins e
 b.push(bullet([{ t: "Navigation : ", b: true }, { t: "onglets « Utilisateurs » et « Paramètres » masqués pour le rôle RH (visibles pour Admin et Manager)." }]));
 b.push(bullet([{ t: "Sécurité : ", b: true }, { t: "lecture des utilisateurs verrouillée côté serveur (RH → 403) + correction d'une fuite multi-entreprise sur GET /api/users. Vérifié en prod." }]));
 b.push(bullet([{ t: "Traçabilité des connexions : ", b: true }, { t: "IP + navigateur enregistrés à chaque connexion (nouveaux champs AuditLog + migration). Nouvel onglet « Connexions » (table + recherche) réservé aux Admins entreprise/plateforme ; IP masquée côté API pour les autres rôles." }]));
+b.push(bullet([{ t: "Correctif candidat : ", b: true }, { t: "le bouton « Télécharger le CV » de la fiche candidat est désormais fonctionnel (export du CV en fichier .txt)." }]));
 b.push(bullet([{ t: "Docs : ", b: true }, { t: "compte-rendu du 09/07 + guide de mise en ligne de A à Z + ce guide de synchro." }]));
 b.push(spacer());
 
@@ -68,6 +69,7 @@ b.push(code("src/lib/mappers.ts"));
 b.push(code("src/components/LoginView.tsx"));
 b.push(code("src/components/Sidebar.tsx"));
 b.push(code("src/components/ConnectionsView.tsx  (nouveau)"));
+b.push(code("src/components/CandidateProfileView.tsx"));
 b.push(h2("Scripts"));
 b.push(code("scripts/apply-data-changes.cjs"));
 b.push(code("scripts/gen-compte-rendu.cjs"));
