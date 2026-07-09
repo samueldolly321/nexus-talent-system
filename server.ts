@@ -685,6 +685,14 @@ app.get("/api/auth/sso/callback", async (req, res) => {
 // ==========================================
 // Every route below requires a valid access token (requireAuth).
 
+// Autorisation par rôle : la gestion des utilisateurs et les paramètres sont
+// réservés aux admins (plateforme/entreprise) et aux managers ; le rôle RH est
+// exclu (miroir du masquage des onglets côté front — ici c'est la vraie barrière).
+const canManageOrg = (role: string) =>
+  role === PrismaUserRole.AdminPlateforme ||
+  role === PrismaUserRole.AdminEntreprise ||
+  role === PrismaUserRole.Manager;
+
 // 1. TENANT CONTEXT
 // [Prisma] Migré vers la base. companies/users ne sont jamais mutés par l'app
 // (uniquement par le seed) → aucune divergence avec le store mémoire restant.
@@ -725,8 +733,14 @@ app.put("/api/companies/:id", requireAuth, async (req, res) => {
 });
 
 app.get("/api/users", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  // Réservé aux rôles de gestion (admins/manager) ; interdit aux RH.
+  if (!canManageOrg(ctx.user.role)) {
+    return res.status(403).json({ error: "Accès refusé. Rôle insuffisant." });
+  }
   try {
-    const rows = await prisma.user.findMany({ orderBy: { createdAt: "asc" } });
+    // Isolation multi-entreprise : ne renvoyer que les utilisateurs de la société active.
+    const rows = await prisma.user.findMany({ where: { companyId: ctx.companyId }, orderBy: { createdAt: "asc" } });
     res.json(rows.map(mapUser));
   } catch (err) {
     console.error("[GET /api/users]", err);
@@ -746,7 +760,8 @@ app.get("/api/context", requireAuth, async (req, res) => {
       activeCompany: company ? mapCompany(company) : null,
       activeUser: mapUser(ctx.user),
       allCompanies: allCompanies.map(mapCompany),
-      allUsers: allUsers.map(mapUser),
+      // La liste des utilisateurs n'est exposée qu'aux rôles de gestion (RH exclu).
+      allUsers: canManageOrg(ctx.user.role) ? allUsers.map(mapUser) : [],
     });
   } catch (err) {
     console.error("[GET /api/context]", err);
