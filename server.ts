@@ -69,16 +69,19 @@ app.use(helmet({
 
 // CORS restreint aux origines autorisées (le front est servi par ce même
 // serveur → même origine ; la liste couvre aussi le dev Vite sur 5173).
-// Normalise en retirant le(s) slash(s) de fin : tolère FRONTEND_URL renseignée
-// avec ou sans "/" final (piège fréquent de config), l'origine navigateur n'en a jamais.
-const stripTrailingSlash = (u: string) => u.replace(/\/+$/, "");
+// Normalise agressivement : retire espaces/retours à la ligne (invisibles collés
+// au copier-coller d'une variable), les slashs de fin, et met en minuscules.
+// Tolère ainsi FRONTEND_URL saisie avec "/" final ou espace parasite.
+const normalizeOrigin = (u: string) => u.trim().replace(/\/+$/, "").toLowerCase();
 const allowedOrigins = (process.env.FRONTEND_URL
   ? [process.env.FRONTEND_URL]
-  : ["http://localhost:3000", "http://localhost:5173"]).map(stripTrailingSlash);
+  : ["http://localhost:3000", "http://localhost:5173"]).map(normalizeOrigin);
+console.log("[CORS] Origines autorisées :", JSON.stringify(allowedOrigins));
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true); // Postman, curl, requêtes serveur
-    if (allowedOrigins.includes(stripTrailingSlash(origin))) return callback(null, true);
+    if (allowedOrigins.includes(normalizeOrigin(origin))) return callback(null, true);
+    console.warn(`[CORS] Origine refusée: "${origin}" — autorisées: ${JSON.stringify(allowedOrigins)}`);
     callback(new Error(`Origine non autorisée : ${origin}`));
   },
   credentials: true, // cookies (refresh token JWT)
