@@ -179,6 +179,20 @@ export default function CandidateProfileView({
   };
   const openAvatar = () => { setAvatarFile(null); setFormError(null); setModal("avatar"); };
   const openCv = () => { setCvDraft(candidate.cvText || ""); setFormError(null); setModal("cv"); };
+
+  // Télécharge le CV (stocké en texte) sous forme de fichier .txt.
+  const downloadCv = () => {
+    if (!candidate.cvText) return;
+    const blob = new Blob([candidate.cvText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `CV_${candidate.name.replace(/\s+/g, "_")}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
   const openLetter = () => { setLetterDraft(candidate.letterText || ""); setFormError(null); setModal("letter"); };
 
   // Soumission générique : construit le patch au submit puis délègue à onSaveCandidate.
@@ -294,7 +308,12 @@ export default function CandidateProfileView({
               <span className="px-2.5 py-1 bg-surface-container-high text-on-surface-variant text-[10px] font-mono uppercase rounded-full">{candidate.stage}</span>
               {candidate.location && <span className="px-2.5 py-1 bg-surface-container-high text-on-surface-variant text-[10px] font-mono uppercase rounded-full">{candidate.location}</span>}
             </div>
-            <button className="w-full border border-outline-variant rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-surface-container-low mb-4">
+            <button
+              onClick={downloadCv}
+              disabled={!candidate.cvText}
+              title={candidate.cvText ? "Télécharger le CV (.txt)" : "Aucun CV disponible pour ce candidat"}
+              className="w-full border border-outline-variant rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-surface-container-low mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
               <Download size={14} />
               Télécharger le CV
             </button>
