@@ -46,11 +46,17 @@ export default function Sidebar({
   darkMode = false,
   onToggleDarkMode
 }: SidebarProps) {
-  // Seuls les admins (plateforme ou entreprise) voient la gestion des utilisateurs
-  // et les paramètres — miroir du contrôle côté vues (App.tsx / serveur).
+  // Visibilité par rôle :
+  //  - "Utilisateurs" : admins uniquement (plateforme / entreprise).
+  //  - "Paramètres"   : admins + Manager (RH exclu, ex. le compte démo samuel@test.io).
   const isAdmin =
     activeUser?.role === UserRole.AdminPlateforme || activeUser?.role === UserRole.AdminEntreprise;
-  const adminOnlyIds = new Set(["users", "settings"]);
+  const isManager = activeUser?.role === UserRole.Manager;
+  const canSee = (id: string) => {
+    if (id === "users") return isAdmin;
+    if (id === "settings") return isAdmin || isManager;
+    return true;
+  };
 
   const menuItems = [
     { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -64,7 +70,7 @@ export default function Sidebar({
     { id: "reports", label: "Rapports", icon: BarChart3 },
     { id: "users", label: "Utilisateurs", icon: UserCog },
     { id: "settings", label: "Paramètres", icon: Settings }
-  ].filter(item => isAdmin || !adminOnlyIds.has(item.id));
+  ].filter(item => canSee(item.id));
 
   // Initiales (max 2 lettres) dérivées du nom de l'application pour le carré de marque.
   const appName = activeCompany?.appName || "Nexus Talent";
