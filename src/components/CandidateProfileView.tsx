@@ -180,18 +180,34 @@ export default function CandidateProfileView({
   const openAvatar = () => { setAvatarFile(null); setFormError(null); setModal("avatar"); };
   const openCv = () => { setCvDraft(candidate.cvText || ""); setFormError(null); setModal("cv"); };
 
-  // Télécharge le CV (stocké en texte) sous forme de fichier .txt.
-  const downloadCv = () => {
+  // Télécharge le CV (stocké en texte) en PDF. jsPDF est importé dynamiquement
+  // (chargé uniquement au clic) pour ne pas alourdir le bundle principal.
+  const downloadCv = async () => {
     if (!candidate.cvText) return;
-    const blob = new Blob([candidate.cvText], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `CV_${candidate.name.replace(/\s+/g, "_")}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const margin = 40;
+    const pageW = doc.internal.pageSize.getWidth();
+    const pageH = doc.internal.pageSize.getHeight();
+    const lineHeight = 14;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`CV — ${candidate.name}`, margin, margin);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(candidate.cvText, pageW - margin * 2) as string[];
+    let y = margin + 24;
+    for (const line of lines) {
+      if (y > pageH - margin) {
+        doc.addPage();
+        y = margin;
+      }
+      doc.text(line, margin, y);
+      y += lineHeight;
+    }
+    doc.save(`CV_${candidate.name.replace(/\s+/g, "_")}.pdf`);
   };
   const openLetter = () => { setLetterDraft(candidate.letterText || ""); setFormError(null); setModal("letter"); };
 
@@ -311,7 +327,7 @@ export default function CandidateProfileView({
             <button
               onClick={downloadCv}
               disabled={!candidate.cvText}
-              title={candidate.cvText ? "Télécharger le CV (.txt)" : "Aucun CV disponible pour ce candidat"}
+              title={candidate.cvText ? "Télécharger le CV (PDF)" : "Aucun CV disponible pour ce candidat"}
               className="w-full border border-outline-variant rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-surface-container-low mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download size={14} />
