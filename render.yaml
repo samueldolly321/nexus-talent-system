@@ -13,6 +13,7 @@ services:
       npx prisma generate &&
       npx prisma migrate deploy &&
       npx prisma db seed &&
+      node scripts/apply-data-changes.cjs &&
       npm run build
     startCommand: npm start
     envVars:
