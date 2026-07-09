@@ -17,7 +17,7 @@ import {
   Moon,
   X
 } from "lucide-react";
-import { Company, User } from "../types";
+import { Company, User, UserRole } from "../types";
 
 interface SidebarProps {
   activeView: string;
@@ -46,6 +46,12 @@ export default function Sidebar({
   darkMode = false,
   onToggleDarkMode
 }: SidebarProps) {
+  // Seuls les admins (plateforme ou entreprise) voient la gestion des utilisateurs
+  // et les paramètres — miroir du contrôle côté vues (App.tsx / serveur).
+  const isAdmin =
+    activeUser?.role === UserRole.AdminPlateforme || activeUser?.role === UserRole.AdminEntreprise;
+  const adminOnlyIds = new Set(["users", "settings"]);
+
   const menuItems = [
     { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
     { id: "jobs", label: "Offres", icon: Briefcase },
@@ -58,7 +64,7 @@ export default function Sidebar({
     { id: "reports", label: "Rapports", icon: BarChart3 },
     { id: "users", label: "Utilisateurs", icon: UserCog },
     { id: "settings", label: "Paramètres", icon: Settings }
-  ];
+  ].filter(item => isAdmin || !adminOnlyIds.has(item.id));
 
   // Initiales (max 2 lettres) dérivées du nom de l'application pour le carré de marque.
   const appName = activeCompany?.appName || "Nexus Talent";
