@@ -58,7 +58,7 @@ L'application est servie sur **http://localhost:3000**.
 |------------------|--------------------------|---------------|
 | Admin plateforme | `samuel@techcorp.io`     | `admin123`    |
 | Admin entreprise | `admin@techcorp.io`      | `admin123`    |
-| RH               | `sarah.j@techcorp.io`    | `password123` |
+| RH               | `samuel@test.io`         | `password123` |
 
 ## Variables d'environnement
 

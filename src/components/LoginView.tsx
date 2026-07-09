@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Mail, Lock, ArrowRight, Radar, TrendingUp, Users2, Sparkles, Target, ShieldCheck, BarChart3, Zap, CheckCircle2, X, Loader2 } from "lucide-react";
+import { Mail, Lock, ArrowRight, Radar, TrendingUp, Users2, Sparkles, Target, BarChart3, Zap, CheckCircle2, X, Loader2 } from "lucide-react";
 
 interface LoginViewProps {
   onLogin: (email: string, password: string) => void;
@@ -21,8 +21,8 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(false);
 
-  // Fournisseurs OAuth/SSO réellement configurés côté serveur.
-  const [providers, setProviders] = useState<{ google: boolean; sso: boolean }>({ google: false, sso: false });
+  // Fournisseurs OAuth réellement configurés côté serveur.
+  const [providers, setProviders] = useState<{ google: boolean }>({ google: false });
 
   // Modal "Mot de passe oublié".
   const [showForgot, setShowForgot] = useState(false);
@@ -162,23 +162,17 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
             <div className="flex-1 h-px bg-outline-variant" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3">
             <ProviderButton
               label="Google"
               enabled={providers.google}
               onClick={() => goToProvider("/api/auth/google")}
               icon={<GoogleIcon />}
             />
-            <ProviderButton
-              label="SSO"
-              enabled={providers.sso}
-              onClick={() => goToProvider("/api/auth/sso")}
-              icon={<ShieldCheck size={16} className="text-on-surface-variant" />}
-            />
           </div>
 
           <p className="mt-6 text-center font-mono text-[10px] text-on-surface-variant bg-surface-container-low rounded-lg py-2 px-3">
-            Démo : sarah.j@techcorp.io / password123
+            Démo : samuel@test.io / password123
           </p>
 
           <a

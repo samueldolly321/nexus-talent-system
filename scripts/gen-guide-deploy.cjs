@@ -73,7 +73,7 @@ b.push(spacer());
 
 b.push(h1("Étape 4 — Tester"));
 b.push(p([{ t: "Ouvrez l'URL de l'app. La page de connexion s'affiche. Connectez-vous avec le compte de démo créé par le seed :" }]));
-b.push(code("Email : sarah.j@techcorp.io"));
+b.push(code("Email : samuel@test.io"));
 b.push(code("Mot de passe : password123"));
 b.push(p([{ t: "Astuce : ", b: true }, { t: "au tout premier accès (ou après 15 min d'inactivité), le serveur gratuit « se réveille » — la page peut mettre 30 à 60 secondes à charger. C'est normal." }]));
 b.push(spacer());

@@ -103,6 +103,7 @@ const companies = [
 ];
 
 const users = [
+  { id: "user-samuel-demo", companyId: "tenant-techcorp", name: "Samuel",         email: "samuel@test.io",          role: UserRole.RH,              avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&q=80" },
   { id: "user-sarah", companyId: "tenant-techcorp",   name: "Sarah Jenkins",     email: "sarah.j@techcorp.io",     role: UserRole.RH,              avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&q=80" },
   { id: "user-marc",  companyId: "tenant-techcorp",   name: "Marc Antoine",      email: "marc.a@techcorp.io",      role: UserRole.Manager,         avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&q=80" },
   { id: "user-elena", companyId: "tenant-healthsoft", name: "Dr. Elena Rostova", email: "elena.r@healthsoft.com",  role: UserRole.AdminEntreprise, avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&q=80" },
@@ -415,7 +416,7 @@ Master Informatique option Réseaux & Cloud - Telecom Paris (2018)`,
     auditLogs: await prisma.auditLog.count(),
   };
   console.log("✅ Seed terminé :", counts);
-  console.log(`   Connexion démo : sarah.j@techcorp.io / ${DEMO_PASSWORD}`);
+  console.log(`   Connexion démo : samuel@test.io / ${DEMO_PASSWORD}`);
 }
 
 main()
