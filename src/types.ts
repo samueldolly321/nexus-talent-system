@@ -175,5 +175,7 @@ export interface AuditLog {
   userRole: UserRole;
   action: string;
   details: string;
+  ip?: string | null;
+  userAgent?: string | null;
   timestamp: string;
 }

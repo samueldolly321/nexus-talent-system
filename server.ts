@@ -288,7 +288,24 @@ const paginated = <T>(data: T[], total: number, page: number, limit: number) => 
 // PAS la promesse (comportement identique aux appels existants, non bloquant
 // pour la réponse HTTP). Une erreur d'écriture est loggée, jamais propagée.
 // ctx.user.role vient du store mémoire (libellé FR) → converti en clé Prisma.
-const logActionFor = (ctx: { companyId: string; userId: string; user?: { name: string; role: string } }, action: string, details: string) => {
+// Extrait l'IP réelle du client et le navigateur. L'app est derrière
+// Cloudflare + Render : l'en-tête `cf-connecting-ip` porte l'IP d'origine ;
+// à défaut on prend le 1er maillon de `x-forwarded-for`, puis la socket.
+const getClientMeta = (req: express.Request): { ip: string | null; userAgent: string | null } => ({
+  ip:
+    (req.headers["cf-connecting-ip"] as string) ||
+    ((req.headers["x-forwarded-for"] as string) || "").split(",")[0].trim() ||
+    req.socket.remoteAddress ||
+    null,
+  userAgent: (req.headers["user-agent"] as string) || null,
+});
+
+const logActionFor = (
+  ctx: { companyId: string; userId: string; user?: { name: string; role: string } },
+  action: string,
+  details: string,
+  meta?: { ip?: string | null; userAgent?: string | null }
+) => {
   const userRole = (ctx.user ? toPrismaUserRole(ctx.user.role) : undefined) ?? PrismaUserRole.RH;
   const userName = ctx.user ? ctx.user.name : "Système";
   prisma.auditLog
@@ -300,6 +317,8 @@ const logActionFor = (ctx: { companyId: string; userId: string; user?: { name: s
         userRole: userRole as PrismaUserRole,
         action,
         details,
+        ip: meta?.ip ?? null,
+        userAgent: meta?.userAgent ?? null,
       },
     })
     .catch((err) => console.error("[audit-log]", err));
@@ -352,7 +371,7 @@ app.post("/api/auth/login", async (req, res) => {
     const refreshToken = signRefreshToken(user.id);
     setRefreshCookie(res, refreshToken);
 
-    logActionFor({ companyId: user.companyId, userId: user.id, user }, "Connexion", `${user.name} s'est connecté(e).`);
+    logActionFor({ companyId: user.companyId, userId: user.id, user }, "Connexion", `${user.name} s'est connecté(e).`, getClientMeta(req));
 
     res.json({ accessToken, user: mapUser(user) });
   } catch (err) {
@@ -535,7 +554,8 @@ const verifyOAuthState = (state: unknown, provider: string): boolean => {
 // avec un code d'erreur explicite en cas d'échec.
 async function completeOAuthLogin(
   res: express.Response,
-  p: { email?: string; emailVerified?: boolean | string; name?: string; picture?: string; provider: string }
+  p: { email?: string; emailVerified?: boolean | string; name?: string; picture?: string; provider: string },
+  meta?: { ip?: string | null; userAgent?: string | null }
 ) {
   const email = String(p.email ?? "").toLowerCase().trim();
   // Google renvoie email_verified en booléen ; certains IdP en chaîne "true".
@@ -555,7 +575,7 @@ async function completeOAuthLogin(
 
   const refreshToken = signRefreshToken(user.id);
   setRefreshCookie(res, refreshToken);
-  logActionFor({ companyId: user.companyId, userId: user.id, user }, "Connexion", `${user.name} s'est connecté(e) via ${p.provider}.`);
+  logActionFor({ companyId: user.companyId, userId: user.id, user }, "Connexion", `${user.name} s'est connecté(e) via ${p.provider}.`, meta);
   return res.redirect("/?auth=success");
 }
 
@@ -605,7 +625,7 @@ app.get("/api/auth/google/callback", async (req, res) => {
       name: profile.name,
       picture: profile.picture,
       provider: "Google",
-    });
+    }, getClientMeta(req));
   } catch (err) {
     console.error("[GET /api/auth/google/callback]", err);
     return res.redirect("/?authError=oauth_error");
@@ -673,7 +693,7 @@ app.get("/api/auth/sso/callback", async (req, res) => {
       name: profile.name,
       picture: profile.picture,
       provider: "SSO",
-    });
+    }, getClientMeta(req));
   } catch (err) {
     console.error("[GET /api/auth/sso/callback]", err);
     return res.redirect("/?authError=oauth_error");

@@ -297,6 +297,8 @@ model AuditLog {
   userRole  UserRole
   action    String
   details   String
+  ip        String? // adresse IP du client (connexions) — proxy Render/Cloudflare géré
+  userAgent String? // navigateur / appareil (connexions)
   timestamp DateTime @default(now())
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)

@@ -200,5 +200,7 @@ export const mapAuditLog = (a: PrismaAuditLog) => ({
   userRole: mapUserRole(a.userRole),
   action: a.action,
   details: a.details,
+  ip: a.ip ?? null,
+  userAgent: a.userAgent ?? null,
   timestamp: a.timestamp.toISOString(),
 });
