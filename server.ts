@@ -69,13 +69,16 @@ app.use(helmet({
 
 // CORS restreint aux origines autorisées (le front est servi par ce même
 // serveur → même origine ; la liste couvre aussi le dev Vite sur 5173).
-const allowedOrigins = process.env.FRONTEND_URL
+// Normalise en retirant le(s) slash(s) de fin : tolère FRONTEND_URL renseignée
+// avec ou sans "/" final (piège fréquent de config), l'origine navigateur n'en a jamais.
+const stripTrailingSlash = (u: string) => u.replace(/\/+$/, "");
+const allowedOrigins = (process.env.FRONTEND_URL
   ? [process.env.FRONTEND_URL]
-  : ["http://localhost:3000", "http://localhost:5173"];
+  : ["http://localhost:3000", "http://localhost:5173"]).map(stripTrailingSlash);
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true); // Postman, curl, requêtes serveur
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (allowedOrigins.includes(stripTrailingSlash(origin))) return callback(null, true);
     callback(new Error(`Origine non autorisée : ${origin}`));
   },
   credentials: true, // cookies (refresh token JWT)
