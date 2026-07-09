@@ -104,8 +104,6 @@ const companies = [
 
 const users = [
   { id: "user-samuel-demo", companyId: "tenant-techcorp", name: "Samuel",         email: "samuel@test.io",          role: UserRole.RH,              avatarUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&h=150&fit=crop&q=80" },
-  { id: "user-sarah", companyId: "tenant-techcorp",   name: "Sarah Jenkins",     email: "sarah.j@techcorp.io",     role: UserRole.RH,              avatarUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&q=80" },
-  { id: "user-marc",  companyId: "tenant-techcorp",   name: "Marc Antoine",      email: "marc.a@techcorp.io",      role: UserRole.Manager,         avatarUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&q=80" },
   { id: "user-elena", companyId: "tenant-healthsoft", name: "Dr. Elena Rostova", email: "elena.r@healthsoft.com",  role: UserRole.AdminEntreprise, avatarUrl: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&h=150&fit=crop&q=80" },
 ];
 
@@ -119,7 +117,7 @@ const jobs = [
     skillsRequired: ["React", "TypeScript", "Tailwind CSS", "Vite", "Zod", "TanStack Query", "Recharts"],
     educationRequired: "Bac +5 en Informatique ou expérience équivalente",
     languagesRequired: ["Français (Courant)", "Anglais (Technique)"],
-    minExperienceYears: 5, salaryRange: "65k€ - 75k€", location: "Paris (Hybride)",
+    minExperienceYears: 5, salaryRange: "3 000 000 Ariary", location: "Paris (Hybride)",
     contractType: ContractType.CDI, status: JobStatus.Active, createdAt: new Date("2026-06-01T10:00:00Z"),
   },
   {
@@ -130,7 +128,7 @@ const jobs = [
     skillsRequired: ["Docker", "Kubernetes", "AWS", "Terraform", "GitHub Actions", "Prometheus", "Linux"],
     educationRequired: "Diplôme d'ingénieur ou équivalent",
     languagesRequired: ["Français (Courant)", "Anglais (Courant)"],
-    minExperienceYears: 3, salaryRange: "55k€ - 68k€", location: "Lyon (Télétravail)",
+    minExperienceYears: 3, salaryRange: "3 000 000 Ariary", location: "Lyon (Télétravail)",
     contractType: ContractType.CDI, status: JobStatus.Active, createdAt: new Date("2026-06-15T09:00:00Z"),
   },
   {
@@ -141,7 +139,7 @@ const jobs = [
     skillsRequired: ["Python", "PyTorch", "NLP", "Transformers", "SQL", "FastAPI", "Scikit-Learn"],
     educationRequired: "Master ou Doctorat en Data Science / IA",
     languagesRequired: ["Anglais (Courant)"],
-    minExperienceYears: 2, salaryRange: "60k€ - 72k€", location: "Paris (Hybride)",
+    minExperienceYears: 2, salaryRange: "3 000 000 Ariary", location: "Paris (Hybride)",
     contractType: ContractType.CDI, status: JobStatus.Active, createdAt: new Date("2026-06-20T14:00:00Z"),
   },
   {
@@ -152,7 +150,7 @@ const jobs = [
     skillsRequired: ["Agile", "Scrum", "Product Roadmap", "Jira", "Figma", "SaaS"],
     educationRequired: "Bac +5 école de commerce ou ingénieur",
     languagesRequired: ["Français (Courant)", "Anglais (Professionnel)"],
-    minExperienceYears: 4, salaryRange: "50k€ - 60k€", location: "Bordeaux (Hybride)",
+    minExperienceYears: 4, salaryRange: "3 000 000 Ariary", location: "Bordeaux (Hybride)",
     contractType: ContractType.CDI, status: JobStatus.Active, createdAt: new Date("2026-06-18T11:00:00Z"),
   },
 ];
@@ -381,15 +379,15 @@ Master Informatique option Réseaux & Cloud - Telecom Paris (2018)`,
   // 7. Audit logs (démo) — 2 entrées TechCorp fidèles au tableau mémoire + 1 HealthSoft.
   const auditLogs = [
     {
-      id: "log-1", companyId: "tenant-techcorp", userId: "user-sarah",
-      userName: "Sarah Jenkins", userRole: UserRole.RH,
+      id: "log-1", companyId: "tenant-techcorp", userId: "user-samuel-demo",
+      userName: "Samuel", userRole: UserRole.RH,
       action: "Création d'offre",
       details: "Création du poste 'Développeur Senior React / TypeScript' (CDI)",
       timestamp: new Date("2026-06-01T10:05:00Z"),
     },
     {
-      id: "log-2", companyId: "tenant-techcorp", userId: "user-sarah",
-      userName: "Sarah Jenkins", userRole: UserRole.RH,
+      id: "log-2", companyId: "tenant-techcorp", userId: "user-samuel-demo",
+      userName: "Samuel", userRole: UserRole.RH,
       action: "Analyse IA",
       details: "Analyse automatique du CV de Jean Dupont via le moteur IA",
       timestamp: new Date("2026-06-10T14:40:00Z"),
