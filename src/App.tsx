@@ -12,6 +12,7 @@ import EmailInboxView from "./components/EmailInboxView";
 import SettingsView from "./components/SettingsView";
 import ArchivedJobsView from "./components/ArchivedJobsView";
 import CalendarView from "./components/CalendarView";
+import ConnectionsView from "./components/ConnectionsView";
 // Vues lourdes (recharts / gros contenus) chargées à la demande → code-splitting
 // pour alléger le bundle principal (chunks séparés générés par Vite).
 const ReportsView = lazy(() => import("./components/ReportsView"));
@@ -733,6 +734,8 @@ export default function App() {
           </div>
         );
       }
+      case "connections":
+        return <ConnectionsView activeUser={activeUser} />;
       case "settings":
         return <SettingsView activeUser={activeUser} activeCompany={activeCompany} onCompanyUpdated={setActiveCompany} />;
       case "dev-center":

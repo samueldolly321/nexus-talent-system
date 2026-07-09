@@ -7,6 +7,7 @@ import {
   Mail,
   BarChart3,
   UserCog,
+  Globe,
   Settings,
   Plus,
   LogOut,
@@ -46,13 +47,17 @@ export default function Sidebar({
   darkMode = false,
   onToggleDarkMode
 }: SidebarProps) {
-  // "Utilisateurs" et "Paramètres" sont réservés aux admins et aux Managers ;
-  // ils sont masqués pour le rôle RH (ex. le compte démo samuel@test.io).
-  const canManage =
-    activeUser?.role === UserRole.AdminPlateforme ||
-    activeUser?.role === UserRole.AdminEntreprise ||
-    activeUser?.role === UserRole.Manager;
-  const restrictedIds = new Set(["users", "settings"]);
+  // Visibilité par rôle :
+  //  - "Utilisateurs" / "Paramètres" : admins (plateforme/entreprise) + Managers ; masqués pour RH.
+  //  - "Connexions" (journal IP/navigateur) : admins entreprise/plateforme UNIQUEMENT.
+  const isCompanyAdmin =
+    activeUser?.role === UserRole.AdminPlateforme || activeUser?.role === UserRole.AdminEntreprise;
+  const canManage = isCompanyAdmin || activeUser?.role === UserRole.Manager;
+  const canSee = (id: string) => {
+    if (id === "connections") return isCompanyAdmin;
+    if (id === "users" || id === "settings") return canManage;
+    return true;
+  };
 
   const menuItems = [
     { id: "dashboard", label: "Tableau de bord", icon: LayoutDashboard },
@@ -65,8 +70,9 @@ export default function Sidebar({
     { id: "ai-search", label: "Recherche IA", icon: BrainCircuit },
     { id: "reports", label: "Rapports", icon: BarChart3 },
     { id: "users", label: "Utilisateurs", icon: UserCog },
+    { id: "connections", label: "Connexions", icon: Globe },
     { id: "settings", label: "Paramètres", icon: Settings }
-  ].filter(item => canManage || !restrictedIds.has(item.id));
+  ].filter(item => canSee(item.id));
 
   // Initiales (max 2 lettres) dérivées du nom de l'application pour le carré de marque.
   const appName = activeCompany?.appName || "Nexus Talent";

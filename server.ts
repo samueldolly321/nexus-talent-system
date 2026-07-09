@@ -708,10 +708,9 @@ app.get("/api/auth/sso/callback", async (req, res) => {
 // Autorisation par rôle : la gestion des utilisateurs et les paramètres sont
 // réservés aux admins (plateforme/entreprise) et aux managers ; le rôle RH est
 // exclu (miroir du masquage des onglets côté front — ici c'est la vraie barrière).
-const canManageOrg = (role: string) =>
-  role === PrismaUserRole.AdminPlateforme ||
-  role === PrismaUserRole.AdminEntreprise ||
-  role === PrismaUserRole.Manager;
+const isCompanyAdmin = (role: string) =>
+  role === PrismaUserRole.AdminPlateforme || role === PrismaUserRole.AdminEntreprise;
+const canManageOrg = (role: string) => isCompanyAdmin(role) || role === PrismaUserRole.Manager;
 
 // 1. TENANT CONTEXT
 // [Prisma] Migré vers la base. companies/users ne sont jamais mutés par l'app
@@ -1703,7 +1702,8 @@ app.post("/api/emails/:id/import", requireAuth, async (req, res) => {
 
 // 7. AUDIT LOGS — [Prisma] lecture sur la base (écriture via logActionFor).
 app.get("/api/audit-logs", requireAuth, async (req, res) => {
-  const { companyId } = getContext(req);
+  const ctx = getContext(req);
+  const { companyId } = ctx;
   const { page, limit, skip } = getPagination(req);
   try {
     const [total, rows] = await Promise.all([
@@ -1715,7 +1715,10 @@ app.get("/api/audit-logs", requireAuth, async (req, res) => {
         take: limit,
       }),
     ]);
-    res.json(paginated(rows.map(mapAuditLog), total, page, limit));
+    // IP et navigateur réservés aux admins entreprise/plateforme ; masqués sinon.
+    const admin = isCompanyAdmin(ctx.user.role);
+    const mapped = rows.map(mapAuditLog).map((r) => (admin ? r : { ...r, ip: null, userAgent: null }));
+    res.json(paginated(mapped, total, page, limit));
   } catch (err) {
     console.error("[GET /api/audit-logs]", err);
     res.status(500).json({ error: "Erreur base de données." });
