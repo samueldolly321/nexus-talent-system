@@ -402,6 +402,24 @@ Master Informatique option Réseaux & Cloud - Telecom Paris (2018)`,
   ];
   for (const l of auditLogs) await prisma.auditLog.upsert({ where: { id: l.id }, update: {}, create: l });
 
+  // ---------------------------------------------------------------------------
+  // RÉCONCILIATION des bases DÉJÀ existantes (locale/prod).
+  // Le reste du seed est purement additif (update: {}), donc il ne met jamais à
+  // jour l'existant ; ces quelques opérations ciblées propagent les changements
+  // voulus aux bases déjà déployées, à chaque `prisma db seed` (donc à chaque
+  // build Render). Idempotent.
+  // ---------------------------------------------------------------------------
+  // 1. Retire les utilisateurs de démo sortis du référentiel (Sarah, Marc).
+  //    AuditLog.userId est onDelete:SetNull → les logs sont conservés, détachés.
+  const removedUsers = await prisma.user.deleteMany({ where: { id: { in: ["user-sarah", "user-marc"] } } });
+  if (removedUsers.count) console.log(`   ${removedUsers.count} utilisateur(s) de démo retiré(s)`);
+  // 2. Aligne le salaire des offres de démo sur leur valeur courante (Ariary).
+  //    Ciblé par id → n'affecte PAS les offres créées par l'utilisateur.
+  await prisma.job.updateMany({
+    where: { id: { in: jobs.map((j) => j.id) } },
+    data: { salaryRange: "3 000 000 Ariary" },
+  });
+
   const counts = {
     companies: await prisma.company.count(),
     users: await prisma.user.count(),
