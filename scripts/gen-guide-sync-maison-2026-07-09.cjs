@@ -40,6 +40,7 @@ b.push(bullet([{ t: "CORS : ", b: true }, { t: "le serveur tolère FRONTEND_URL 
 b.push(bullet([{ t: "Données : ", b: true }, { t: "utilisateurs Sarah Jenkins et Marc Antoine supprimés ; salaires des offres à « 3 000 000 Ariary »." }]));
 b.push(bullet([{ t: "Navigation : ", b: true }, { t: "onglets « Utilisateurs » et « Paramètres » masqués pour le rôle RH (visibles pour Admin et Manager)." }]));
 b.push(bullet([{ t: "Sécurité : ", b: true }, { t: "lecture des utilisateurs verrouillée côté serveur (RH → 403) + correction d'une fuite multi-entreprise sur GET /api/users. Vérifié en prod." }]));
+b.push(bullet([{ t: "Traçabilité des connexions : ", b: true }, { t: "IP + navigateur enregistrés à chaque connexion (nouveaux champs AuditLog + migration). Nouvel onglet « Connexions » (table + recherche) réservé aux Admins entreprise/plateforme ; IP masquée côté API pour les autres rôles." }]));
 b.push(bullet([{ t: "Docs : ", b: true }, { t: "compte-rendu du 09/07 + guide de mise en ligne de A à Z + ce guide de synchro." }]));
 b.push(spacer());
 
@@ -57,10 +58,16 @@ b.push(spacer());
 b.push(h1("3. Méthode alternative — copie manuelle des fichiers"));
 b.push(p([{ t: "Si vous copiez à la main (clé USB, etc.), reportez ces fichiers en respectant l'arborescence." }]));
 b.push(h2("Code de l'application (indispensable)"));
-b.push(code("prisma/seed.ts"));
 b.push(code("server.ts"));
+b.push(code("prisma/seed.ts"));
+b.push(code("prisma/schema.prisma"));
+b.push(code("prisma/migrations/20260709125953_add_audit_ip_useragent/  (dossier complet)"));
+b.push(code("src/App.tsx"));
+b.push(code("src/types.ts"));
+b.push(code("src/lib/mappers.ts"));
 b.push(code("src/components/LoginView.tsx"));
 b.push(code("src/components/Sidebar.tsx"));
+b.push(code("src/components/ConnectionsView.tsx  (nouveau)"));
 b.push(h2("Scripts"));
 b.push(code("scripts/apply-data-changes.cjs"));
 b.push(code("scripts/gen-compte-rendu.cjs"));
@@ -76,24 +83,25 @@ b.push(spacer());
 
 // 4. Commandes
 b.push(h1("4. Commandes à lancer après la synchro"));
-b.push(p([{ t: "1. ", b: true }, { t: "Mettre la base de données maison à jour (idempotent : ajoute samuel@test.io, retire Sarah/Marc, aligne les salaires des offres de démo sur 3 000 000 Ariary) :" }]));
+b.push(p([{ t: "Important : arrêtez d'abord le serveur de dev (Ctrl+C). ", b: true }, { t: "Sous Windows il verrouille le moteur Prisma, ce qui ferait échouer generate/migrate." }]));
+b.push(p([{ t: "1. ", b: true }, { t: "Régénérer le client Prisma (nouveaux champs ip / userAgent du journal) :" }]));
+b.push(code("npx prisma generate"));
+b.push(p([{ t: "2. ", b: true }, { t: "Appliquer la nouvelle migration à votre base maison (ajoute les colonnes ip / userAgent) — NÉCESSAIRE aujourd'hui :" }]));
+b.push(code("npx prisma migrate deploy"));
+b.push(p([{ t: "3. ", b: true }, { t: "Mettre les données à jour (idempotent : ajoute samuel@test.io, retire Sarah/Marc, aligne les salaires des offres de démo sur 3 000 000 Ariary) :" }]));
 b.push(code("npx prisma db seed"));
-b.push(p([{ t: "2. ", b: true }, { t: "(Optionnel) Forcer TOUTES les offres — y compris celles créées chez vous — à 3 000 000 Ariary :" }]));
+b.push(p([{ t: "4. ", b: true }, { t: "(Optionnel) Forcer TOUTES les offres — y compris celles créées chez vous — à 3 000 000 Ariary :" }]));
 b.push(code("node scripts/apply-data-changes.cjs"));
-b.push(p([{ t: "3. ", b: true }, { t: "Vérifier que le projet compile :" }]));
+b.push(p([{ t: "5. ", b: true }, { t: "Vérifier que le projet compile :" }]));
 b.push(code("npm run lint"));
-b.push(p([{ t: "4. ", b: true }, { t: "(Optionnel) Regénérer les documents Word/Excel :" }]));
-b.push(code("node scripts/gen-compte-rendu-2026-07-09.cjs"));
-b.push(code("node scripts/gen-guide-mise-en-ligne.cjs"));
-b.push(code("node scripts/gen-guide-sync-maison-2026-07-09.cjs"));
-b.push(p([{ t: "5. ", b: true }, { t: "Relancer le serveur de dev pour voir les changements, puis Ctrl+F5 dans le navigateur :" }]));
+b.push(p([{ t: "6. ", b: true }, { t: "Relancer le serveur de dev, puis Ctrl+F5 dans le navigateur :" }]));
 b.push(code("npm run dev"));
 b.push(spacer());
 
 // 5. Pas besoin de
 b.push(h1("5. Ce dont vous n'avez PAS besoin"));
-b.push(bullet([{ t: "Pas de migration : ", b: true }, { t: "le schéma de base n'a pas changé aujourd'hui → inutile de lancer prisma migrate." }]));
 b.push(bullet([{ t: "Pas de npm install : ", b: true }, { t: "aucune dépendance ajoutée aujourd'hui (package.json inchangé)." }]));
+b.push(bullet([{ t: "Prod déjà à jour : ", b: true }, { t: "la migration et les données ont déjà été appliquées à Neon via le déploiement (rien à faire côté production)." }]));
 b.push(spacer());
 
 // 6. Notes

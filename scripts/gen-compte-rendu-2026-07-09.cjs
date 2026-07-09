@@ -95,6 +95,11 @@ b.push(bullet([{ t: "GET /api/users : ", b: true }, { t: "réservé aux admins/m
 b.push(bullet([{ t: "GET /api/context : ", b: true }, { t: "la liste des utilisateurs n'est exposée qu'aux rôles de gestion (RH → liste vide)." }]));
 b.push(bullet([{ t: "Déjà protégé : ", b: true }, { t: "création d'utilisateur, paramètres société et changement de contexte (admins) ; changement de mot de passe (self-only)." }]));
 b.push(bullet([{ t: "Vérifié en prod : ", b: true }, { t: "RH → 403, Admin → 200. Le masquage des onglets est devenu une vraie barrière serveur." }]));
+b.push(h2("Traçabilité des connexions (IP + navigateur)"));
+b.push(bullet([{ t: "Chaque connexion (mot de passe + Google/SSO) enregistre désormais l'IP réelle du visiteur (via Cloudflare) et le navigateur — nouveaux champs AuditLog + migration add_audit_ip_useragent." }]));
+b.push(bullet([{ t: "Nouvel onglet « Connexions » : table Utilisateur / Rôle / IP / Navigateur / Date, avec recherche." }]));
+b.push(bullet([{ t: "Réservé aux Admins entreprise/plateforme ; l'IP et le navigateur sont masqués côté API pour les autres rôles (RH, Manager)." }]));
+b.push(bullet([{ t: "Vérifié en prod : Admin voit l'IP, RH non. Les connexions antérieures à aujourd'hui n'ont pas d'IP." }]));
 b.push(spacer());
 
 b.push(h1("7. À noter"));
