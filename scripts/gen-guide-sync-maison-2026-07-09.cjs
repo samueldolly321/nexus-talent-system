@@ -39,6 +39,7 @@ b.push(bullet([{ t: "Connexion Google : ", b: true }, { t: "activée en prod (va
 b.push(bullet([{ t: "CORS : ", b: true }, { t: "le serveur tolère FRONTEND_URL avec/sans slash + espaces, et loggue les origines autorisées." }]));
 b.push(bullet([{ t: "Données : ", b: true }, { t: "utilisateurs Sarah Jenkins et Marc Antoine supprimés ; salaires des offres à « 3 000 000 Ariary »." }]));
 b.push(bullet([{ t: "Navigation : ", b: true }, { t: "onglets « Utilisateurs » et « Paramètres » masqués pour le rôle RH (visibles pour Admin et Manager)." }]));
+b.push(bullet([{ t: "Sécurité : ", b: true }, { t: "lecture des utilisateurs verrouillée côté serveur (RH → 403) + correction d'une fuite multi-entreprise sur GET /api/users. Vérifié en prod." }]));
 b.push(bullet([{ t: "Docs : ", b: true }, { t: "compte-rendu du 09/07 + guide de mise en ligne de A à Z + ce guide de synchro." }]));
 b.push(spacer());
 

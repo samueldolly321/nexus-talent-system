@@ -21,6 +21,7 @@ function para(styleId, runs) {
 }
 const title = (t) => para("Title", t);
 const h1 = (t) => para("Heading1", t);
+const h2 = (t) => para("Body", { t, b: true });
 const p = (r) => para("Body", r);
 const bullet = (r) => para("Bullet", r);
 const code = (t) => para("Code", { t, code: true });
@@ -81,9 +82,24 @@ b.push(bullet([{ t: "b56654f", code: true }, { t: " — CORS : normalisation agr
 b.push(p([{ t: "Cause racine du blocage de connexion : ", b: true }, { t: "une faute de frappe dans la variable FRONTEND_URL sur Render (.con au lieu de .com). Le log « [CORS] Origines autorisées » au démarrage permet de la repérer." }]));
 b.push(spacer());
 
-b.push(h1("6. À noter"));
+b.push(h1("6. Compléments du 09/07 — données, Google, permissions, sécurité"));
+b.push(h2("Données"));
+b.push(bullet([{ t: "Utilisateurs de démo Sarah Jenkins et Marc Antoine supprimés (local + prod)." }]));
+b.push(bullet([{ t: "Salaires des offres uniformisés à « 3 000 000 Ariary » (réconciliation ciblée intégrée au seed)." }]));
+b.push(h2("Connexion Google"));
+b.push(bullet([{ t: "Activée en production : variables GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET sur Render + URL de redirection de prod ajoutée + email autorisé (liaison de compte, pas d'auto-inscription)." }]));
+b.push(h2("Navigation par rôle"));
+b.push(bullet([{ t: "Onglets « Utilisateurs » et « Paramètres » masqués pour le rôle RH ; visibles pour Admin et Manager." }]));
+b.push(h2("Sécurité — verrouillage côté serveur"));
+b.push(bullet([{ t: "GET /api/users : ", b: true }, { t: "réservé aux admins/managers (403 pour RH) + filtre par entreprise (corrige une fuite multi-entreprise : renvoyait tous les users de toutes les sociétés)." }]));
+b.push(bullet([{ t: "GET /api/context : ", b: true }, { t: "la liste des utilisateurs n'est exposée qu'aux rôles de gestion (RH → liste vide)." }]));
+b.push(bullet([{ t: "Déjà protégé : ", b: true }, { t: "création d'utilisateur, paramètres société et changement de contexte (admins) ; changement de mot de passe (self-only)." }]));
+b.push(bullet([{ t: "Vérifié en prod : ", b: true }, { t: "RH → 403, Admin → 200. Le masquage des onglets est devenu une vraie barrière serveur." }]));
+b.push(spacer());
+
+b.push(h1("7. À noter"));
 b.push(bullet([{ t: "Re-seed en prod : ", b: true }, { t: "si vous recréez la base, relancez le seed pour que samuel@test.io existe." }]));
-b.push(bullet([{ t: "Bouton Google grisé : ", b: true }, { t: "normal tant que GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET ne sont pas renseignés sur Render." }]));
+b.push(bullet([{ t: "Bouton Google : ", b: true }, { t: "activé en prod ; il n'apparaît grisé que si GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET ne sont pas renseignés (ex. sur une autre installation)." }]));
 b.push(bullet([{ t: "Plan gratuit : ", b: true }, { t: "le serveur s'endort après 15 min d'inactivité (réveil ~30-60 s au 1er accès) ; photos uploadées non persistantes." }]));
 b.push(bullet([{ t: "SSO côté serveur : ", b: true }, { t: "seule l'interface a changé. La route serveur /api/auth/sso et la config SSO_* de .env.example existent toujours (inutilisées). À supprimer plus tard si souhaité." }]));
 b.push(bullet([{ t: "Sécurité : ", b: true }, { t: "révoquer l'ancien token GitHub exposé (ghp_JLBr…) s'il ne l'est pas déjà." }]));
