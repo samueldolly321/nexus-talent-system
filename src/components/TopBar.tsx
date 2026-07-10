@@ -11,6 +11,8 @@ interface TopBarProps {
   rightSlot?: React.ReactNode;
   searchValue?: string;
   onSearchChange?: (q: string) => void;
+  // Masque la barre de recherche (ex. Tableau de bord, où elle n'a pas d'usage).
+  hideSearch?: boolean;
 }
 
 // Horodatage relatif compact (fr).
@@ -42,7 +44,7 @@ const VIEW_HELP: Array<{ name: string; role: string; description: string }> = [
   { name: "Paramètres", role: "Configuration de l'espace", description: "Informations de l'entreprise et réglages du tenant actif." },
 ];
 
-export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, rightSlot, searchValue, onSearchChange }: TopBarProps) {
+export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, rightSlot, searchValue, onSearchChange, hideSearch }: TopBarProps) {
   const { openSidebar } = useSidebar();
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifs, setNotifs] = useState<AuditLog[]>([]);
@@ -75,7 +77,7 @@ export default function TopBar({ activeUser, searchPlaceholder, breadcrumb, righ
       <div className="flex items-center flex-1 max-w-xl min-w-0">
         {breadcrumb ? (
           breadcrumb
-        ) : (
+        ) : hideSearch ? null : (
           <div className="relative w-full">
             <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
             <input

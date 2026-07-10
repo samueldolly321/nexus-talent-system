@@ -50,8 +50,6 @@ interface DashboardViewProps {
   onRefresh: () => Promise<void>;
   loading: boolean;
   activeUser: User | null;
-  searchQuery: string;
-  onSearchChange: (q: string) => void;
 }
 
 const statusStyle: Record<string, string> = {
@@ -69,7 +67,7 @@ const statusStyle: Record<string, string> = {
 const jobIcons = [Code, Brush, Database];
 const jobIconBg = ["bg-primary", "bg-on-primary-fixed-variant", "bg-on-secondary-container"];
 
-export default function DashboardView({ stats, onNavigateToView, onSelectCandidate, onRefresh, loading, activeUser, searchQuery, onSearchChange }: DashboardViewProps) {
+export default function DashboardView({ stats, onNavigateToView, onSelectCandidate, onRefresh, loading, activeUser }: DashboardViewProps) {
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -127,24 +125,11 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
 
   const { kpis, sourcingTrend, skillDistribution, expDistribution, recentCandidates, recentJobs } = stats;
 
-  // Recherche dashboard : filtre le widget "Candidats récents" (nom ou email).
-  const q = searchQuery.trim().toLowerCase();
-  const filteredRecentCandidates = q
-    ? recentCandidates.filter(c =>
-        c.name?.toLowerCase().includes(q) || c.email?.toLowerCase().includes(q)
-      )
-    : recentCandidates;
-
   const radarData = skillDistribution.slice(0, 6).map(s => ({ subject: s.name, value: s.count }));
 
   return (
     <div className="flex-1 bg-background min-h-screen flex flex-col">
-      <TopBar
-        activeUser={activeUser}
-        searchValue={searchQuery}
-        onSearchChange={onSearchChange}
-        searchPlaceholder="Rechercher candidats, offres ou rapports..."
-      />
+      <TopBar activeUser={activeUser} hideSearch />
 
       <main className="px-4 md:px-8 pt-6 md:pt-8 pb-12 flex-1">
         {/* Welcome */}
@@ -296,7 +281,7 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline-variant">
-                  {filteredRecentCandidates.slice(0, 5).map(cand => (
+                  {recentCandidates.slice(0, 5).map(cand => (
                     <tr key={cand.id} className="hover:bg-surface-container-low transition-all cursor-pointer" onClick={() => onSelectCandidate(cand)}>
                       <td className="px-6 py-3 flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-primary-fixed-dim flex items-center justify-center font-bold text-on-primary-fixed text-xs shrink-0">
@@ -330,10 +315,10 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
                       </td>
                     </tr>
                   ))}
-                  {filteredRecentCandidates.length === 0 && (
+                  {recentCandidates.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-6 py-8 text-center text-sm text-on-surface-variant">
-                        Aucun candidat récent ne correspond à la recherche.
+                        Aucun candidat récent.
                       </td>
                     </tr>
                   )}

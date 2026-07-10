@@ -508,7 +508,7 @@ export default function App() {
 
     switch (activeView) {
       case "dashboard":
-        return <DashboardView stats={dashboardStats} onNavigateToView={navigateTo} onSelectCandidate={openCandidateFromView} onRefresh={fetchData} loading={loading} activeUser={activeUser} searchQuery={searchQuery} onSearchChange={setSearchQuery} />;
+        return <DashboardView stats={dashboardStats} onNavigateToView={navigateTo} onSelectCandidate={openCandidateFromView} onRefresh={fetchData} loading={loading} activeUser={activeUser} />;
       case "jobs":
         return (
           <JobsView
@@ -741,7 +741,7 @@ export default function App() {
       case "dev-center":
         return <DevCenterView />;
       default:
-        return <DashboardView stats={dashboardStats} onNavigateToView={navigateTo} onSelectCandidate={openCandidateFromView} onRefresh={fetchData} loading={loading} activeUser={activeUser} searchQuery={searchQuery} onSearchChange={setSearchQuery} />;
+        return <DashboardView stats={dashboardStats} onNavigateToView={navigateTo} onSelectCandidate={openCandidateFromView} onRefresh={fetchData} loading={loading} activeUser={activeUser} />;
     }
   };
 

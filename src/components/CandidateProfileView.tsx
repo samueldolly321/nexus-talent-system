@@ -10,6 +10,113 @@ import {
 import TopBar from "./TopBar";
 import { Candidate, Job, PipelineStage, User, Interview } from "../types";
 import { getAccessToken, apiFetch } from "../lib/api";
+import type { jsPDF } from "jspdf";
+
+// ---------------------------------------------------------------------------
+// Génération PDF du CV : helpers de mise en page (titres de section + tableaux).
+// Le CV est stocké en texte libre, mais on dispose aussi de données structurées
+// (coordonnées, scores IA, expériences, formations, compétences) qu'on présente
+// sous forme de tableaux propres avant de joindre le texte intégral.
+// ---------------------------------------------------------------------------
+
+// Palette (teal de la marque) et métriques partagées, en points (unité pt).
+const PDF_TEAL: [number, number, number] = [0, 104, 122];
+const PDF_BORDER: [number, number, number] = [214, 220, 226];
+const PDF_INK: [number, number, number] = [31, 41, 51];
+const PDF_MARGIN = 40;
+
+interface PdfColumn {
+  header: string;
+  width: number;
+  align?: "left" | "right";
+  bold?: boolean;
+}
+
+// Titre de section : libellé teal en capitales souligné d'un filet.
+// Ajoute une page si l'espace restant est insuffisant. Renvoie le nouvel y.
+function pdfSectionTitle(doc: jsPDF, title: string, y: number): number {
+  const pageW = doc.internal.pageSize.getWidth();
+  const pageH = doc.internal.pageSize.getHeight();
+  if (y > pageH - PDF_MARGIN - 40) {
+    doc.addPage();
+    y = PDF_MARGIN;
+  }
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(...PDF_TEAL);
+  doc.text(title.toUpperCase(), PDF_MARGIN, y);
+  doc.setDrawColor(...PDF_TEAL);
+  doc.setLineWidth(1);
+  doc.line(PDF_MARGIN, y + 5, pageW - PDF_MARGIN, y + 5);
+  return y + 20;
+}
+
+// Tableau générique : en-tête teal optionnel, lignes zébrées, cellules multi-lignes
+// (retour à la ligne automatique) et saut de page géré. Renvoie le y après le tableau.
+function pdfTable(doc: jsPDF, y: number, columns: PdfColumn[], rows: string[][], opts?: { showHeader?: boolean }): number {
+  const showHeader = opts?.showHeader !== false;
+  const pageH = doc.internal.pageSize.getHeight();
+  const lineH = 12;
+  const padX = 6;
+  const padY = 5;
+  const startX = PDF_MARGIN;
+  const totalW = columns.reduce((sum, c) => sum + c.width, 0);
+
+  const drawHeader = () => {
+    const h = lineH + padY * 2;
+    doc.setFillColor(...PDF_TEAL);
+    doc.rect(startX, y, totalW, h, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    let x = startX;
+    for (const c of columns) {
+      const tx = c.align === "right" ? x + c.width - padX : x + padX;
+      doc.text(c.header, tx, y + padY + lineH - 2, c.align === "right" ? { align: "right" } : undefined);
+      x += c.width;
+    }
+    y += h;
+  };
+
+  if (showHeader) drawHeader();
+  doc.setFontSize(9);
+
+  rows.forEach((row, ri) => {
+    const cellLines = columns.map((c, ci) => doc.splitTextToSize(String(row[ci] ?? ""), c.width - padX * 2) as string[]);
+    const maxLines = Math.max(1, ...cellLines.map(l => l.length || 1));
+    const rowH = maxLines * lineH + padY * 2;
+
+    if (y + rowH > pageH - PDF_MARGIN) {
+      doc.addPage();
+      y = PDF_MARGIN;
+      if (showHeader) drawHeader();
+    }
+
+    if (ri % 2 === 1) {
+      doc.setFillColor(246, 248, 249);
+      doc.rect(startX, y, totalW, rowH, "F");
+    }
+
+    let x = startX;
+    columns.forEach((c, ci) => {
+      doc.setDrawColor(...PDF_BORDER);
+      doc.setLineWidth(0.5);
+      doc.rect(x, y, c.width, rowH);
+      doc.setTextColor(...PDF_INK);
+      doc.setFont("helvetica", c.bold ? "bold" : "normal");
+      cellLines[ci].forEach((ln, li) => {
+        const ty = y + padY + lineH - 2 + li * lineH;
+        const tx = c.align === "right" ? x + c.width - padX : x + padX;
+        doc.text(ln, tx, ty, c.align === "right" ? { align: "right" } : undefined);
+      });
+      x += c.width;
+    });
+    y += rowH;
+  });
+
+  doc.setFont("helvetica", "normal");
+  return y;
+}
 
 interface CandidateProfileViewProps {
   candidate: Candidate;
@@ -180,33 +287,163 @@ export default function CandidateProfileView({
   const openAvatar = () => { setAvatarFile(null); setFormError(null); setModal("avatar"); };
   const openCv = () => { setCvDraft(candidate.cvText || ""); setFormError(null); setModal("cv"); };
 
-  // Télécharge le CV (stocké en texte) en PDF. jsPDF est importé dynamiquement
-  // (chargé uniquement au clic) pour ne pas alourdir le bundle principal.
+  // Le bouton reste utile même sans texte de CV : on peut générer une fiche à
+  // partir des coordonnées, des scores IA et de l'analyse structurée.
+  const hasCvContent = !!(candidate.cvText || candidate.analysis || candidate.scores);
+
+  // Génère une fiche candidat mise en forme (tableaux) en PDF. jsPDF est importé
+  // dynamiquement (chargé uniquement au clic) pour ne pas alourdir le bundle.
   const downloadCv = async () => {
-    if (!candidate.cvText) return;
+    if (!hasCvContent) return;
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const margin = 40;
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
-    const lineHeight = 14;
+    const contentW = pageW - PDF_MARGIN * 2;
 
+    // Bandeau d'en-tête : nom + poste visé, date de génération à droite.
+    doc.setFillColor(...PDF_TEAL);
+    doc.rect(0, 0, pageW, 84, "F");
+    doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text(`CV — ${candidate.name}`, margin, margin);
-
+    doc.setFontSize(20);
+    doc.text(candidate.name, PDF_MARGIN, 44);
     doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    const lines = doc.splitTextToSize(candidate.cvText, pageW - margin * 2) as string[];
-    let y = margin + 24;
-    for (const line of lines) {
-      if (y > pageH - margin) {
-        doc.addPage();
-        y = margin;
-      }
-      doc.text(line, margin, y);
-      y += lineHeight;
+    doc.setFontSize(11);
+    doc.text(job?.title || "Candidature", PDF_MARGIN, 64);
+    doc.setFontSize(9);
+    doc.text(`Généré le ${new Date().toLocaleDateString("fr-FR")}`, pageW - PDF_MARGIN, 44, { align: "right" });
+
+    let y = 84 + 32;
+
+    // Coordonnées (tableau libellé / valeur, sans en-tête).
+    y = pdfSectionTitle(doc, "Coordonnées", y);
+    y = pdfTable(
+      doc,
+      y,
+      [
+        { header: "", width: 150, bold: true },
+        { header: "", width: contentW - 150 },
+      ],
+      [
+        ["Email", candidate.email || "—"],
+        ["Téléphone", candidate.phone || "—"],
+        ["Localisation", candidate.location || "—"],
+        ["LinkedIn", candidate.linkedinUrl || "—"],
+        ["Source", candidate.source || "—"],
+        ["Prétention salariale", candidate.salaryExpectation || "—"],
+        ["Étape de recrutement", candidate.stage],
+      ],
+      { showHeader: false }
+    );
+
+    // Évaluation IA (scores).
+    if (candidate.scores) {
+      const s = candidate.scores;
+      y = pdfSectionTitle(doc, "Évaluation IA", y + 20);
+      y = pdfTable(
+        doc,
+        y,
+        [
+          { header: "Critère", width: contentW - 120, bold: true },
+          { header: "Score", width: 120, align: "right" },
+        ],
+        [
+          ["Score global", `${s.globalScore} %`],
+          ["Compétences techniques", `${s.skillsScore} %`],
+          ["Expérience", `${s.experienceScore} %`],
+          ["Formation", `${s.educationScore} %`],
+          ["Savoir-être", `${s.softSkillsScore} %`],
+          ["Langues", `${s.languagesScore} %`],
+        ]
+      );
     }
+
+    // Expériences professionnelles.
+    const exps = candidate.analysis?.experiences ?? [];
+    if (exps.length) {
+      y = pdfSectionTitle(doc, "Expériences professionnelles", y + 20);
+      y = pdfTable(
+        doc,
+        y,
+        [
+          { header: "Poste", width: 140, bold: true },
+          { header: "Entreprise", width: 110 },
+          { header: "Durée", width: 55, align: "right" },
+          { header: "Description", width: contentW - 305 },
+        ],
+        exps.map(e => [
+          e.role || "—",
+          e.company || "—",
+          e.years ? `${e.years} an(s)` : "—",
+          e.description || "—",
+        ])
+      );
+    }
+
+    // Formation.
+    const edus = candidate.analysis?.educations ?? [];
+    if (edus.length) {
+      y = pdfSectionTitle(doc, "Formation", y + 20);
+      y = pdfTable(
+        doc,
+        y,
+        [
+          { header: "Diplôme", width: contentW - 260, bold: true },
+          { header: "École", width: 180 },
+          { header: "Année", width: 80, align: "right" },
+        ],
+        edus.map(e => [e.degree || "—", e.school || "—", e.year || "—"])
+      );
+    }
+
+    // Compétences regroupées par catégorie.
+    const sk = candidate.analysis?.skills;
+    if (sk) {
+      const groups: Array<[string, string[] | undefined]> = [
+        ["Métier", sk.domain],
+        ["Langages", sk.languages],
+        ["Frameworks", sk.frameworks],
+        ["Bases de données", sk.databases],
+        ["Outils", sk.tools],
+        ["Cloud", sk.cloud],
+        ["Savoir-être", sk.softSkills],
+        ["Certifications", sk.certifications],
+      ];
+      const skillRows = groups
+        .filter(([, v]) => v && v.length)
+        .map(([label, v]) => [label, (v as string[]).join(", ")]);
+      if (skillRows.length) {
+        y = pdfSectionTitle(doc, "Compétences", y + 20);
+        y = pdfTable(
+          doc,
+          y,
+          [
+            { header: "Catégorie", width: 150, bold: true },
+            { header: "Détail", width: contentW - 150 },
+          ],
+          skillRows
+        );
+      }
+    }
+
+    // Texte intégral du CV (le cas échéant).
+    if (candidate.cvText) {
+      y = pdfSectionTitle(doc, "CV — texte intégral", y + 20);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(...PDF_INK);
+      const lineH = 13;
+      for (const line of doc.splitTextToSize(candidate.cvText, contentW) as string[]) {
+        if (y > pageH - PDF_MARGIN) {
+          doc.addPage();
+          y = PDF_MARGIN;
+        }
+        doc.text(line, PDF_MARGIN, y);
+        y += lineH;
+      }
+    }
+
     doc.save(`CV_${candidate.name.replace(/\s+/g, "_")}.pdf`);
   };
   const openLetter = () => { setLetterDraft(candidate.letterText || ""); setFormError(null); setModal("letter"); };
@@ -326,8 +563,8 @@ export default function CandidateProfileView({
             </div>
             <button
               onClick={downloadCv}
-              disabled={!candidate.cvText}
-              title={candidate.cvText ? "Télécharger le CV (PDF)" : "Aucun CV disponible pour ce candidat"}
+              disabled={!hasCvContent}
+              title={hasCvContent ? "Télécharger le CV (PDF)" : "Aucune donnée disponible pour ce candidat"}
               className="w-full border border-outline-variant rounded-lg py-2 text-sm font-medium flex items-center justify-center gap-2 hover:bg-surface-container-low mb-4 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download size={14} />
