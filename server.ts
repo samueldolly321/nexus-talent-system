@@ -1359,6 +1359,73 @@ app.post("/api/candidates/:id/avatar", requireAuth, (req, res) => {
   });
 });
 
+// Import du CV d'un candidat existant depuis la fiche (PDF ou Word .docx).
+// Extrait le texte et le renvoie ; la persistance se fait ensuite via
+// PUT /api/candidates/:id (cvText), ce qui met aussi à jour l'état côté front.
+const candidateCvDir = path.join(process.cwd(), "uploads", "cvs");
+fs.mkdirSync(candidateCvDir, { recursive: true });
+const uploadCandidateCv = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, candidateCvDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase() || ".pdf";
+      cb(null, `cv-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 Mo max
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const isPdf = file.mimetype === "application/pdf" || ext === ".pdf";
+    const isDocx =
+      file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      ext === ".docx";
+    if (isPdf || isDocx) return cb(null, true);
+    cb(new Error("Le CV doit être au format PDF ou Word (.docx)."));
+  },
+});
+
+app.post("/api/candidates/:id/cv", requireAuth, (req, res) => {
+  uploadCandidateCv.single("cv")(req, res, async (err: unknown) => {
+    if (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : "Upload invalide." });
+    }
+    const { companyId } = getContext(req);
+    const { id } = req.params;
+    try {
+      const existing = await prisma.candidate.findFirst({ where: { id, companyId } });
+      if (!existing) return res.status(404).json({ error: "Candidat introuvable" });
+      if (!req.file) return res.status(400).json({ error: "Aucun fichier reçu." });
+
+      const ext = path.extname(req.file.originalname).toLowerCase();
+      const isDocx =
+        ext === ".docx" ||
+        req.file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+      let cvText = "";
+      try {
+        if (isDocx) {
+          const result = await mammoth.extractRawText({ path: req.file.path });
+          cvText = result.value || "";
+        } else {
+          const buf = fs.readFileSync(req.file.path);
+          const parser = new PDFParse({ data: buf });
+          const result = await parser.getText();
+          await parser.destroy();
+          cvText = result.text || "";
+        }
+      } catch (parseErr) {
+        console.error("[candidate cv parse]", parseErr);
+        return res.status(400).json({ error: "Impossible de lire le contenu du fichier." });
+      }
+
+      res.json({ cvText });
+    } catch (e) {
+      console.error("[POST /api/candidates/:id/cv]", e);
+      res.status(500).json({ error: "Erreur lors de l'import du CV." });
+    }
+  });
+});
+
 // Suppression DÉFINITIVE (fidèle à l'origine). Cascade : CandidateScore + CandidateSkill.
 app.delete("/api/candidates/:id", requireAuth, async (req, res) => {
   const ctx = getContext(req);

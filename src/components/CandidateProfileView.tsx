@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { ChevronRight, Download, Mail, Phone, MapPin, Linkedin, Globe, Sparkles, RefreshCw, GraduationCap, BadgeCheck, Pencil, X, Loader2, Camera, Calendar } from "lucide-react";
+import React, { useState, useEffect, useRef } from "react";
+import { ChevronRight, Download, Upload, Mail, Phone, MapPin, Linkedin, Globe, Sparkles, RefreshCw, GraduationCap, BadgeCheck, Pencil, X, Loader2, Camera, Calendar } from "lucide-react";
 import {
   RadarChart,
   PolarGrid,
@@ -56,9 +56,9 @@ function pdfSectionTitle(doc: jsPDF, title: string, y: number): number {
 function pdfTable(doc: jsPDF, y: number, columns: PdfColumn[], rows: string[][], opts?: { showHeader?: boolean }): number {
   const showHeader = opts?.showHeader !== false;
   const pageH = doc.internal.pageSize.getHeight();
-  const lineH = 12;
-  const padX = 6;
-  const padY = 5;
+  const lineH = 14;
+  const padX = 8;
+  const padY = 7;
   const startX = PDF_MARGIN;
   const totalW = columns.reduce((sum, c) => sum + c.width, 0);
 
@@ -163,6 +163,38 @@ export default function CandidateProfileView({
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [cvDraft, setCvDraft] = useState("");
   const [letterDraft, setLetterDraft] = useState("");
+
+  // Import d'un CV (PDF ou Word .docx) : envoyé au serveur pour extraction du
+  // texte, puis persisté via onSaveCandidate (met à jour l'état du profil).
+  const cvInputRef = useRef<HTMLInputElement>(null);
+  const [importingCv, setImportingCv] = useState(false);
+  const [cvImportError, setCvImportError] = useState<string | null>(null);
+
+  const handleImportCv = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // réinitialise pour permettre de réimporter le même fichier
+    if (!file) return;
+    setImportingCv(true);
+    setCvImportError(null);
+    try {
+      const form = new FormData();
+      form.append("cv", file);
+      const token = getAccessToken();
+      const res = await fetch(`/api/candidates/${candidate.id}/cv`, {
+        method: "POST",
+        credentials: "include",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Échec de l'import du CV.");
+      await onSaveCandidate(candidate.id, { cvText: data.cvText ?? "" });
+    } catch (err: any) {
+      setCvImportError(err?.message || "Une erreur est survenue.");
+    } finally {
+      setImportingCv(false);
+    }
+  };
 
   const closeModal = () => { if (!saving) { setModal(null); setFormError(null); } };
 
@@ -427,21 +459,43 @@ export default function CandidateProfileView({
       }
     }
 
-    // Texte intégral du CV (le cas échéant).
+    // Texte intégral du CV (le cas échéant), rendu en paragraphes aérés :
+    // les lignes vides deviennent des espacements, les autres sont justifiées
+    // à la largeur du contenu avec un interligne confortable.
     if (candidate.cvText) {
-      y = pdfSectionTitle(doc, "CV — texte intégral", y + 20);
+      y = pdfSectionTitle(doc, "CV — texte intégral", y + 24);
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
+      doc.setFontSize(10);
       doc.setTextColor(...PDF_INK);
-      const lineH = 13;
-      for (const line of doc.splitTextToSize(candidate.cvText, contentW) as string[]) {
-        if (y > pageH - PDF_MARGIN) {
-          doc.addPage();
-          y = PDF_MARGIN;
+      const lineH = 15;
+      const paraGap = 7;
+      const bottom = pageH - PDF_MARGIN - 16; // laisse la place au pied de page
+      for (const raw of candidate.cvText.replace(/\r\n/g, "\n").split("\n")) {
+        const trimmed = raw.trim();
+        if (!trimmed) {
+          y += paraGap;
+          continue;
         }
-        doc.text(line, PDF_MARGIN, y);
-        y += lineH;
+        for (const ln of doc.splitTextToSize(trimmed, contentW) as string[]) {
+          if (y > bottom) {
+            doc.addPage();
+            y = PDF_MARGIN;
+          }
+          doc.text(ln, PDF_MARGIN, y);
+          y += lineH;
+        }
       }
+    }
+
+    // Pied de page paginé (nom du candidat + numéro de page) sur toutes les pages.
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(150, 158, 166);
+      doc.text(`${candidate.name} — CV`, PDF_MARGIN, pageH - 18);
+      doc.text(`Page ${i} / ${pageCount}`, pageW - PDF_MARGIN, pageH - 18, { align: "right" });
     }
 
     doc.save(`CV_${candidate.name.replace(/\s+/g, "_")}.pdf`);
@@ -742,20 +796,49 @@ export default function CandidateProfileView({
 
           {activeTab === 1 && (
             <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
-              <div className="flex items-center justify-between mb-3 gap-3">
+              {/* Input fichier caché, déclenché par les boutons "Importer un CV". */}
+              <input
+                ref={cvInputRef}
+                type="file"
+                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                className="hidden"
+                onChange={handleImportCv}
+              />
+              <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
                 <h3 className="font-bold text-on-surface">CV Original</h3>
-                <button
-                  onClick={openCv}
-                  className="shrink-0 px-3 py-1.5 border border-outline-variant rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-surface-container-low transition-all"
-                >
-                  <Pencil size={14} />
-                  Modifier le CV
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => cvInputRef.current?.click()}
+                    disabled={importingCv}
+                    className="shrink-0 px-3 py-1.5 border border-outline-variant rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-surface-container-low transition-all disabled:opacity-50"
+                  >
+                    {importingCv ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                    {importingCv ? "Import…" : "Importer un CV"}
+                  </button>
+                  <button
+                    onClick={openCv}
+                    className="shrink-0 px-3 py-1.5 border border-outline-variant rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-surface-container-low transition-all"
+                  >
+                    <Pencil size={14} />
+                    Modifier le CV
+                  </button>
+                </div>
               </div>
+              {cvImportError && <p className="text-error text-sm mb-3">{cvImportError}</p>}
               {candidate.cvText ? (
                 <pre className="bg-primary-container text-inverse-on-surface p-4 rounded-lg text-xs font-mono leading-relaxed whitespace-pre-wrap max-h-[500px] overflow-y-auto">{candidate.cvText}</pre>
               ) : (
-                <p className="text-sm text-on-surface-variant">Aucun CV fourni pour ce candidat.</p>
+                <div className="text-center py-8 border border-dashed border-outline-variant rounded-lg">
+                  <p className="text-sm text-on-surface-variant mb-4">Aucun CV fourni pour ce candidat.</p>
+                  <button
+                    onClick={() => cvInputRef.current?.click()}
+                    disabled={importingCv}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50"
+                  >
+                    {importingCv ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                    Importer un CV (PDF ou Word)
+                  </button>
+                </div>
               )}
             </div>
           )}
