@@ -27,6 +27,7 @@ PostgreSQL via Prisma.
 | IA       | Google Gemini via `@google/genai` |
 | Uploads  | multer (photos candidats + CV), disque local |
 | PDF/CV   | jspdf (export), pdf-parse (PDF) + mammoth (Word .docx) pour l'import |
+| Excel    | **xlsx-js-style** (exports .xlsx stylés — couleurs/bordures ; chargé à la demande) |
 
 **Prérequis :** Node.js 20 LTS, PostgreSQL 14+, npm 10+.
 
@@ -109,6 +110,14 @@ Commit `350310c`, poussé et **déployé/vérifié en prod** (bundle `index-ATTS
 - ⚠️ Aucune migration, aucun re-seed, **aucune nouvelle dépendance** ce jour.
 - ⚠️ L'OCR image nécessite `GEMINI_API_KEY` (déjà configurée en prod ; en local, l'ajouter au `.env` pour tester les images).
 - Doc générée : `Guide-Sync-Maison-2026-07-16.docx`.
+
+### 16/07 (suite) — Exports Excel soignés
+Commit `0c1ca15`, poussé (déploiement Render en cours).
+1. **Refonte de la mise en forme des exports Excel** : nouveau helper partagé **`src/lib/excelExport.ts`** (via **`xlsx-js-style`**) — bandeau titre coloré + sous-titre, ligne d'en-tête, lignes zébrées, bordures fines, colonnes auto-dimensionnées, nombres alignés à droite. Utilisé par **Tableau de bord, Rapports et Candidats**.
+2. **Tableau de bord — 5 onglets** : KPIs, Candidats, **Répartition Expérience** (nouveau), **Offres publiées** (nouveau), Sourcing Trend.
+3. **Nouvelle dépendance `xlsx-js-style`** : l'ancien `xlsx` (SheetJS CE) **n'applique pas les styles** ; ce drop-in oui. Chargée **à la demande** (import dynamique) → démarrage allégé. `vite.config.ts` : chunk `vendor-xlsx` pointe désormais sur `xlsx-js-style`.
+- Fichiers : `src/lib/excelExport.ts` (nouveau), `DashboardView.tsx`, `ReportsView.tsx`, `CandidatesView.tsx`, `vite.config.ts`, `package.json`, `package-lock.json`.
+- ⚠️ **Première nouvelle dépendance depuis un moment** → à la maison, `npm install` **requis** (committer `package.json` + `package-lock.json`, déjà fait).
 
 ---
 

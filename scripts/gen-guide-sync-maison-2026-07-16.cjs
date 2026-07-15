@@ -38,9 +38,11 @@ b.push(bullet([{ t: "Page /postuler — Photo de profil : ", b: true }, { t: "no
 b.push(bullet([{ t: "CV en image (JPG/PNG) : ", b: true }, { t: "le champ CV de /postuler ET le bouton « Importer un CV » de la fiche candidat acceptent désormais aussi les images (photo ou scan d'un CV). Le texte est extrait automatiquement par OCR." }]));
 b.push(bullet([{ t: "OCR via l'IA Gemini : ", b: true }, { t: "l'extraction du texte d'une image réutilise Gemini (déjà utilisé pour l'analyse) — aucune nouvelle bibliothèque à installer." }]));
 b.push(bullet([{ t: "Photo côté recruteur corrigée : ", b: true }, { t: "le bouton « Changer la photo » de la fiche candidat enregistre maintenant la photo dans la base (en base64), ce qui la fait s'afficher correctement en ligne (avant, elle disparaissait en prod)." }]));
-b.push(bullet([{ t: "Aucune nouvelle dépendance : ", b: true }, { t: "aucun paquet npm ajouté." }]));
+b.push(bullet([{ t: "Exports Excel plus soignés : ", b: true }, { t: "les fichiers .xlsx exportés (Tableau de bord, Rapports, Candidats) ont maintenant un titre coloré, un en-tête, des lignes zébrées et des colonnes aérées." }]));
+b.push(bullet([{ t: "Tableau de bord — 5 onglets : ", b: true }, { t: "l'export inclut désormais KPIs, Candidats, Répartition par expérience, Dernières offres publiées et Sourcing Trend." }]));
+b.push(bullet([{ t: "Nouvelle dépendance (xlsx-js-style) : ", b: true }, { t: "elle applique les couleurs/bordures dans l'Excel (l'ancienne lib xlsx ne le faisait pas) — d'où un npm install à faire à la maison (voir partie 4). Chargée à la demande, elle n'alourdit pas le démarrage." }]));
 b.push(bullet([{ t: "Aucun changement de base : ", b: true }, { t: "pas de nouvelle migration, le seed n'est pas modifié (le champ avatarUrl existait déjà)." }]));
-b.push(bullet([{ t: "Prod déjà à jour : ", b: true }, { t: "commit 350310c poussé et déployé sur Render. Vérifié en ligne (nouveau bundle index-ATTSTaMD.js actif)." }]));
+b.push(bullet([{ t: "Prod déjà à jour : ", b: true }, { t: "commits 350310c (photo/OCR) et 0c1ca15 (Excel) poussés et déployés sur Render." }]));
 b.push(spacer());
 
 // 2. Méthode A : git pull
@@ -60,6 +62,12 @@ b.push(h2("Code de l'application (indispensable)"));
 b.push(code("server.ts"));
 b.push(code("src/components/ApplyView.tsx"));
 b.push(code("src/components/CandidateProfileView.tsx"));
+b.push(code("src/components/DashboardView.tsx"));
+b.push(code("src/components/ReportsView.tsx"));
+b.push(code("src/components/CandidatesView.tsx"));
+b.push(code("src/lib/excelExport.ts"));
+b.push(code("vite.config.ts"));
+b.push(code("package.json  +  package-lock.json  (pour la nouvelle dépendance)"));
 b.push(h2("Scripts (facultatif — génèrent les documents)"));
 b.push(code("scripts/gen-guide-sync-maison-2026-07-16.cjs"));
 b.push(h2("Documentation (facultatif — regénérable via le script)"));
@@ -70,8 +78,8 @@ b.push(spacer());
 
 // 4. Commandes
 b.push(h1("4. Commandes à lancer après la synchro"));
-b.push(p([{ t: "Bonne nouvelle : aujourd'hui, pas de migration ni de re-seed. ", b: true }, { t: "Les changements sont uniquement du code (front + serveur)." }]));
-b.push(p([{ t: "1. ", b: true }, { t: "Installer les dépendances (aucune nouvelle aujourd'hui, mais la commande reste sans risque) :" }]));
+b.push(p([{ t: "Pas de migration ni de re-seed aujourd'hui, ", b: true }, { t: "mais une nouvelle dépendance a été ajoutée (xlsx-js-style, pour l'Excel)." }]));
+b.push(p([{ t: "1. ", b: true }, { t: "Installer les dépendances — INDISPENSABLE cette fois (nouvelle dépendance) :" }]));
 b.push(code("npm install"));
 b.push(p([{ t: "2. ", b: true }, { t: "Vérifier que le projet compile :" }]));
 b.push(code("npm run lint"));
@@ -91,8 +99,8 @@ b.push(spacer());
 // 6. Ce dont vous n'avez PAS besoin
 b.push(h1("6. Ce dont vous n'avez PAS besoin"));
 b.push(bullet([{ t: "Pas de prisma migrate / db seed : ", b: true }, { t: "aucun champ de base ajouté (avatarUrl existait déjà)." }]));
-b.push(bullet([{ t: "Pas de nouvelle dépendance : ", b: true }, { t: "l'OCR réutilise Gemini, déjà installé." }]));
-b.push(bullet([{ t: "Rien à faire côté production : ", b: true }, { t: "Render est déjà déployé et vérifié." }]));
+b.push(bullet([{ t: "OCR sans installation : ", b: true }, { t: "la lecture des CV image réutilise Gemini, déjà présent (seul xlsx-js-style, pour l'Excel, est une nouvelle dépendance — d'où le npm install de la partie 4)." }]));
+b.push(bullet([{ t: "Rien à faire côté production : ", b: true }, { t: "Render redéploie automatiquement à chaque push." }]));
 b.push(spacer());
 
 // 7. Vérifier que tout marche
@@ -101,6 +109,7 @@ b.push(bullet([{ t: "Page /postuler : ", b: true }, { t: "un champ « Photo de p
 b.push(bullet([{ t: "Candidature avec CV en image : ", b: true }, { t: "sur /postuler, joindre une photo/scan de CV (JPG/PNG) → la candidature passe et le texte du CV est bien rempli dans la fiche." }]));
 b.push(bullet([{ t: "Import CV image (recruteur) : ", b: true }, { t: "fiche candidat → onglet « Expérience & CV » → « Importer un CV » accepte PDF, Word et image ; le texte apparaît ensuite." }]));
 b.push(bullet([{ t: "Photo affichée : ", b: true }, { t: "la photo (candidat ou recruteur) s'affiche dans la fiche et reste visible après un redéploiement." }]));
+b.push(bullet([{ t: "Export Excel : ", b: true }, { t: "dans Tableau de bord et Rapports, le bouton d'export .xlsx produit un fichier coloré et aéré ; l'export du Tableau de bord contient 5 onglets (dont Répartition par expérience et Offres publiées)." }]));
 b.push(spacer());
 
 // 8. À noter
@@ -109,6 +118,7 @@ b.push(bullet([{ t: "Formats CV acceptés : ", b: true }, { t: "PDF, Word .docx 
 b.push(bullet([{ t: "Photo — 2 Mo maximum : ", b: true }, { t: "elle est stockée en base (en base64) pour rester visible en ligne malgré le disque éphémère de Render." }]));
 b.push(bullet([{ t: "OCR d'image : ", b: true }, { t: "ajoute quelques secondes au traitement (~10-15 s) et consomme du quota Gemini ; une image nette donne une meilleure extraction." }]));
 b.push(bullet([{ t: "Uploads : ", b: true }, { t: "les fichiers reçus sont traités en mémoire (plus d'écriture sur le disque) : CV/lettre extraits en texte, photo encodée en base64." }]));
+b.push(bullet([{ t: "Excel — chargé à la demande : ", b: true }, { t: "la lib xlsx-js-style ne se télécharge qu'au clic sur « Exporter » ; le démarrage de l'app reste léger." }]));
 b.push(bullet([{ t: "Sécurité (rappel) : ", b: true }, { t: "révoquer l'ancien token GitHub exposé ghp_JLBr… s'il ne l'est pas déjà." }]));
 
 // ---- OOXML ----
