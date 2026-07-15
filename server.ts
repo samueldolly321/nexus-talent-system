@@ -131,18 +131,22 @@ app.use(cookieParser());
 const avatarDir = path.join(process.cwd(), "uploads", "avatars");
 fs.mkdirSync(avatarDir, { recursive: true });
 
+// Types d'images acceptés (photos de profil + CV lus par OCR).
+const IMAGE_MIME_RE = /^image\/(jpe?g|png|webp)$/i;
+const IMAGE_EXT_RE = /\.(jpe?g|png|webp)$/i;
+// Taille max d'une photo de profil : stockée en base64 dans la fiche (base Neon),
+// on la garde légère pour ne pas gonfler la base.
+const MAX_PHOTO_BYTES = 2 * 1024 * 1024; // 2 Mo
+
+// Photo de profil : stockée EN MÉMOIRE puis encodée en base64 (data URL). Le
+// disque de l'hébergeur (plan gratuit) est éphémère et non servi en prod : une
+// data URL persiste dans la fiche candidat et s'affiche partout (CSP autorise data:).
 const uploadAvatar = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, avatarDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase() || ".jpg";
-      cb(null, `${req.params.id}-${Date.now()}${ext}`);
-    },
-  }),
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 Mo max
+  storage: multer.memoryStorage(),
+  limits: { fileSize: MAX_PHOTO_BYTES },
   fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith("image/")) cb(null, true);
-    else cb(new Error("Seules les images sont acceptées."));
+    if (IMAGE_MIME_RE.test(file.mimetype)) cb(null, true);
+    else cb(new Error("Seules les images JPG, PNG ou WebP sont acceptées."));
   },
 });
 
@@ -203,6 +207,50 @@ const callGeminiWithRetry = async (params: Parameters<typeof ai.models.generateC
     }
   }
 };
+
+// OCR d'une image de CV (JPG/PNG/WebP) via Gemini (multimodal, déjà utilisé pour
+// l'analyse). Renvoie le texte transcrit ; aucune dépendance OCR supplémentaire.
+async function ocrImageToText(buffer: Buffer, mimeType: string): Promise<string> {
+  const response = await callGeminiWithRetry({
+    model: "gemini-3.5-flash",
+    contents: [
+      {
+        role: "user",
+        parts: [
+          { inlineData: { mimeType, data: buffer.toString("base64") } },
+          {
+            text:
+              "Transcris fidèlement et INTÉGRALEMENT tout le texte visible sur cette image de CV, " +
+              "en conservant la structure (sections, listes, coordonnées). Ne résume pas, ne commente pas : " +
+              "renvoie uniquement le texte brut du document.",
+          },
+        ],
+      },
+    ],
+  });
+  return (response.text ?? "").trim();
+}
+
+// Extraction du texte d'un CV quel que soit le format : image (OCR Gemini),
+// Word .docx (mammoth) ou PDF (pdf-parse). Réutilisé par l'import recruteur
+// (POST /api/candidates/:id/cv) et la candidature publique (POST /api/public/apply).
+async function extractCvText(file: { buffer: Buffer; mimetype: string; originalname: string }): Promise<string> {
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (IMAGE_MIME_RE.test(file.mimetype) || IMAGE_EXT_RE.test(ext)) {
+    return ocrImageToText(file.buffer, file.mimetype);
+  }
+  const isDocx =
+    ext === ".docx" ||
+    file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (isDocx) {
+    const result = await mammoth.extractRawText({ buffer: file.buffer });
+    return result.value || "";
+  }
+  const parser = new PDFParse({ data: file.buffer });
+  const result = await parser.getText();
+  await parser.destroy();
+  return result.text || "";
+}
 
 // ==========================================
 // AUTHENTICATION (JWT + Refresh Token + bcrypt)
@@ -1350,7 +1398,9 @@ app.post("/api/candidates/:id/avatar", requireAuth, (req, res) => {
       if (!existing) return res.status(404).json({ error: "Candidat introuvable" });
       if (!req.file) return res.status(400).json({ error: "Aucun fichier reçu." });
 
-      const url = `/uploads/avatars/${req.file.filename}`;
+      // Data URL base64 : persiste dans la fiche (avatarUrl) et s'affiche en prod
+      // sans dépendre du disque éphémère de l'hébergeur. Le front enchaîne le PUT.
+      const url = `data:${req.file.mimetype};base64,${req.file.buffer.toString("base64")}`;
       res.json({ url });
     } catch (e) {
       console.error("[POST /api/candidates/:id/avatar]", e);
@@ -1362,16 +1412,8 @@ app.post("/api/candidates/:id/avatar", requireAuth, (req, res) => {
 // Import du CV d'un candidat existant depuis la fiche (PDF ou Word .docx).
 // Extrait le texte et le renvoie ; la persistance se fait ensuite via
 // PUT /api/candidates/:id (cvText), ce qui met aussi à jour l'état côté front.
-const candidateCvDir = path.join(process.cwd(), "uploads", "cvs");
-fs.mkdirSync(candidateCvDir, { recursive: true });
 const uploadCandidateCv = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, candidateCvDir),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase() || ".pdf";
-      cb(null, `cv-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 Mo max
   fileFilter: (_req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
@@ -1379,8 +1421,9 @@ const uploadCandidateCv = multer({
     const isDocx =
       file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
       ext === ".docx";
-    if (isPdf || isDocx) return cb(null, true);
-    cb(new Error("Le CV doit être au format PDF ou Word (.docx)."));
+    const isImage = IMAGE_MIME_RE.test(file.mimetype) || IMAGE_EXT_RE.test(ext);
+    if (isPdf || isDocx || isImage) return cb(null, true);
+    cb(new Error("Le CV doit être au format PDF, Word (.docx) ou image (JPG/PNG)."));
   },
 });
 
@@ -1396,23 +1439,13 @@ app.post("/api/candidates/:id/cv", requireAuth, (req, res) => {
       if (!existing) return res.status(404).json({ error: "Candidat introuvable" });
       if (!req.file) return res.status(400).json({ error: "Aucun fichier reçu." });
 
-      const ext = path.extname(req.file.originalname).toLowerCase();
-      const isDocx =
-        ext === ".docx" ||
-        req.file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
       let cvText = "";
       try {
-        if (isDocx) {
-          const result = await mammoth.extractRawText({ path: req.file.path });
-          cvText = result.value || "";
-        } else {
-          const buf = fs.readFileSync(req.file.path);
-          const parser = new PDFParse({ data: buf });
-          const result = await parser.getText();
-          await parser.destroy();
-          cvText = result.text || "";
-        }
+        cvText = await extractCvText({
+          buffer: req.file.buffer,
+          mimetype: req.file.mimetype,
+          originalname: req.file.originalname,
+        });
       } catch (parseErr) {
         console.error("[candidate cv parse]", parseErr);
         return res.status(400).json({ error: "Impossible de lire le contenu du fichier." });
@@ -2032,31 +2065,33 @@ app.post("/api/candidates/:id/send-email", requireAuth, async (req, res) => {
 // ==========================================
 // 8. PUBLIC APPLICATION (candidature en ligne, sans authentification)
 // ==========================================
-const cvDir = path.join(process.cwd(), "uploads", "cvs");
-fs.mkdirSync(cvDir, { recursive: true });
-
+// Les fichiers reçus (CV, lettre, photo) sont traités EN MÉMOIRE : le CV/lettre
+// sont extraits en texte, la photo encodée en base64 — rien n'est écrit sur le
+// disque éphémère de l'hébergeur.
 const uploadCv = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, cvDir),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase() || ".pdf";
-      cb(null, `cv-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 Mo max
   fileFilter: (_req, file, cb) => {
-    const isPdf = file.mimetype === "application/pdf";
+    const ext = path.extname(file.originalname).toLowerCase();
+    const isPdf = file.mimetype === "application/pdf" || ext === ".pdf";
     const isDocx =
       file.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
-      path.extname(file.originalname).toLowerCase() === ".docx";
-    // Le CV reste strictement PDF ; la lettre de motivation accepte PDF ou Word (.docx).
+      ext === ".docx";
+    const isImage = IMAGE_MIME_RE.test(file.mimetype) || IMAGE_EXT_RE.test(ext);
+    // Le CV accepte PDF ou image (JPG/PNG, lue par OCR). La lettre : PDF ou Word.
+    // La photo de profil : image uniquement.
     if (file.fieldname === "cv") {
-      return isPdf ? cb(null, true) : cb(new Error("Le CV doit être au format PDF."));
+      return isPdf || isImage
+        ? cb(null, true)
+        : cb(new Error("Le CV doit être au format PDF ou image (JPG/PNG)."));
     }
     if (file.fieldname === "letter") {
       return isPdf || isDocx
         ? cb(null, true)
         : cb(new Error("La lettre de motivation doit être au format PDF ou Word (.docx)."));
+    }
+    if (file.fieldname === "photo") {
+      return isImage ? cb(null, true) : cb(new Error("La photo doit être une image (JPG/PNG)."));
     }
     cb(new Error("Champ de fichier inattendu."));
   },
@@ -2082,6 +2117,7 @@ app.post("/api/public/apply", (req, res) => {
   uploadCv.fields([
     { name: "cv", maxCount: 1 },
     { name: "letter", maxCount: 1 },
+    { name: "photo", maxCount: 1 },
   ])(req, res, async (err: unknown) => {
     if (err) {
       return res.status(400).json({ error: err instanceof Error ? err.message : "Upload invalide." });
@@ -2093,6 +2129,7 @@ app.post("/api/public/apply", (req, res) => {
 
     const cvFile = (req.files as any)?.["cv"]?.[0];
     const letterFile = (req.files as any)?.["letter"]?.[0];
+    const photoFile = (req.files as any)?.["photo"]?.[0];
 
     if (!name || !email || !jobId) {
       return res.status(400).json({ error: "Nom, email et offre sont requis." });
@@ -2105,39 +2142,42 @@ app.post("/api/public/apply", (req, res) => {
       const job = await prisma.job.findFirst({ where: { id: jobId, status: JobStatus.Active } });
       if (!job) return res.status(404).json({ error: "Offre introuvable ou inactive." });
 
-      const fileBuffer = fs.readFileSync(cvFile.path);
+      // CV : PDF (pdf-parse) ou image JPG/PNG (OCR Gemini), via le helper partagé.
       let cvText = "";
       try {
-        const parser = new PDFParse({ data: fileBuffer });
-        const result = await parser.getText();
-        await parser.destroy();
-        cvText = result.text || "";
+        cvText = await extractCvText({
+          buffer: cvFile.buffer,
+          mimetype: cvFile.mimetype,
+          originalname: cvFile.originalname,
+        });
       } catch (parseErr) {
-        console.error("[pdf-parse]", parseErr);
-        return res.status(400).json({ error: "Impossible de lire le contenu du PDF." });
+        console.error("[apply cv parse]", parseErr);
+        return res.status(400).json({ error: "Impossible de lire le contenu du CV." });
       }
 
       // Lettre de motivation optionnelle : PDF (pdf-parse) ou Word .docx (mammoth).
       // Si l'extraction échoue, on n'interrompt pas la candidature.
       let letterText = "";
       if (letterFile) {
-        const ext = path.extname(letterFile.originalname).toLowerCase();
-        const isDocx =
-          ext === ".docx" ||
-          letterFile.mimetype === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
         try {
-          if (isDocx) {
-            const result = await mammoth.extractRawText({ path: letterFile.path });
-            letterText = result.value || "";
-          } else {
-            const letterBuffer = fs.readFileSync(letterFile.path);
-            const parser = new PDFParse({ data: letterBuffer });
-            const result = await parser.getText();
-            await parser.destroy();
-            letterText = result.text || "";
-          }
+          letterText = await extractCvText({
+            buffer: letterFile.buffer,
+            mimetype: letterFile.mimetype,
+            originalname: letterFile.originalname,
+          });
         } catch (parseErr) {
           console.error("[letter parse]", parseErr);
+        }
+      }
+
+      // Photo de profil optionnelle : encodée en base64 (data URL) et persistée
+      // dans avatarUrl. Ignorée si > 2 Mo (le front valide déjà côté client).
+      let avatarUrl: string | null = null;
+      if (photoFile) {
+        if (photoFile.size <= MAX_PHOTO_BYTES) {
+          avatarUrl = `data:${photoFile.mimetype};base64,${photoFile.buffer.toString("base64")}`;
+        } else {
+          console.warn("[apply] photo ignorée (> 2 Mo)");
         }
       }
 
@@ -2152,6 +2192,7 @@ app.post("/api/public/apply", (req, res) => {
           phone: String(b.phone ?? ""),
           location: String(b.location ?? "Non spécifiée"),
           linkedinUrl: b.linkedinUrl || null,
+          avatarUrl,
           stage: PrismaPipelineStage.Received,
           cvText,
           letterText,

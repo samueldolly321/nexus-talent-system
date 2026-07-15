@@ -800,7 +800,7 @@ export default function CandidateProfileView({
               <input
                 ref={cvInputRef}
                 type="file"
-                accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                accept=".pdf,.docx,.jpg,.jpeg,.png,.webp,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/webp"
                 className="hidden"
                 onChange={handleImportCv}
               />
@@ -836,7 +836,7 @@ export default function CandidateProfileView({
                     className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold hover:opacity-90 transition-all disabled:opacity-50"
                   >
                     {importingCv ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                    Importer un CV (PDF ou Word)
+                    Importer un CV (PDF, Word ou image)
                   </button>
                 </div>
               )}
@@ -1008,12 +1008,12 @@ export default function CandidateProfileView({
                 <input
                   id="avatar-file"
                   type="file"
-                  accept="image/*"
+                  accept="image/jpeg,image/png,image/webp"
                   autoFocus
                   onChange={e => setAvatarFile(e.target.files?.[0] ?? null)}
                   className="w-full text-sm text-on-surface file:mr-3 file:py-2 file:px-4 file:rounded-[8px] file:border-0 file:text-sm file:font-bold file:bg-primary file:text-white hover:file:opacity-90 file:cursor-pointer"
                 />
-                <p className="text-[11px] text-on-surface-variant mt-1.5">JPG, PNG… — 5 Mo maximum.</p>
+                <p className="text-[11px] text-on-surface-variant mt-1.5">JPG, PNG ou WebP — 2 Mo maximum.</p>
               </div>
               {formError && <p className="text-error text-sm">{formError}</p>}
               <div className="flex justify-end gap-3 pt-2">

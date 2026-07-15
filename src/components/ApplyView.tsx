@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Mail, User, Phone, MapPin, Linkedin, FileText, UploadCloud, CheckCircle2, ArrowLeft } from "lucide-react";
+import { Mail, User, Phone, MapPin, Linkedin, FileText, UploadCloud, CheckCircle2, ArrowLeft, Camera } from "lucide-react";
 
 // Nom de l'app (white-label) mémorisé lors de la dernière session connectée.
 const appName = localStorage.getItem("nexus-app-name") || "Nexus Talent";
@@ -27,6 +27,8 @@ export default function ApplyView() {
   });
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [letterFile, setLetterFile] = useState<File | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -52,13 +54,31 @@ export default function ApplyView() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    if (file && file.type !== "application/pdf") {
-      setError("Le CV doit être au format PDF.");
+    const isImage = !!file && file.type.startsWith("image/");
+    if (file && file.type !== "application/pdf" && !isImage) {
+      setError("Le CV doit être au format PDF ou une image (JPG/PNG).");
       setCvFile(null);
       return;
     }
     setError(null);
     setCvFile(file);
+  };
+
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (file) {
+      if (!file.type.startsWith("image/")) {
+        setError("La photo doit être une image (JPG ou PNG).");
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        setError("La photo ne doit pas dépasser 2 Mo.");
+        return;
+      }
+    }
+    setError(null);
+    setPhotoFile(file);
+    setPhotoPreview(file ? URL.createObjectURL(file) : null);
   };
 
   const handleLetterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,7 +100,7 @@ export default function ApplyView() {
     setError(null);
 
     if (!cvFile) {
-      setError("Merci de joindre votre CV au format PDF.");
+      setError("Merci de joindre votre CV (PDF ou image JPG/PNG).");
       return;
     }
     if (!form.jobId) {
@@ -99,6 +119,7 @@ export default function ApplyView() {
       fd.append("linkedinUrl", form.linkedinUrl);
       fd.append("cv", cvFile);
       if (letterFile) fd.append("letter", letterFile);
+      if (photoFile) fd.append("photo", photoFile);
 
       const res = await fetch("/api/public/apply", { method: "POST", body: fd });
       const data = await res.json();
@@ -153,7 +174,7 @@ export default function ApplyView() {
         </div>
 
         <h2 className="font-sans text-[28px] font-semibold text-on-surface tracking-tight mb-2">Postuler à une offre</h2>
-        <p className="text-on-surface-variant mb-8">Remplissez le formulaire ci-dessous et joignez votre CV au format PDF.</p>
+        <p className="text-on-surface-variant mb-8">Remplissez le formulaire ci-dessous et joignez votre CV (PDF ou image JPG/PNG).</p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
@@ -264,7 +285,29 @@ export default function ApplyView() {
 
           <div>
             <label className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5 font-semibold">
-              CV (PDF) <span className="text-error">*</span>
+              Photo de profil <span className="text-on-surface-variant/70 normal-case tracking-normal">(optionnel)</span>
+            </label>
+            <label
+              htmlFor="photo-upload"
+              className="flex items-center gap-4 border border-dashed border-outline-variant rounded-lg py-4 px-4 cursor-pointer hover:bg-surface-container-low transition-all"
+            >
+              {photoPreview ? (
+                <img src={photoPreview} alt="Aperçu" className="w-14 h-14 rounded-full object-cover border border-outline-variant shrink-0" />
+              ) : (
+                <span className="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+                  <Camera size={20} className="text-on-surface-variant" />
+                </span>
+              )}
+              <span className="text-sm text-on-surface truncate">
+                {photoFile ? photoFile.name : "Ajouter une photo (JPG ou PNG, 2 Mo max)"}
+              </span>
+            </label>
+            <input id="photo-upload" type="file" accept="image/jpeg,image/png,image/webp" onChange={handlePhotoChange} className="hidden" />
+          </div>
+
+          <div>
+            <label className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5 font-semibold">
+              CV (PDF ou image JPG/PNG) <span className="text-error">*</span>
             </label>
             <label
               htmlFor="cv-upload"
@@ -272,10 +315,10 @@ export default function ApplyView() {
             >
               {cvFile ? <FileText size={20} className="text-secondary shrink-0" /> : <UploadCloud size={20} className="text-on-surface-variant shrink-0" />}
               <span className="text-sm text-on-surface truncate">
-                {cvFile ? cvFile.name : "Cliquez pour choisir votre CV (PDF, 10 Mo max)"}
+                {cvFile ? cvFile.name : "Cliquez pour choisir votre CV (PDF ou image, 10 Mo max)"}
               </span>
             </label>
-            <input id="cv-upload" type="file" accept="application/pdf" onChange={handleFileChange} className="hidden" />
+            <input id="cv-upload" type="file" accept="application/pdf,image/jpeg,image/png,image/webp" onChange={handleFileChange} className="hidden" />
           </div>
 
           <div>
