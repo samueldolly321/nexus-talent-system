@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import * as XLSX from "xlsx";
 import {
   Briefcase,
   Users,
@@ -76,8 +75,10 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
     setRefreshing(false);
   };
 
-  const handleExportReport = () => {
+  const handleExportReport = async () => {
     if (!stats) return;
+    // Chargé à la demande : la lib Excel (~870 Ko) n'alourdit pas le démarrage.
+    const { buildStyledSheet, downloadStyledWorkbook } = await import("../lib/excelExport");
 
     // Feuille 1 : KPIs
     const kpiRows = [
@@ -97,19 +98,103 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
       "Date candidature": new Date(c.appliedAt).toLocaleDateString("fr-FR"),
     }));
 
-    // Feuille 3 : Sourcing Trend
+    // Feuille : Répartition par expérience
+    const expRows = (stats.expDistribution || []).map((e: any) => ({
+      Niveau: e.name,
+      Candidats: e.value,
+    }));
+
+    // Feuille : Dernières offres publiées
+    const jobRows = (stats.recentJobs || []).map((j: any) => ({
+      Titre: j.title,
+      Localisation: j.location,
+      Contrat: j.contractType,
+      Statut: j.status,
+      Salaire: j.salaryRange ?? "—",
+      Priorité: j.priority ?? "Normal",
+      "Date de publication": j.createdAt ? new Date(j.createdAt).toLocaleDateString("fr-FR") : "—",
+    }));
+
+    // Feuille : Sourcing Trend
     const trendRows = (stats.sourcingTrend || []).map((t: any) => ({
       Mois: t.name,
       Candidatures: t.candidatures,
     }));
 
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(kpiRows), "KPIs");
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(candidateRows), "Candidats");
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(trendRows), "Sourcing Trend");
-
     const date = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `nexus-dashboard-${date}.xlsx`);
+    const dateFr = new Date().toLocaleDateString("fr-FR");
+
+    const kpiWs = buildStyledSheet({
+      sheetName: "KPIs",
+      title: "Tableau de bord — Indicateurs clés",
+      subtitle: `Généré le ${dateFr}`,
+      columns: [
+        { header: "Métrique", key: "Métrique", width: 26 },
+        { header: "Valeur", key: "Valeur", width: 14 },
+      ],
+      rows: kpiRows,
+    });
+
+    const candidatesWs = buildStyledSheet({
+      sheetName: "Candidats",
+      title: "Candidats récents",
+      subtitle: `Généré le ${dateFr}`,
+      columns: [
+        { header: "Nom", key: "Nom" },
+        { header: "Email", key: "Email" },
+        { header: "Stage", key: "Stage" },
+        { header: "Score Global", key: "Score Global" },
+        { header: "Décision IA", key: "Décision IA" },
+        { header: "Date candidature", key: "Date candidature" },
+      ],
+      rows: candidateRows,
+    });
+
+    const expWs = buildStyledSheet({
+      sheetName: "Répartition Expérience",
+      title: "Répartition par expérience",
+      subtitle: `Généré le ${dateFr}`,
+      columns: [
+        { header: "Niveau", key: "Niveau", width: 24 },
+        { header: "Candidats", key: "Candidats", width: 14 },
+      ],
+      rows: expRows,
+    });
+
+    const jobsWs = buildStyledSheet({
+      sheetName: "Offres publiées",
+      title: "Dernières offres publiées",
+      subtitle: `Généré le ${dateFr}`,
+      columns: [
+        { header: "Titre", key: "Titre", width: 32 },
+        { header: "Localisation", key: "Localisation" },
+        { header: "Contrat", key: "Contrat" },
+        { header: "Statut", key: "Statut" },
+        { header: "Salaire", key: "Salaire" },
+        { header: "Priorité", key: "Priorité" },
+        { header: "Date de publication", key: "Date de publication" },
+      ],
+      rows: jobRows,
+    });
+
+    const trendWs = buildStyledSheet({
+      sheetName: "Sourcing Trend",
+      title: "Tendance des candidatures",
+      subtitle: `Généré le ${dateFr}`,
+      columns: [
+        { header: "Mois", key: "Mois", width: 18 },
+        { header: "Candidatures", key: "Candidatures", width: 16 },
+      ],
+      rows: trendRows,
+    });
+
+    downloadStyledWorkbook(`nexus-dashboard-${date}.xlsx`, [
+      { name: "KPIs", ws: kpiWs },
+      { name: "Candidats", ws: candidatesWs },
+      { name: "Répartition Expérience", ws: expWs },
+      { name: "Offres publiées", ws: jobsWs },
+      { name: "Sourcing Trend", ws: trendWs },
+    ]);
   };
 
   if (loading || !stats) {

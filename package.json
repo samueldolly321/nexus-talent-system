@@ -38,7 +38,8 @@
     "recharts": "^3.9.0",
     "resend": "^6.17.1",
     "vite": "^6.2.3",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
+    "xlsx-js-style": "^1.2.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import * as XLSX from "xlsx";
 import { apiFetch } from "../lib/api";
 import { PipelineStage } from "../types";
 import {
@@ -90,29 +89,52 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
 
-  // Export Excel (.xlsx) via SheetJS : un onglet "Candidats" à partir des données réelles.
-  const handleExportExcel = () => {
+  // Export Excel (.xlsx) stylé : un onglet "Candidats" à partir des données réelles.
+  // La lib Excel est chargée à la demande (import dynamique) pour ne pas alourdir le démarrage.
+  const handleExportExcel = async () => {
     if (!stats) return;
     setExporting("excel");
+    try {
+      const { buildStyledSheet, downloadStyledWorkbook } = await import("../lib/excelExport");
 
-    const rows = (stats.recentCandidates || []).map((c: any) => ({
-      Nom: c.name,
-      Email: c.email,
-      Téléphone: c.phone,
-      Localisation: c.location,
-      Stage: c.stage,
-      "Score Global": c.scores?.globalScore ?? "N/A",
-      "Score Compétences": c.scores?.skillsScore ?? "N/A",
-      "Score Expérience": c.scores?.experienceScore ?? "N/A",
-      "Décision IA": c.recommendation?.suggestedDecision ?? "Non analysé",
-      "Date candidature": new Date(c.appliedAt).toLocaleDateString("fr-FR"),
-    }));
+      const rows = (stats.recentCandidates || []).map((c: any) => ({
+        Nom: c.name,
+        Email: c.email,
+        Téléphone: c.phone,
+        Localisation: c.location,
+        Stage: c.stage,
+        "Score Global": c.scores?.globalScore ?? "N/A",
+        "Score Compétences": c.scores?.skillsScore ?? "N/A",
+        "Score Expérience": c.scores?.experienceScore ?? "N/A",
+        "Décision IA": c.recommendation?.suggestedDecision ?? "Non analysé",
+        "Date candidature": new Date(c.appliedAt).toLocaleDateString("fr-FR"),
+      }));
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Candidats");
-    XLSX.writeFile(wb, `nexus-sourcing-${companyName}-${new Date().toISOString().slice(0, 10)}.xlsx`);
-    setExporting(null);
+      const ws = buildStyledSheet({
+        sheetName: "Candidats",
+        title: `Rapport de sourcing — ${companyName}`,
+        subtitle: `Généré le ${new Date().toLocaleDateString("fr-FR")} · ${rows.length} candidat(s)`,
+        columns: [
+          { header: "Nom", key: "Nom" },
+          { header: "Email", key: "Email" },
+          { header: "Téléphone", key: "Téléphone" },
+          { header: "Localisation", key: "Localisation" },
+          { header: "Stage", key: "Stage" },
+          { header: "Score Global", key: "Score Global" },
+          { header: "Score Compétences", key: "Score Compétences" },
+          { header: "Score Expérience", key: "Score Expérience" },
+          { header: "Décision IA", key: "Décision IA" },
+          { header: "Date candidature", key: "Date candidature" },
+        ],
+        rows,
+      });
+      downloadStyledWorkbook(
+        `nexus-sourcing-${companyName}-${new Date().toISOString().slice(0, 10)}.xlsx`,
+        [{ name: "Candidats", ws }]
+      );
+    } finally {
+      setExporting(null);
+    }
   };
 
   // Export PDF : ouvre une fenêtre avec une mise en page dédiée à l'impression,

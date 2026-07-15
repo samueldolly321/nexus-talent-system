@@ -33,7 +33,7 @@ export default defineConfig(() => {
           // @vitejs/plugin-react : un chunk vendor-react dédié ressortait vide.)
           manualChunks: {
             'vendor-charts': ['recharts'],
-            'vendor-xlsx': ['xlsx'],
+            'vendor-xlsx': ['xlsx-js-style'],
           },
         },
       },

@@ -1,5 +1,4 @@
 import React, { useMemo, useState } from "react";
-import * as XLSX from "xlsx";
 import { Sparkles, X, Download, LayoutGrid, ArrowUpDown, Plus, Loader2, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import TopBar from "./TopBar";
 import { Candidate, Job, User, PipelineStage } from "../types";
@@ -138,8 +137,10 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
     return counts;
   }, [candidates]);
 
-  const handleExportListe = () => {
+  const handleExportListe = async () => {
     if (filtered.length === 0) return;
+    // Lib Excel chargée à la demande (import dynamique) pour alléger le démarrage.
+    const { buildStyledSheet, downloadStyledWorkbook } = await import("../lib/excelExport");
 
     const rows = filtered.map(c => ({
       Nom: c.name,
@@ -155,10 +156,28 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
       "Date candidature": new Date(c.appliedAt).toLocaleDateString("fr-FR"),
     }));
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Candidats");
-    XLSX.writeFile(wb, `nexus-candidats-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    const ws = buildStyledSheet({
+      sheetName: "Candidats",
+      title: "Liste des candidats",
+      subtitle: `Généré le ${new Date().toLocaleDateString("fr-FR")} · ${rows.length} candidat(s)`,
+      columns: [
+        { header: "Nom", key: "Nom" },
+        { header: "Email", key: "Email" },
+        { header: "Téléphone", key: "Téléphone" },
+        { header: "Localisation", key: "Localisation" },
+        { header: "Offre", key: "Offre" },
+        { header: "Stage", key: "Stage" },
+        { header: "Score Global", key: "Score Global" },
+        { header: "Score Compétences", key: "Score Compétences" },
+        { header: "Score Expérience", key: "Score Expérience" },
+        { header: "Décision IA", key: "Décision IA" },
+        { header: "Date candidature", key: "Date candidature" },
+      ],
+      rows,
+    });
+    downloadStyledWorkbook(`nexus-candidats-${new Date().toISOString().slice(0, 10)}.xlsx`, [
+      { name: "Candidats", ws },
+    ]);
   };
 
   const toggleSelect = (id: string) => {
