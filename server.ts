@@ -1749,12 +1749,57 @@ app.post("/api/candidates/ai-search", requireAuth, async (req, res) => {
   if (!query) return res.status(400).json({ error: "Requête vide." });
 
   try {
-    // [Prisma] Candidats du tenant (score 1-1 + CandidateSkill inclus). La
-    // sérialisation ci-dessous reste basée sur analysis (logique IA inchangée).
-    const rows = await prisma.candidate.findMany({
-      where: { companyId },
-      include: { score: true, skills: { include: { skill: true } } },
-    });
+    // Option A — "retrieve then rerank" : on PRÉ-FILTRE en SQL pour ne PAS envoyer
+    // toute la base au modèle (fenêtre de contexte / coût / qualité se dégradent
+    // avec le volume). On borne à MAX_CANDIDATES : d'abord ceux qui matchent les
+    // mots-clés de la requête (compétences normalisées CandidateSkill / nom /
+    // localisation), complétés par les mieux notés. Gemini ne fait ensuite que le
+    // classement fin + l'explication sur cette pré-sélection.
+    const MAX_CANDIDATES = 80;
+    const STOPWORDS = new Set([
+      "avec", "sans", "pour", "dans", "les", "des", "une", "un", "le", "la", "de", "du", "et",
+      "ou", "en", "ans", "an", "annee", "annees", "année", "années", "experience", "expérience",
+      "candidat", "profil", "cherche", "recherche", "qui", "que", "sur", "par", "plus", "tous",
+      "toute", "toutes", "ayant", "type", "poste",
+    ]);
+    const keywords = [...new Set(
+      String(query).toLowerCase()
+        .split(/[^a-zà-ÿ0-9+#.]+/i)
+        .map((w) => w.trim())
+        .filter((w) => w.length >= 3 && !STOPWORDS.has(w)),
+    )].slice(0, 8);
+
+    const aiSearchInclude = { score: true, skills: { include: { skill: true } } };
+
+    // 1) Retrieve : candidats correspondant aux mots-clés (plafonné, triés par score).
+    const matched = keywords.length
+      ? await prisma.candidate.findMany({
+          where: {
+            companyId,
+            OR: keywords.flatMap((kw) => [
+              { name: { contains: kw, mode: "insensitive" as const } },
+              { location: { contains: kw, mode: "insensitive" as const } },
+              { skills: { some: { skill: { name: { contains: kw, mode: "insensitive" as const } } } } },
+            ]),
+          },
+          include: aiSearchInclude,
+          orderBy: { score: { globalScore: "desc" } },
+          take: MAX_CANDIDATES,
+        })
+      : [];
+
+    // 2) Complément : si peu de correspondances, on remplit avec les mieux notés
+    //    (pour ne pas passer à côté et garder une pré-sélection consistante).
+    let rows = matched;
+    if (matched.length < MAX_CANDIDATES) {
+      const filler = await prisma.candidate.findMany({
+        where: { companyId, id: { notIn: matched.map((c) => c.id) } },
+        include: aiSearchInclude,
+        orderBy: { score: { globalScore: "desc" } },
+        take: MAX_CANDIDATES - matched.length,
+      });
+      rows = [...matched, ...filler];
+    }
     const tenantCandidates = rows.map(mapCandidate);
 
     const serializedCandidates = tenantCandidates.map(c => ({
@@ -1778,7 +1823,7 @@ app.post("/api/candidates/ai-search", requireAuth, async (req, res) => {
     const prompt = `Tu es l'intelligence artificielle de recrutement du système ATS "Nexus Talent System".
 Le recruteur formule la recherche naturelle suivante : "${query}"
 
-Voici la liste des candidats indexés pour son entreprise en JSON :
+Voici une pré-sélection de candidats de son entreprise (déjà filtrés en amont, les plus susceptibles de correspondre) en JSON :
 ${JSON.stringify(serializedCandidates, null, 2)}
 
 Analyse la requête naturelle et sélectionne les candidats pertinents par rapport aux mots-clés, années d'expérience ou exigences décrits dans la requête.
@@ -1796,7 +1841,25 @@ Réponds uniquement avec le bloc JSON brut. Pas de markdown.`;
       }
     });
 
-    const parsedResponse = JSON.parse(response.text || "{}");
+    // Parsing robuste : le modèle renvoie parfois le JSON entouré de ```json,
+    // ou avec du texte autour. On nettoie et on extrait le 1er objet { ... } ;
+    // en dernier recours on renvoie un résultat vide propre (pas une 500).
+    let parsedResponse: { matchedIds?: string[]; explanation?: string };
+    try {
+      const cleaned = (response.text || "{}").trim()
+        .replace(/^```json\s*/i, "").replace(/^```\s*/, "").replace(/```\s*$/, "").trim();
+      try {
+        parsedResponse = JSON.parse(cleaned);
+      } catch {
+        const start = cleaned.indexOf("{");
+        const end = cleaned.lastIndexOf("}");
+        if (start === -1 || end <= start) throw new Error("pas d'objet JSON");
+        parsedResponse = JSON.parse(cleaned.slice(start, end + 1));
+      }
+    } catch (parseErr) {
+      console.error("[ai-search] réponse IA illisible:", parseErr);
+      parsedResponse = { matchedIds: [], explanation: "La recherche n'a pas pu être interprétée. Reformulez votre requête plus simplement." };
+    }
     logActionFor(ctx, "Recherche IA", `Recherche naturelle formulée : "${query}". Profils trouvés : ${parsedResponse.matchedIds?.length || 0}`);
     res.json(parsedResponse);
   } catch (error: any) {
