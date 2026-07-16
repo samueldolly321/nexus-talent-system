@@ -275,10 +275,15 @@ export default function App() {
         method: "POST",
         body: JSON.stringify(jobData)
       });
-      if (res.ok) await fetchData();
-    } catch (e) {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Erreur ${res.status}`);
+      }
+      await fetchData();
+    } catch (e: any) {
       console.error(e);
       setLoading(false);
+      alert("La création de l'offre a échoué : " + (e?.message || "erreur inconnue") + "\nRéessayez dans un instant.");
     }
   };
 
@@ -289,10 +294,15 @@ export default function App() {
         method: "PUT",
         body: JSON.stringify(jobData)
       });
-      if (res.ok) await fetchData();
-    } catch (e) {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Erreur ${res.status}`);
+      }
+      await fetchData();
+    } catch (e: any) {
       console.error(e);
       setLoading(false);
+      alert("La mise à jour de l'offre a échoué : " + (e?.message || "erreur inconnue") + "\nRéessayez dans un instant.");
     }
   };
 
@@ -300,10 +310,15 @@ export default function App() {
     setLoading(true);
     try {
       const res = await apiFetch(`/api/jobs/${id}`, { method: "DELETE" });
-      if (res.ok) await fetchData();
-    } catch (e) {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Erreur ${res.status}`);
+      }
+      await fetchData();
+    } catch (e: any) {
       console.error(e);
       setLoading(false);
+      alert("La suppression de l'offre a échoué : " + (e?.message || "erreur inconnue") + "\nRéessayez dans un instant.");
     }
   };
 
@@ -324,10 +339,15 @@ export default function App() {
         method: "POST",
         body: JSON.stringify(candData)
       });
-      if (res.ok) await fetchData();
-    } catch (e) {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Erreur ${res.status}`);
+      }
+      await fetchData();
+    } catch (e: any) {
       console.error(e);
       setLoading(false);
+      alert("L'ajout du candidat a échoué : " + (e?.message || "erreur inconnue") + "\nRéessayez dans un instant.");
     }
   };
 
