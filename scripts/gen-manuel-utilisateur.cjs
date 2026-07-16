@@ -143,6 +143,14 @@ b.push(numbered([{ t: "2. ", b: true }, { t: "Renseignez l'intitulé, le lieu, l
 b.push(numbered([{ t: "3. ", b: true }, { t: "Enregistrez : l'offre devient visible dans « Offres » et peut recevoir des candidatures en ligne." }]));
 b.push(p([{ t: "Offres archivées : ", b: true }, { t: "lorsqu'un poste est pourvu ou clôturé, il rejoint l'onglet « Offres archivées ». Vos données restent consultables sans encombrer la liste active." }]));
 b.push(p([{ t: "Bon à savoir : ", b: true }, { t: "le type de métier d'une offre (informatique ou autre) oriente la grille de compétences utilisée par l'analyse IA, pour une évaluation plus juste." }]));
+b.push(h2("Générer une offre avec l'IA"));
+b.push(p([{ t: "Pour gagner du temps, l'IA peut rédiger toute l'offre à partir du seul intitulé du poste." }]));
+b.push(numbered([{ t: "1. ", b: true }, { t: "Dans le formulaire de création d'offre, saisissez l'intitulé du poste (ex. « Développeur Backend Node.js » ou « Comptable général »)." }]));
+b.push(numbered([{ t: "2. ", b: true }, { t: "Cliquez sur « Générer avec l'IA »." }]));
+b.push(numbered([{ t: "3. ", b: true }, { t: "En quelques secondes, les champs se remplissent : description, missions, compétences attendues, soft skills souhaités, langues, formation, expérience et type de contrat." }]));
+b.push(numbered([{ t: "4. ", b: true }, { t: "Relisez et ajustez librement ce qui a été généré, puis publiez. Vous gardez toujours la main : tout reste modifiable." }]));
+b.push(bullet([{ t: "Disponible à la création : ", b: true }, { t: "le bouton apparaît lorsque vous créez une nouvelle offre (pas en modification, pour ne pas écraser une offre existante)." }]));
+b.push(bullet([{ t: "Si un message « service surchargé » apparaît : ", b: true }, { t: "le service d'IA est momentanément très sollicité ; patientez un instant et relancez la génération." }]));
 b.push(spacer());
 
 // ==== 5. Candidats ====

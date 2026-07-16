@@ -167,13 +167,26 @@ Commit `8174be4`, poussé et déployé.
 - Vérifié end-to-end en local (login démo → `/api/dashboard/stats` : top compétences réel + tranches d'expérience correctes).
 
 ### 17/07 (suite) — Recherche IA scalable (Option A : retrieve then rerank)
-Commit à venir. `server.ts` (`POST /api/candidates/ai-search`), **code uniquement**.
+Commit `fb2e434`, poussé et déployé. `server.ts` (`POST /api/candidates/ai-search`), **code uniquement**.
 1. **Fin du « charge tout »** : au lieu d'envoyer TOUS les candidats dans le prompt Gemini (mur de fenêtre de contexte / coût / qualité), on **pré-filtre en SQL** puis on ne fait « reranker » par l'IA qu'un sous-ensemble **borné à 80**.
 2. **Retrieve** : mots-clés extraits de la requête (hors stopwords, ≤ 8) → candidats matchant via `CandidateSkill` (compétences normalisées), `name` ou `location`, triés par score. **Complément** par les mieux notés si peu de correspondances.
 3. **Rerank** : seule la pré-sélection (≤ 80) part à Gemini → taille de prompt bornée quel que soit le volume de la base.
 4. **Robustesse** : parsing de la réponse Gemini rendu tolérant (nettoie ` ```json `, extrait l'objet, fallback résultat vide) — avant, un `JSON.parse` brut renvoyait une 500 sur réponse imparfaite.
 - ⚠️ Limite : pré-filtre par mots-clés « littéral » (pas encore sémantique pur → ce serait l'**Option B** : embeddings + `pgvector`, effort élevé, plus tard si besoin).
 - ⚠️ Aucune migration, aucune dépendance. Testé end-to-end (3 requêtes, dont un cas qui échouait avant).
+
+### 17/07 (suite) — Génération d'offre par IA + robustesse des erreurs IA
+`server.ts` + `src/components/JobsView.tsx`, **code uniquement**.
+1. **Nouvel endpoint `POST /api/jobs/generate`** (authentifié) : à partir du seul **intitulé** (+ domaine optionnel), Gemini génère une offre structurée (description, missions, `skillsRequired`, `softSkillsRequired`, `languagesRequired`, formation, `minExperienceYears`, `contractType`, `domain`). Réponse **nettoyée/validée** côté serveur (contrat parmi l'enum, exp entier, tableaux filtrés). Helper de parsing tolérant réutilisable **`parseAiJsonLoose`**.
+2. **Front** (`JobsView`) : bandeau **« Générer avec l'IA »** en tête du formulaire de **création** (masqué en édition) → pré-remplit **tous les champs d'un coup**, éditables ensuite. Utilise `apiFetch`. Spinner + erreur.
+3. **Robustesse des erreurs IA** : helper **`aiTransientMessage`** → messages clairs et actionnables (503 surcharge « réessayez dans quelques instants » / 429 quota « réessayez plus tard ») appliqués à **génération, analyse et recherche IA** (qui ne fuite plus le message brut). `callGeminiWithRetry` passé de **3 à 4 tentatives**.
+- ⚠️ Contexte : sur le **plan Gemini gratuit**, des rafales d'actions IA peuvent atteindre la limite de débit/quota par minute → message clair, il suffit d'attendre et réessayer (ce n'est pas un bug).
+- ⚠️ Aucune migration, aucune dépendance. Testé end-to-end (offre IT + non-IT ; domaine bien déduit).
+
+### 17/07 (suite) — Mise en page de la page publique /postuler
+`src/components/ApplyView.tsx`, **code uniquement (mise en forme)**.
+1. **Bloc élargi** (`max-w-xl` → `max-w-3xl`) et **champs 2 par 2** : Nom+Email, Téléphone+Localisation sur une ligne (grille `grid-cols-1 sm:grid-cols-2`) ; **Profil LinkedIn seul** ; Offre / Photo / CV / Lettre en pleine largeur.
+2. **Scroll horizontal supprimé** : `w-screen` (= 100vw, déborde de la barre de défilement verticale sur desktop) → **`w-full`** sur la vue formulaire ET la vue confirmation.
 
 ---
 
