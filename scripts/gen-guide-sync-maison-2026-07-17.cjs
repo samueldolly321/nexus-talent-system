@@ -41,6 +41,7 @@ b.push(bullet([{ t: "Recherche candidats côté serveur : ", b: true }, { t: "la
 b.push(bullet([{ t: "Composant Button réutilisable : ", b: true }, { t: "nouveau src/components/Button.tsx (un seul endroit pour le style des boutons). Premier écran migré : « Candidats »." }]));
 b.push(bullet([{ t: "Tableau de bord plus rapide (Niveau 0) : ", b: true }, { t: "il ne charge plus toute la base avec les CV/lettres ; chargement nettement allégé." }]));
 b.push(bullet([{ t: "Nouvelle colonne experienceYears (Niveau 1) : ", b: true }, { t: "années d'expérience stockées dans une vraie colonne indexée (renseignée à l'analyse). Prépare les optimisations à venir. → nécessite une migration (voir partie 4)." }]));
+b.push(bullet([{ t: "Filet de sécurité anti-crash : ", b: true }, { t: "le serveur logue désormais les erreurs imprévues sans s'arrêter (avant, une seule erreur non gérée pouvait faire tomber tout le serveur). Aucun impact visible, juste plus robuste." }]));
 b.push(bullet([{ t: "Base de données — 2 migrations : ", b: true }, { t: "add_candidate_experience_years et add_job_soft_skills_required. Additives (colonnes ajoutées), sans perte de données. AUCUNE nouvelle dépendance npm." }]));
 b.push(bullet([{ t: "Prod déjà à jour : ", b: true }, { t: "dernier commit b0182b5 poussé et déployé automatiquement sur Render (migrations appliquées via migrate deploy)." }]));
 b.push(spacer());

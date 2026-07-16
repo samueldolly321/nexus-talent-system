@@ -48,6 +48,30 @@ const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
 // ==========================================
+// FILET DE SÉCURITÉ GLOBAL (anti-crash)
+// Empêche qu'une erreur asynchrone non capturée ne termine le process entier.
+// Choix assumé : on LOGUE sans quitter, pour maximiser la disponibilité (une
+// requête ratée → 500, pas un serveur mort). Les erreurs restent visibles dans
+// les logs (Render) pour investigation.
+// ==========================================
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err);
+});
+
+// Middleware d'erreur Express (4 args) : renvoie un 500 JSON propre pour toute
+// erreur synchrone remontée par une route (au lieu d'une page HTML par défaut).
+// Enregistré en DERNIER dans startServer(). Les erreurs async sont déjà couvertes
+// par les try/catch des routes + les handlers process ci-dessus.
+const errorHandler: express.ErrorRequestHandler = (err, _req, res, next) => {
+  console.error("[express error]", err);
+  if (res.headersSent) return next(err);
+  res.status(500).json({ error: "Erreur interne du serveur." });
+};
+
+// ==========================================
 // SÉCURITÉ (Helmet, CORS restreint, rate limiting)
 // ==========================================
 // Helmet : headers de sécurité HTTP. CSP élargie aux sources réellement
@@ -2379,6 +2403,9 @@ async function startServer() {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
+
+  // Filet d'erreur Express, enregistré en dernier (après toutes les routes).
+  app.use(errorHandler);
 
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`[Nexus Server] running on http://localhost:${PORT}`);

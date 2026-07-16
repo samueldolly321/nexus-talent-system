@@ -151,6 +151,13 @@ Commit `b0182b5`, poussé et déployé (2 migrations appliquées via `migrate de
 - ⚠️ **À la maison** : arrêter `npm run dev` → `npx prisma migrate deploy` → `npx prisma generate` (voir `Guide-Sync-Maison-2026-07-17.docx`). Backfill `experienceYears` = optionnel (pas urgent).
 - ⚠️ **Reste à faire** : Niveau 2 (top compétences en SQL via table normalisée ou cache) ; migration du dashboard experience→SQL ; migration des autres boutons vers `<Button>`.
 
+### 17/07 (suite) — Filet de sécurité global (anti-crash)
+Commit à venir. Robustesse serveur, **aucun changement fonctionnel**.
+1. **Handlers process** (`server.ts`, après la création de `app`) : `process.on("unhandledRejection")` + `process.on("uncaughtException")` **loguent sans quitter** → une erreur async non capturée ne **tue plus le process entier** (avant : crash jusqu'au redémarrage Render). Choix « disponibilité d'abord ».
+2. **Middleware d'erreur Express** (`errorHandler: express.ErrorRequestHandler`, 4 args) enregistré **en dernier** dans `startServer()` : toute erreur synchrone d'une route → **500 JSON propre** (gère `res.headersSent` pour éviter les doubles réponses).
+- ⚠️ Constat : il n'existe **pas de tests automatisés** ; `build` + `lint` avant push attrapent les erreurs de type, pas la logique — d'où l'intérêt de ce filet.
+- Fichier : `server.ts` uniquement. Aucune migration, aucune dépendance.
+
 ---
 
 ## 6. Comment mettre à jour le site (résumé)
