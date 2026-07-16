@@ -1459,6 +1459,36 @@ app.post("/api/candidates/:id/cv", requireAuth, (req, res) => {
   });
 });
 
+// Extraction de texte "à la volée" (sans candidat existant) : utilisé par le
+// formulaire "Ajouter un candidat" pour importer le CV (PDF/image) et la lettre
+// (PDF/Word) avant que la fiche n'existe. Renvoie { text } ; le front remplit
+// ensuite le champ correspondant. Réutilise extractCvText (image OCR/docx/PDF).
+app.post("/api/extract-text", requireAuth, (req, res) => {
+  uploadCandidateCv.single("file")(req, res, async (err: unknown) => {
+    if (err) {
+      return res.status(400).json({ error: err instanceof Error ? err.message : "Upload invalide." });
+    }
+    try {
+      if (!req.file) return res.status(400).json({ error: "Aucun fichier reçu." });
+      let text = "";
+      try {
+        text = await extractCvText({
+          buffer: req.file.buffer,
+          mimetype: req.file.mimetype,
+          originalname: req.file.originalname,
+        });
+      } catch (parseErr) {
+        console.error("[extract-text parse]", parseErr);
+        return res.status(400).json({ error: "Impossible de lire le contenu du fichier." });
+      }
+      res.json({ text });
+    } catch (e) {
+      console.error("[POST /api/extract-text]", e);
+      res.status(500).json({ error: "Erreur lors de l'extraction du texte." });
+    }
+  });
+});
+
 // Suppression DÉFINITIVE (fidèle à l'origine). Cascade : CandidateScore + CandidateSkill.
 app.delete("/api/candidates/:id", requireAuth, async (req, res) => {
   const ctx = getContext(req);

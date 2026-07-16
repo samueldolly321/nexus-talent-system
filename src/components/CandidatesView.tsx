@@ -1,7 +1,8 @@
-import React, { useMemo, useState } from "react";
-import { Sparkles, X, Download, LayoutGrid, ArrowUpDown, Plus, Loader2, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import React, { useMemo, useRef, useState } from "react";
+import { Sparkles, X, Download, LayoutGrid, ArrowUpDown, Plus, Loader2, ChevronLeft, ChevronRight, ChevronDown, UploadCloud } from "lucide-react";
 import TopBar from "./TopBar";
 import { Candidate, Job, User, PipelineStage } from "../types";
+import { getAccessToken } from "../lib/api";
 
 interface CandidatesViewProps {
   candidates: Candidate[];
@@ -54,10 +55,79 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
   const updateField = (key: keyof typeof EMPTY_FORM, value: string) =>
     setForm(prev => ({ ...prev, [key]: value }));
 
+  // Import de fichiers pour le CV (PDF/image) et la lettre (PDF/Word) : le
+  // serveur extrait le texte (POST /api/extract-text) et remplit le champ,
+  // qui reste éditable. Même logique que la page publique /postuler.
+  const cvFileRef = useRef<HTMLInputElement>(null);
+  const letterFileRef = useRef<HTMLInputElement>(null);
+  const [importingCv, setImportingCv] = useState(false);
+  const [importingLetter, setImportingLetter] = useState(false);
+  const [importError, setImportError] = useState<string | null>(null);
+
+  const extractText = async (file: File): Promise<string> => {
+    const fd = new FormData();
+    fd.append("file", file);
+    const token = getAccessToken();
+    const res = await fetch("/api/extract-text", {
+      method: "POST",
+      credentials: "include",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: fd,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "Échec de l'import du fichier.");
+    return data.text ?? "";
+  };
+
+  const handleCvFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permet de réimporter le même fichier
+    if (!file) return;
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isImage = file.type.startsWith("image/");
+    if (!isPdf && !isImage) {
+      setImportError("Le CV doit être au format PDF ou une image (JPG/PNG).");
+      return;
+    }
+    setImportError(null);
+    setImportingCv(true);
+    try {
+      updateField("cvText", await extractText(file));
+    } catch (err: any) {
+      setImportError(err?.message || "Une erreur est survenue.");
+    } finally {
+      setImportingCv(false);
+    }
+  };
+
+  const handleLetterFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const isPdf = file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
+    const isDocx =
+      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file.name.toLowerCase().endsWith(".docx");
+    if (!isPdf && !isDocx) {
+      setImportError("La lettre de motivation doit être au format PDF ou Word (.docx).");
+      return;
+    }
+    setImportError(null);
+    setImportingLetter(true);
+    try {
+      updateField("letterText", await extractText(file));
+    } catch (err: any) {
+      setImportError(err?.message || "Une erreur est survenue.");
+    } finally {
+      setImportingLetter(false);
+    }
+  };
+
   const closeModal = () => {
     if (submitting) return;
     setShowAddModal(false);
     setForm(EMPTY_FORM);
+    setImportError(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -681,28 +751,68 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
               </div>
 
               <div>
-                <label htmlFor="cand-cv" className={LABEL_CLS}>CV</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="cand-cv" className={`${LABEL_CLS} mb-0`}>CV</label>
+                  <button
+                    type="button"
+                    onClick={() => cvFileRef.current?.click()}
+                    disabled={importingCv}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-accent hover:text-accent-dark transition-colors disabled:opacity-50"
+                  >
+                    {importingCv ? <Loader2 size={13} className="animate-spin" /> : <UploadCloud size={13} />}
+                    {importingCv ? "Import…" : "Importer (PDF ou image)"}
+                  </button>
+                </div>
+                <input
+                  ref={cvFileRef}
+                  type="file"
+                  accept="application/pdf,image/jpeg,image/png,image/webp"
+                  onChange={handleCvFile}
+                  className="hidden"
+                />
                 <textarea
                   id="cand-cv"
                   rows={5}
                   value={form.cvText}
                   onChange={e => updateField("cvText", e.target.value)}
                   className={`${INPUT_CLS} resize-y`}
-                  placeholder="Collez le texte du CV ici"
+                  placeholder="Collez le texte du CV ici, ou importez un fichier PDF / image"
                 />
               </div>
 
               <div>
-                <label htmlFor="cand-letter" className={LABEL_CLS}>Lettre de motivation</label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label htmlFor="cand-letter" className={`${LABEL_CLS} mb-0`}>Lettre de motivation</label>
+                  <button
+                    type="button"
+                    onClick={() => letterFileRef.current?.click()}
+                    disabled={importingLetter}
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold text-accent hover:text-accent-dark transition-colors disabled:opacity-50"
+                  >
+                    {importingLetter ? <Loader2 size={13} className="animate-spin" /> : <UploadCloud size={13} />}
+                    {importingLetter ? "Import…" : "Importer (PDF ou Word)"}
+                  </button>
+                </div>
+                <input
+                  ref={letterFileRef}
+                  type="file"
+                  accept="application/pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  onChange={handleLetterFile}
+                  className="hidden"
+                />
                 <textarea
                   id="cand-letter"
                   rows={5}
                   value={form.letterText}
                   onChange={e => updateField("letterText", e.target.value)}
                   className={`${INPUT_CLS} resize-y`}
-                  placeholder="Collez le texte de la lettre de motivation ici"
+                  placeholder="Collez le texte de la lettre ici, ou importez un fichier PDF / Word"
                 />
               </div>
+
+              {importError && (
+                <p className="text-sm text-error bg-error-container/40 border border-error-container rounded-lg px-3 py-2">{importError}</p>
+              )}
 
               <div>
                 <label htmlFor="cand-salary" className={LABEL_CLS}>Prétention salariale</label>
