@@ -80,6 +80,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
   const [missions, setMissions] = useState("");
   const [skillsRequired, setSkillsRequired] = useState("");
   const [languagesRequired, setLanguagesRequired] = useState("");
+  const [softSkillsRequired, setSoftSkillsRequired] = useState("");
   const [priority, setPriority] = useState("Normal");
   const [domain, setDomain] = useState<"IT" | "Autre">("IT");
 
@@ -105,6 +106,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
     setMissions("");
     setSkillsRequired("");
     setLanguagesRequired("");
+    setSoftSkillsRequired("");
     setPriority("Normal");
     setDomain("IT");
   };
@@ -132,6 +134,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
     setMissions(job.missions.join("\n"));
     setSkillsRequired(job.skillsRequired.join(", "));
     setLanguagesRequired(job.languagesRequired.join(", "));
+    setSoftSkillsRequired((job.softSkillsRequired || []).join(", "));
     setPriority(job.priority || "Normal");
     setDomain(job.domain === "Autre" ? "Autre" : "IT");
     setShowAddModal(true);
@@ -166,6 +169,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
       missions: missions.split("\n").filter(Boolean),
       skillsRequired: skillsRequired.split(",").map(s => s.trim()).filter(Boolean),
       languagesRequired: languagesRequired.split(",").map(l => l.trim()).filter(Boolean),
+      softSkillsRequired: softSkillsRequired.split(",").map(s => s.trim()).filter(Boolean),
       priority,
       domain
     };
@@ -450,6 +454,22 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                       </span>
                     )}
                   </div>
+
+                  {/* Soft skills badges — fond noir, texte blanc */}
+                  {(job.softSkillsRequired?.length ?? 0) > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {job.softSkillsRequired.slice(0, 5).map(s => (
+                        <span key={s} className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-primary text-on-primary">
+                          {s}
+                        </span>
+                      ))}
+                      {job.softSkillsRequired.length > 5 && (
+                        <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-primary text-on-primary">
+                          +{job.softSkillsRequired.length - 5}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -508,6 +528,19 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                       ))}
                     </div>
                   </div>
+
+                  {(selectedJob.softSkillsRequired?.length ?? 0) > 0 && (
+                    <div>
+                      <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant mb-2">Soft skills souhaités</h4>
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedJob.softSkillsRequired.map(s => (
+                          <span key={s} className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-primary text-on-primary">
+                            {s}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="pt-4 border-t border-outline-variant grid grid-cols-2 gap-4">
                     <div>
@@ -732,14 +765,25 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                 </div>
                 <div>
                   <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">Langues (Séparées par virgules)</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={languagesRequired}
                     onChange={e => setLanguagesRequired(e.target.value)}
                     placeholder="Français (Courant), Anglais (Technique)"
                     className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">Soft skills souhaités (Séparés par virgules)</label>
+                <input
+                  type="text"
+                  value={softSkillsRequired}
+                  onChange={e => setSoftSkillsRequired(e.target.value)}
+                  placeholder="Communication, Travail en équipe, Autonomie, Rigueur"
+                  className="w-full bg-surface-container-lowest text-xs border border-outline-variant rounded p-2 focus:border-secondary focus:outline-none"
+                />
               </div>
 
               <div className="pt-4 border-t border-outline-variant flex justify-end gap-3">

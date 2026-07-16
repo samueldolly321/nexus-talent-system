@@ -959,14 +959,18 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
   const { companyId } = getContext(req);
   try {
     // Agrégations Prisma, toutes scopées au tenant, exécutées en parallèle.
-    const [totalJobs, activeJobs, totalCandidates, hiredCandidates, scoreAgg, candidateRows, recentJobRows, sourcingRows] =
+    const [totalJobs, activeJobs, totalCandidates, hiredCandidates, scoreAgg, recentCandidateRows, analysisRows, recentJobRows, sourcingRows] =
       await Promise.all([
         prisma.job.count({ where: { companyId } }),
         prisma.job.count({ where: { companyId, status: JobStatus.Active } }),
         prisma.candidate.count({ where: { companyId } }),
         prisma.candidate.count({ where: { companyId, stage: PrismaPipelineStage.Hired } }),
         prisma.candidateScore.aggregate({ _avg: { globalScore: true }, where: { candidate: { companyId } } }),
-        prisma.candidate.findMany({ where: { companyId }, include: candidateInclude, orderBy: { appliedAt: "desc" } }),
+        // Widget "Candidats récents" : 5 fiches complètes seulement (pas toute la base).
+        prisma.candidate.findMany({ where: { companyId }, include: candidateInclude, orderBy: { appliedAt: "desc" }, take: 5 }),
+        // Distributions (compétences / expérience) : on ne récupère QUE le JSON `analysis`,
+        // pas cvText/letterText/relations → charge transférée très allégée (Niveau 0).
+        prisma.candidate.findMany({ where: { companyId }, select: { analysis: true } }),
         prisma.job.findMany({ where: { companyId }, include: jobInclude, orderBy: { createdAt: "desc" }, take: 4 }),
         // Sourcing trend : candidatures par mois sur les 6 derniers mois (SQL PostgreSQL).
         prisma.$queryRaw<Array<{ name: string; candidatures: number }>>`
@@ -982,7 +986,7 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
 
     const avgMatchingScore = scoreAgg._avg.globalScore != null ? Math.round(scoreAgg._avg.globalScore) : 0;
 
-    const candidates = candidateRows.map(mapCandidate);
+    const recentCandidates = recentCandidateRows.map(mapCandidate);
 
     // Sourcing trend : agrégation réelle des candidatures par mois. Si la base
     // est vide (aucune candidature sur 6 mois), fallback = 0 pour les 6 derniers mois.
@@ -996,8 +1000,8 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
 
     // Distribution des compétences (depuis analysis.skills : IT + métier), top 7.
     const skillCounts: Record<string, number> = {};
-    for (const c of candidates) {
-      const s = c.analysis?.skills;
+    for (const row of analysisRows) {
+      const s = (row.analysis as any)?.skills;
       if (s) {
         for (const name of [...(s.languages || []), ...(s.frameworks || []), ...(s.tools || []), ...(s.cloud || []), ...(s.domain || []), ...(s.certifications || [])]) {
           skillCounts[name] = (skillCounts[name] || 0) + 1;
@@ -1016,8 +1020,8 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
       "Senior (5-8 ans)": 0,
       "Expert (8 ans +)": 0,
     };
-    for (const c of candidates) {
-      const years = c.analysis?.yearsOfExperience || 0;
+    for (const row of analysisRows) {
+      const years = (row.analysis as any)?.yearsOfExperience || 0;
       if (years <= 2) expRanges["Junior (0-2 ans)"]++;
       else if (years <= 5) expRanges["Intermédiaire (3-5 ans)"]++;
       else if (years <= 8) expRanges["Senior (5-8 ans)"]++;
@@ -1037,7 +1041,7 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
         { name: "Node.js", count: 3 },
       ],
       expDistribution,
-      recentCandidates: candidates.slice(0, 5),
+      recentCandidates,
       recentJobs: recentJobRows.map(mapJob),
     });
   } catch (err) {
@@ -1121,6 +1125,7 @@ app.post("/api/jobs", requireAuth, async (req, res) => {
           missions: toStringArray(b.missions, "\n"),
           educationRequired: b.educationRequired || "Non spécifié",
           languagesRequired: toStringArray(b.languagesRequired, ","),
+          softSkillsRequired: toStringArray(b.softSkillsRequired, ","),
           minExperienceYears: Number(b.minExperienceYears) || 0,
           salaryRange: b.salaryRange || "",
           deadline: b.deadline ? new Date(b.deadline) : null,
@@ -1159,6 +1164,7 @@ app.put("/api/jobs/:id", requireAuth, async (req, res) => {
     if (b.missions !== undefined) data.missions = toStringArray(b.missions, "\n");
     if (b.educationRequired !== undefined) data.educationRequired = b.educationRequired;
     if (b.languagesRequired !== undefined) data.languagesRequired = toStringArray(b.languagesRequired, ",");
+    if (b.softSkillsRequired !== undefined) data.softSkillsRequired = toStringArray(b.softSkillsRequired, ",");
     if (b.minExperienceYears !== undefined) data.minExperienceYears = Number(b.minExperienceYears) || 0;
     if (b.salaryRange !== undefined) data.salaryRange = b.salaryRange;
     if (b.deadline !== undefined) data.deadline = b.deadline ? new Date(b.deadline) : null;
@@ -1544,7 +1550,7 @@ app.post("/api/candidates/:id/analyze", requireAuth, async (req, res) => {
     }
 
     const jobPromptInfo = job
-      ? `Poste : ${job.title}\nDescription : ${job.description}\nCompétences requises : ${job.skills.map((js) => js.skill.name).join(", ")}\nExpérience requise : ${job.minExperienceYears} ans`
+      ? `Poste : ${job.title}\nDescription : ${job.description}\nCompétences requises : ${job.skills.map((js) => js.skill.name).join(", ")}${job.softSkillsRequired.length ? `\nSoft skills souhaités : ${job.softSkillsRequired.join(", ")}` : ""}\nExpérience requise : ${job.minExperienceYears} ans`
       : "Poste : Développeur Web Généraliste";
 
     // Le domaine de l'offre pilote la grille de compétences : IT garde les cases
@@ -1628,12 +1634,18 @@ Réponds uniquement avec le bloc JSON brut, sans enrobage markdown (sans \`\`\`j
       ? PrismaPipelineStage.Analyzed
       : candidate.stage;
 
+    // Dénormalise les années d'expérience dans la colonne indexée (Niveau 1) :
+    // permet les agrégations/filtres SQL sans relire le JSON analysis.
+    const yoe = Number(analysis.yearsOfExperience);
+    const experienceYears = Number.isFinite(yoe) ? Math.round(yoe) : null;
+
     const updated = await prisma.$transaction(async (tx) => {
       await tx.candidate.update({
         where: { id },
         data: {
           analysis,
           recommendation,
+          experienceYears,
           name: pi.name || candidate.name,
           email: pi.email || candidate.email,
           phone: pi.phone || candidate.phone,

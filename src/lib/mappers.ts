@@ -96,6 +96,7 @@ export const mapJob = (j: JobWithSkills) => ({
   skillsRequired: j.skills.map((js) => js.skill.name),
   educationRequired: j.educationRequired,
   languagesRequired: j.languagesRequired,
+  softSkillsRequired: j.softSkillsRequired,
   minExperienceYears: j.minExperienceYears,
   salaryRange: j.salaryRange ?? undefined,
   deadline: j.deadline ? j.deadline.toISOString().slice(0, 10) : undefined,

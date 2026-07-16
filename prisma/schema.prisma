@@ -132,6 +132,7 @@ model Job {
   missions           String[] // texte libre — reste tableau
   educationRequired  String
   languagesRequired  String[] // ex. "Anglais (Technique)" — texte libre, PAS des Skill
+  softSkillsRequired String[] // savoir-être souhaités (soft skills) — texte libre
   minExperienceYears Int
   salaryRange        String?
   deadline           DateTime? // date limite de candidature (optionnelle)
@@ -172,6 +173,10 @@ model Candidate {
   stage       PipelineStage @default(Received)
   cvText      String?
   letterText  String?
+  // Années d'expérience dénormalisées (miroir de analysis.yearsOfExperience) dans
+  // une vraie colonne indexée → agrégations/filtres en SQL sans charger tout le JSON.
+  // Renseignée à l'analyse IA ; backfill des lignes existantes via script dédié.
+  experienceYears   Int?
   salaryExpectation String? // prétention salariale (extraite de la lettre ou saisie manuellement)
   source      String? // canal de sourcing : "LinkedIn", "Indeed", "/postuler", "Email", "Manuel"…
   appliedAt   DateTime      @default(now())
@@ -190,6 +195,7 @@ model Candidate {
   @@index([companyId])
   @@index([jobId])
   @@index([stage])
+  @@index([experienceYears])
 }
 
 // Entretien planifié pour un candidat (événement structuré, visible dans

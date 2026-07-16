@@ -790,6 +790,16 @@ export default function CandidateProfileView({
                     );
                   })()}
                 </div>
+                {(candidate.analysis?.skills?.softSkills?.length ?? 0) > 0 && (
+                  <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
+                    <h3 className="font-bold text-on-surface mb-4 flex items-center gap-2"><Sparkles size={16} />Savoir-être (soft skills)</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {(candidate.analysis?.skills?.softSkills ?? []).map(s => (
+                        <span key={s} className="px-2.5 py-1 bg-tertiary-container text-on-tertiary-container text-xs font-medium rounded-full">{s}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

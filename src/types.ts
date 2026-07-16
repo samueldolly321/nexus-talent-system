@@ -43,6 +43,7 @@ export interface Job {
   skillsRequired: string[];
   educationRequired: string;
   languagesRequired: string[];
+  softSkillsRequired: string[]; // savoir-être souhaités (soft skills)
   minExperienceYears: number;
   salaryRange?: string;
   deadline?: string; // date limite de candidature, ISO "YYYY-MM-DD" (optionnel)
