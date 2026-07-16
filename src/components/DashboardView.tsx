@@ -314,7 +314,7 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
           </div>
 
           <div className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
-            <h3 className="font-sans text-2xl font-semibold text-on-surface mb-6">Compétences demandées</h3>
+            <h3 className="font-sans text-2xl font-semibold text-on-surface mb-6">Compétences les plus présentes</h3>
             <div className="h-64 flex justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <RadarChart data={radarData} outerRadius="75%">
