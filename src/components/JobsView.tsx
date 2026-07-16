@@ -13,7 +13,9 @@ import {
   Trash2,
   ListFilter,
   Pencil,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Sparkles,
+  Loader2
 } from "lucide-react";
 
 // Styles des badges de priorité (tokens adaptés dark/light).
@@ -26,6 +28,7 @@ const PRIORITY_BADGE: Record<string, string> = {
 const PRIORITY_OPTIONS = ["Normal", "Haute", "Urgent", "Basse"];
 import TopBar from "./TopBar";
 import { Job, ContractType, User } from "../types";
+import { apiFetch } from "../lib/api";
 
 interface JobsViewProps {
   jobs: Job[];
@@ -84,6 +87,39 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
   const [priority, setPriority] = useState("Normal");
   const [domain, setDomain] = useState<"IT" | "Autre">("IT");
 
+  // Génération d'offre par IA à partir du seul intitulé : remplit les champs
+  // du formulaire (tout reste éditable ensuite).
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState<string | null>(null);
+
+  const handleGenerate = async () => {
+    if (!title.trim() || generating) return;
+    setGenerating(true);
+    setGenError(null);
+    try {
+      const res = await apiFetch("/api/jobs/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: title.trim(), domain }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Échec de la génération.");
+      if (typeof data.description === "string") setDescription(data.description);
+      if (Array.isArray(data.missions)) setMissions(data.missions.join("\n"));
+      if (Array.isArray(data.skillsRequired)) setSkillsRequired(data.skillsRequired.join(", "));
+      if (Array.isArray(data.softSkillsRequired)) setSoftSkillsRequired(data.softSkillsRequired.join(", "));
+      if (Array.isArray(data.languagesRequired)) setLanguagesRequired(data.languagesRequired.join(", "));
+      if (typeof data.educationRequired === "string") setEducationRequired(data.educationRequired);
+      if (typeof data.minExperienceYears === "number") setMinExperienceYears(data.minExperienceYears);
+      if (data.contractType) setContractType(data.contractType as ContractType);
+      if (data.domain === "IT" || data.domain === "Autre") setDomain(data.domain);
+    } catch (err: any) {
+      setGenError(err?.message || "Une erreur est survenue lors de la génération.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   // Filtres avancés (panneau repliable).
   const [showFilters, setShowFilters] = useState(false);
   const [filterPriority, setFilterPriority] = useState<string[]>([]);
@@ -109,6 +145,8 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
     setSoftSkillsRequired("");
     setPriority("Normal");
     setDomain("IT");
+    setGenError(null);
+    setGenerating(false);
   };
 
   // Ouvre le modal en mode création (formulaire vierge).
@@ -621,6 +659,26 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {!isEditing && (
+                <div>
+                  <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-secondary/40 bg-secondary-container/20 px-4 py-3">
+                    <p className="text-xs text-on-surface-variant">
+                      Renseignez l'intitulé, puis laissez l'IA rédiger le reste — tout reste modifiable.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleGenerate}
+                      disabled={generating || !title.trim()}
+                      className="shrink-0 inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold bg-secondary text-white hover:brightness-110 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {generating ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
+                      {generating ? "Génération…" : "Générer avec l'IA"}
+                    </button>
+                  </div>
+                  {genError && <p className="text-xs text-error mt-1.5">{genError}</p>}
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider mb-1 font-semibold">Titre du poste *</label>

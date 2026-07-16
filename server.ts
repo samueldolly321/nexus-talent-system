@@ -219,7 +219,7 @@ const isRetryable = (err: any): boolean => {
 };
 
 const callGeminiWithRetry = async (params: Parameters<typeof ai.models.generateContent>[0]) => {
-  const MAX_ATTEMPTS = 3;
+  const MAX_ATTEMPTS = 4;
   const RETRY_DELAY_MS = 2000;
   for (let attempt = 1; ; attempt++) {
     try {
@@ -230,6 +230,18 @@ const callGeminiWithRetry = async (params: Parameters<typeof ai.models.generateC
       await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
     }
   }
+};
+
+// Traduit une erreur Gemini en message clair et actionnable pour l'utilisateur
+// (surcharge temporaire = 503 « high demand » ; quota = 429). Renvoie null si
+// l'erreur n'est pas un cas transitoire connu → l'appelant met son message par défaut.
+const aiTransientMessage = (err: any): string | null => {
+  const raw = `${err?.status ?? ""} ${err?.code ?? ""} ${err?.message ?? ""}`;
+  if (/\b503\b|UNAVAILABLE|overloaded|high demand/i.test(raw))
+    return "Le service IA est momentanément surchargé (pic de demande côté fournisseur). Réessayez dans quelques instants.";
+  if (/\b429\b|RESOURCE_EXHAUSTED|quota/i.test(raw))
+    return "Le quota du service IA est atteint pour le moment. Réessayez un peu plus tard.";
+  return null;
 };
 
 // OCR d'une image de CV (JPG/PNG/WebP) via Gemini (multimodal, déjà utilisé pour
@@ -274,6 +286,25 @@ async function extractCvText(file: { buffer: Buffer; mimetype: string; originaln
   const result = await parser.getText();
   await parser.destroy();
   return result.text || "";
+}
+
+// Parse "tolérant" d'une réponse JSON du modèle : enlève un éventuel bloc ```json
+// et, à défaut, extrait le premier objet { ... } présent. Lève si rien d'exploitable.
+function parseAiJsonLoose<T = any>(text: string): T {
+  const cleaned = (text || "")
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/, "")
+    .replace(/```\s*$/, "")
+    .trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if (start !== -1 && end > start) return JSON.parse(cleaned.slice(start, end + 1));
+    throw new Error("Réponse IA illisible");
+  }
 }
 
 // ==========================================
@@ -1736,7 +1767,8 @@ Réponds uniquement avec le bloc JSON brut, sans enrobage markdown (sans \`\`\`j
     res.json(mapCandidate(updated));
   } catch (error: any) {
     console.error("Gemini Parse Error:", error);
-    res.status(500).json({ error: "Erreur lors de l'analyse avec Gemini: " + error.message });
+    const transient = aiTransientMessage(error);
+    res.status(transient ? 503 : 500).json({ error: transient ?? "Erreur lors de l'analyse du CV par l'IA. Réessayez." });
   }
 });
 
@@ -1864,7 +1896,74 @@ Réponds uniquement avec le bloc JSON brut. Pas de markdown.`;
     res.json(parsedResponse);
   } catch (error: any) {
     console.error("AI Search Error:", error);
-    res.status(500).json({ error: "Erreur lors de la recherche intelligente: " + error.message });
+    const transient = aiTransientMessage(error);
+    res.status(transient ? 503 : 500).json({ error: transient ?? "Erreur lors de la recherche intelligente. Réessayez." });
+  }
+});
+
+// Génération d'une offre d'emploi par IA à partir du seul intitulé. Renvoie un
+// brouillon structuré (description, missions, compétences, soft skills, langues,
+// formation, expérience, contrat, domaine) qui pré-remplit le formulaire ; le
+// recruteur garde la main (tout reste éditable). Réutilise Gemini + parse tolérant.
+app.post("/api/jobs/generate", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  const title = String(req.body?.title ?? "").trim();
+  const domainHint = req.body?.domain === "Autre" ? "Autre" : req.body?.domain === "IT" ? "IT" : null;
+  if (!title) return res.status(400).json({ error: "Intitulé du poste requis." });
+  try {
+    const prompt = `Tu es un expert RH qui rédige des offres d'emploi en français.
+Génère une offre d'emploi complète et réaliste pour le poste suivant : "${title}".${domainHint ? `\nDomaine indiqué : ${domainHint}.` : ""}
+
+Renvoie UNIQUEMENT un objet JSON valide (aucun markdown) avec EXACTEMENT ces clés :
+- "description" : un paragraphe attractif de 3 à 5 phrases présentant le poste, la mission globale et le contexte.
+- "missions" : un tableau de 4 à 6 missions principales (phrases courtes, à l'infinitif).
+- "skillsRequired" : un tableau de 5 à 8 compétences techniques ou métier attendues (mots/expressions courts).
+- "softSkillsRequired" : un tableau de 3 à 5 savoir-être souhaités.
+- "languagesRequired" : un tableau de langues au format "Langue (Niveau)" (ex. "Français (Courant)"), ou [] si non pertinent.
+- "educationRequired" : le niveau de formation requis (ex. "Bac+5 / Master en informatique").
+- "minExperienceYears" : un entier (nombre d'années d'expérience minimum).
+- "contractType" : une valeur EXACTE parmi "CDI", "CDD", "Freelance", "Alternance", "Stage".
+- "domain" : "IT" si le poste est informatique/technique, sinon "Autre".
+
+Adapte le contenu à l'intitulé. Réponds uniquement avec le JSON brut.`;
+
+    const response = await callGeminiWithRetry({
+      model: "gemini-3.5-flash",
+      contents: prompt,
+      config: { responseMimeType: "application/json" },
+    });
+
+    let gen: any;
+    try {
+      gen = parseAiJsonLoose(response.text || "{}");
+    } catch (e) {
+      console.error("[jobs/generate] réponse IA illisible:", e);
+      return res.status(502).json({ error: "L'IA n'a pas renvoyé un résultat exploitable. Réessayez." });
+    }
+
+    const asStrArray = (v: unknown) =>
+      Array.isArray(v) ? v.map((x) => String(x).trim()).filter(Boolean) : [];
+    const contractType = (Object.values(PrismaContractType) as string[]).includes(gen.contractType)
+      ? gen.contractType
+      : "CDI";
+    const yoe = Number(gen.minExperienceYears);
+
+    logActionFor(ctx, "Génération d'offre IA", `Brouillon d'offre généré par l'IA pour l'intitulé : "${title}".`);
+    res.json({
+      description: typeof gen.description === "string" ? gen.description : "",
+      missions: asStrArray(gen.missions),
+      skillsRequired: asStrArray(gen.skillsRequired),
+      softSkillsRequired: asStrArray(gen.softSkillsRequired),
+      languagesRequired: asStrArray(gen.languagesRequired),
+      educationRequired: typeof gen.educationRequired === "string" ? gen.educationRequired : "",
+      minExperienceYears: Number.isFinite(yoe) ? Math.max(0, Math.round(yoe)) : 0,
+      contractType,
+      domain: gen.domain === "Autre" ? "Autre" : "IT",
+    });
+  } catch (err: any) {
+    console.error("[POST /api/jobs/generate]", err);
+    const transient = aiTransientMessage(err);
+    res.status(transient ? 503 : 500).json({ error: transient ?? "Erreur lors de la génération de l'offre." });
   }
 });
 
