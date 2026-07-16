@@ -1,6 +1,6 @@
 # Récapitulatif projet — Nexus Talent (de A à Z jusqu'à la mise en ligne)
 
-> Document de contexte pour reprendre le projet à froid. Dernière mise à jour : **2026-07-16**.
+> Document de contexte pour reprendre le projet à froid. Dernière mise à jour : **2026-07-17**.
 > Propriétaire : Samuel (digital@salathis.com). Langue de travail : français.
 
 ---
@@ -118,6 +118,16 @@ Commit `0c1ca15`, poussé (déploiement Render en cours).
 3. **Nouvelle dépendance `xlsx-js-style`** : l'ancien `xlsx` (SheetJS CE) **n'applique pas les styles** ; ce drop-in oui. Chargée **à la demande** (import dynamique) → démarrage allégé. `vite.config.ts` : chunk `vendor-xlsx` pointe désormais sur `xlsx-js-style`.
 - Fichiers : `src/lib/excelExport.ts` (nouveau), `DashboardView.tsx`, `ReportsView.tsx`, `CandidatesView.tsx`, `vite.config.ts`, `package.json`, `package-lock.json`.
 - ⚠️ **Première nouvelle dépendance depuis un moment** → à la maison, `npm install` **requis** (committer `package.json` + `package-lock.json`, déjà fait).
+
+### 17/07 — Import fichier CV/lettre à l'ajout d'un candidat (dernière session)
+Commit `1420ffb`, poussé et déployé sur Render.
+1. **Modal « Ajouter un candidat »** (onglet Candidats) : les champs **CV** et **Lettre de motivation** ont maintenant un bouton **« Importer »**, comme sur `/postuler`. **CV** = **PDF ou image** (JPG/PNG/WebP, OCR Gemini) ; **Lettre** = **PDF ou Word (.docx)**. Le texte extrait remplit le textarea et **reste éditable** (le collage manuel reste possible).
+2. **Nouvel endpoint serveur `POST /api/extract-text`** (authentifié) : extraction « à la volée » **sans candidat existant** (la fiche n'existe pas encore au moment de l'ajout). Réutilise le helper `extractCvText()` (image OCR / .docx / PDF) et la config multer `memoryStorage` (10 Mo). Renvoie `{ text }`.
+3. Front : `getAccessToken` importé dans `CandidatesView.tsx` ; inputs fichiers cachés + boutons avec spinner + validation de type côté client (mêmes règles que `/postuler`).
+- Fichiers modifiés : `server.ts`, `src/components/CandidatesView.tsx`.
+- ⚠️ **Aucune migration, aucun re-seed, aucune nouvelle dépendance** ce jour.
+- ⚠️ L'OCR image nécessite `GEMINI_API_KEY` (déjà en prod ; en local, l'ajouter au `.env`). Sans clé, PDF/Word fonctionnent quand même.
+- Doc générée : `Guide-Sync-Maison-2026-07-17.docx` (+ script `scripts/gen-guide-sync-maison-2026-07-17.cjs`).
 
 ---
 
