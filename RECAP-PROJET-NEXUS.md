@@ -188,6 +188,13 @@ Commit `fb2e434`, poussé et déployé. `server.ts` (`POST /api/candidates/ai-se
 1. **Bloc élargi** (`max-w-xl` → `max-w-3xl`) et **champs 2 par 2** : Nom+Email, Téléphone+Localisation sur une ligne (grille `grid-cols-1 sm:grid-cols-2`) ; **Profil LinkedIn seul** ; Offre / Photo / CV / Lettre en pleine largeur.
 2. **Scroll horizontal supprimé** : `w-screen` (= 100vw, déborde de la barre de défilement verticale sur desktop) → **`w-full`** sur la vue formulaire ET la vue confirmation.
 
+### 17/07 (suite) — Fix : chargement infini si une mutation échoue
+Commit `64ad61f`, poussé. `src/App.tsx`, **code uniquement**.
+1. **Bug** : `handleCreateJob` / `handleEditJob` / `handleDeleteJob` / `handleAddCandidate` faisaient `if (res.ok) await fetchData()` **sans jamais remettre `loading` à `false`** quand la réponse était en erreur → l'onglet tournait **indéfiniment** (constaté en prod sur une création d'offre échouée transitoirement — hoquet Neon / réveil à froid du plan gratuit). L'offre n'était pas créée (transaction annulée).
+2. **Correctif** : sur `!res.ok`, on lève l'erreur (avec le message serveur), `loading` est **toujours** réinitialisé, et une `alert()` claire invite à réessayer (aligné sur le mécanisme d'alerte déjà présent dans `App.tsx`).
+- ⚠️ Rappel : **l'enregistrement d'une offre ne consomme pas de token IA** — seules la génération / analyse / recherche IA utilisent Gemini (quota gratuit : limite par minute → ~1-2 min ; quota journalier → réinit. minuit heure du Pacifique ≈ 10 h à Madagascar).
+- ⚠️ Aucune migration, aucune dépendance.
+
 ---
 
 ## 6. Comment mettre à jour le site (résumé)
