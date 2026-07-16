@@ -129,6 +129,12 @@ Commit `1420ffb`, poussé et déployé sur Render.
 - ⚠️ L'OCR image nécessite `GEMINI_API_KEY` (déjà en prod ; en local, l'ajouter au `.env`). Sans clé, PDF/Word fonctionnent quand même.
 - Doc générée : `Guide-Sync-Maison-2026-07-17.docx` (+ script `scripts/gen-guide-sync-maison-2026-07-17.cjs`).
 
+### 17/07 (suite) — Manuel utilisateur (prise en main RH)
+Commit `061c09c`, poussé.
+1. **Manuel de prise en main** `Manuel-Utilisateur-Nexus-Talent.docx` : guide non technique et complet pour un nouveau responsable RH (13 chapitres + sommaire) — connexion, navigation, offres, candidats (dont import CV/lettre), fiche + analyse IA, pipeline, calendrier/emails/recherche IA, rapports, page publique `/postuler`, administration, **tableau des rôles/permissions**, FAQ.
+2. Généré via **`scripts/gen-manuel-utilisateur.cjs`** (regénérable ; helper de tableau OOXML ajouté au générateur).
+- ⚠️ Doc uniquement — **aucun changement de code**, aucune migration, aucune dépendance.
+
 ---
 
 ## 6. Comment mettre à jour le site (résumé)
