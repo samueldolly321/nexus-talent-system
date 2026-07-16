@@ -97,9 +97,10 @@ export default function App() {
       default:           return { field: "createdAt", order: "desc" }; // "recent"
     }
   };
-  const candidatesQuery = (page: number, sortKey: string) => {
+  const candidatesQuery = (page: number, sortKey: string, search = searchQuery) => {
     const { field, order } = sortParamsFor(sortKey);
-    return `/api/candidates?page=${page}&limit=${CANDIDATES_PAGE_SIZE}&sortField=${field}&sortOrder=${order}`;
+    const s = search.trim() ? `&search=${encodeURIComponent(search.trim())}` : "";
+    return `/api/candidates?page=${page}&limit=${CANDIDATES_PAGE_SIZE}&sortField=${field}&sortOrder=${order}${s}`;
   };
 
   const fetchData = async (candPage = candidatesPage) => {
@@ -153,6 +154,24 @@ export default function App() {
       console.error("Error loading sorted candidates:", error);
     }
   };
+
+  // Recherche candidats côté serveur (porte sur toute la base). On temporise
+  // (debounce 350 ms) pour ne pas lancer une requête à chaque frappe, et on ne
+  // refetch que sur la vue "candidates". Repart toujours de la page 1.
+  useEffect(() => {
+    if (activeView !== "candidates") return;
+    const timer = setTimeout(async () => {
+      try {
+        setCandidatesPage(1);
+        const res = await apiJson(candidatesQuery(1, candidatesSortKey, searchQuery));
+        setCandidates(res.data);
+        setCandidatesMeta(res.meta);
+      } catch (error) {
+        console.error("Error searching candidates:", error);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery, activeView]);
 
   // Messages de retour des redirections OAuth/SSO (?authError=... posé par le
   // serveur après un callback échoué). Nettoie l'URL une fois lu.

@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useState } from "react";
 import { Sparkles, X, Download, LayoutGrid, ArrowUpDown, Plus, Loader2, ChevronLeft, ChevronRight, ChevronDown, UploadCloud } from "lucide-react";
 import TopBar from "./TopBar";
+import Button from "./Button";
 import { Candidate, Job, User, PipelineStage } from "../types";
 import { getAccessToken } from "../lib/api";
 
@@ -267,13 +268,10 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
         searchPlaceholder="Rechercher par nom, email ou localisation..."
         rightSlot={
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="h-10 px-3 sm:px-4 bg-accent hover:bg-accent-dark text-white rounded-[8px] text-sm font-bold flex items-center gap-2 transition-all"
-            >
+            <Button onClick={() => setShowAddModal(true)}>
               <Plus size={16} />
               <span className="hidden sm:inline">Ajouter un candidat</span>
-            </button>
+            </Button>
             <button
               onClick={handleExportListe}
               disabled={filtered.length === 0}
@@ -827,22 +825,13 @@ export default function CandidatesView({ candidates, jobs, activeUser, onSelectC
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  disabled={submitting}
-                  className="h-10 px-4 rounded-[8px] text-sm font-bold text-on-surface-variant hover:bg-surface-container-low transition-all disabled:opacity-40"
-                >
+                <Button variant="ghost" onClick={closeModal} disabled={submitting}>
                   Annuler
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting || !form.name.trim()}
-                  className="h-10 px-4 bg-accent hover:bg-accent-dark text-white rounded-[8px] text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                </Button>
+                <Button type="submit" disabled={submitting || !form.name.trim()}>
                   {submitting && <Loader2 size={16} className="animate-spin" />}
                   {submitting ? "Ajout…" : "Ajouter"}
-                </button>
+                </Button>
               </div>
             </form>
           </div>

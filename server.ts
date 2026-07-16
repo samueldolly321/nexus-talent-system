@@ -1227,11 +1227,23 @@ app.get("/api/candidates", requireAuth, async (req, res) => {
     score: { score: { globalScore: sortOrder } },
   };
   const orderBy = validSortFields[sortField] ?? { appliedAt: "desc" };
+  // Recherche serveur : porte sur TOUTE la base (pas seulement la page affichée).
+  // Sur nom / email / téléphone / localisation, insensible à la casse.
+  const search = ((req.query.search as string) || "").trim();
+  const where: Prisma.CandidateWhereInput = { companyId };
+  if (search) {
+    where.OR = [
+      { name: { contains: search, mode: "insensitive" } },
+      { email: { contains: search, mode: "insensitive" } },
+      { phone: { contains: search, mode: "insensitive" } },
+      { location: { contains: search, mode: "insensitive" } },
+    ];
+  }
   try {
     const [total, rows] = await Promise.all([
-      prisma.candidate.count({ where: { companyId } }),
+      prisma.candidate.count({ where }),
       prisma.candidate.findMany({
-        where: { companyId },
+        where,
         include: candidateInclude,
         orderBy,
         skip,
