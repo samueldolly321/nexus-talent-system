@@ -25,6 +25,7 @@ const title = (t) => para("Title", t);
 const subtitle = (t) => para("Subtitle", t);
 const h1 = (t) => para("Heading1", t);
 const h2 = (t) => para("Heading2", t);
+const h3 = (t) => para("Heading3", t);
 const p = (r) => para("Body", r);
 const bullet = (r) => para("Bullet", r);
 const numbered = (r) => para("Bullet", r); // même rendu, préfixé côté texte
@@ -178,8 +179,27 @@ b.push(h2("Calendrier"));
 b.push(p([{ t: "Planifiez et visualisez les entretiens. Chaque entretien planifié apparaît aussi dans l'onglet « Historique » de la fiche du candidat concerné." }]));
 b.push(h2("Emails"));
 b.push(p([{ t: "Retrouvez les échanges e-mail avec les candidats, au même endroit que le suivi." }]));
-b.push(h2("Recherche IA"));
-b.push(p([{ t: "Décrivez le profil recherché en langage courant — par exemple « chef de projet bilingue anglais, secteur bancaire » — et laissez l'IA remonter les candidats les plus pertinents de votre base." }]));
+b.push(h2("Recherche IA — retrouver le bon profil en langage courant"));
+b.push(p([{ t: "La Recherche IA vous permet de fouiller votre base de candidats en écrivant votre besoin comme vous le diriez à voix haute, sans mots-clés rigides ni filtres à cocher. L'intelligence artificielle lit votre demande, la compare aux profils de votre entreprise et vous propose les candidats les plus pertinents, accompagnés d'une explication." }]));
+b.push(h3("Comment l'utiliser"));
+b.push(numbered([{ t: "1. ", b: true }, { t: "Ouvrez l'onglet « Recherche IA » dans le menu." }]));
+b.push(numbered([{ t: "2. ", b: true }, { t: "Décrivez le profil recherché en une phrase, en langage naturel." }]));
+b.push(numbered([{ t: "3. ", b: true }, { t: "Lancez la recherche : l'IA affiche une sélection de candidats et un court texte expliquant pourquoi ils ont été retenus. Cliquez sur un profil pour ouvrir sa fiche." }]));
+b.push(h3("Exemples de recherches"));
+b.push(bullet([{ t: "« Développeur React avec au moins 3 ans d'expérience »" }]));
+b.push(bullet([{ t: "« Chef de projet bilingue anglais, secteur bancaire »" }]));
+b.push(bullet([{ t: "« Profil DevOps maîtrisant AWS et Kubernetes »" }]));
+b.push(bullet([{ t: "« Comptable rigoureux avec une certification, basé à Antananarivo »" }]));
+b.push(h3("Ce que l'IA prend en compte"));
+b.push(p([{ t: "Elle s'appuie sur les informations issues de l'analyse des CV : compétences, années d'expérience, savoir-être, localisation, et le score d'adéquation. Plus vos candidats ont été analysés, plus la recherche est précise." }]));
+b.push(h3("Conseils pour de bons résultats"));
+b.push(bullet([{ t: "Soyez précis : ", b: true }, { t: "mentionnez les compétences clés, le niveau d'expérience et, si utile, la localisation ou le secteur." }]));
+b.push(bullet([{ t: "Une idée par recherche : ", b: true }, { t: "si vous ne trouvez pas, reformulez plus simplement plutôt que d'empiler les critères." }]));
+b.push(bullet([{ t: "Analysez d'abord vos candidats : ", b: true }, { t: "la recherche est d'autant plus fine que les fiches ont été passées par « Analyser avec l'IA »." }]));
+b.push(h3("Bon à savoir"));
+b.push(bullet([{ t: "La recherche ne porte que sur les candidats de votre entreprise (vos données restent cloisonnées)." }]));
+b.push(bullet([{ t: "L'IA propose une aide à la décision : à vous de confirmer en ouvrant les fiches. Si un résultat vous surprend, reformulez la demande." }]));
+b.push(bullet([{ t: "La recherche reste rapide même sur une grande base : l'outil présélectionne les profils les plus prometteurs avant de les faire trier par l'IA." }]));
 b.push(spacer());
 
 // ==== 9. Rapports ====
@@ -246,6 +266,7 @@ const stylesXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:style w:type="paragraph" w:styleId="Subtitle"><w:name w:val="Subtitle"/><w:pPr><w:spacing w:after="240"/></w:pPr><w:rPr><w:color w:val="475569"/><w:sz w:val="26"/></w:rPr></w:style>
 <w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/><w:pPr><w:spacing w:before="280" w:after="120"/><w:keepNext/><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="4" w:color="DBEAFE"/></w:pBdr></w:pPr><w:rPr><w:b/><w:color w:val="2563EB"/><w:sz w:val="30"/></w:rPr></w:style>
 <w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:pPr><w:spacing w:before="160" w:after="80"/><w:keepNext/></w:pPr><w:rPr><w:b/><w:color w:val="334155"/><w:sz w:val="25"/></w:rPr></w:style>
+<w:style w:type="paragraph" w:styleId="Heading3"><w:name w:val="heading 3"/><w:pPr><w:spacing w:before="120" w:after="60"/><w:keepNext/></w:pPr><w:rPr><w:b/><w:color w:val="475569"/><w:sz w:val="22"/></w:rPr></w:style>
 <w:style w:type="paragraph" w:styleId="Bullet"><w:name w:val="Bullet"/><w:pPr><w:spacing w:after="60"/><w:ind w:left="360" w:hanging="360"/></w:pPr></w:style>
 <w:style w:type="paragraph" w:styleId="TableCell"><w:name w:val="TableCell"/><w:pPr><w:spacing w:after="20" w:line="252" w:lineRule="auto"/></w:pPr><w:rPr><w:sz w:val="20"/></w:rPr></w:style>
 <w:style w:type="paragraph" w:styleId="Code"><w:name w:val="Code"/><w:pPr><w:spacing w:after="120"/><w:ind w:left="240"/><w:shd w:val="clear" w:fill="EEF2F7"/></w:pPr><w:rPr><w:rFonts w:ascii="Consolas" w:hAnsi="Consolas"/><w:sz w:val="20"/></w:rPr></w:style>
