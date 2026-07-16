@@ -983,7 +983,7 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
   const { companyId } = getContext(req);
   try {
     // Agrégations Prisma, toutes scopées au tenant, exécutées en parallèle.
-    const [totalJobs, activeJobs, totalCandidates, hiredCandidates, scoreAgg, recentCandidateRows, analysisRows, recentJobRows, sourcingRows] =
+    const [totalJobs, activeJobs, totalCandidates, hiredCandidates, scoreAgg, recentCandidateRows, recentJobRows, sourcingRows, skillRows, expRow] =
       await Promise.all([
         prisma.job.count({ where: { companyId } }),
         prisma.job.count({ where: { companyId, status: JobStatus.Active } }),
@@ -992,9 +992,6 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
         prisma.candidateScore.aggregate({ _avg: { globalScore: true }, where: { candidate: { companyId } } }),
         // Widget "Candidats récents" : 5 fiches complètes seulement (pas toute la base).
         prisma.candidate.findMany({ where: { companyId }, include: candidateInclude, orderBy: { appliedAt: "desc" }, take: 5 }),
-        // Distributions (compétences / expérience) : on ne récupère QUE le JSON `analysis`,
-        // pas cvText/letterText/relations → charge transférée très allégée (Niveau 0).
-        prisma.candidate.findMany({ where: { companyId }, select: { analysis: true } }),
         prisma.job.findMany({ where: { companyId }, include: jobInclude, orderBy: { createdAt: "desc" }, take: 4 }),
         // Sourcing trend : candidatures par mois sur les 6 derniers mois (SQL PostgreSQL).
         prisma.$queryRaw<Array<{ name: string; candidatures: number }>>`
@@ -1005,6 +1002,28 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
             AND "appliedAt" >= NOW() - INTERVAL '6 months'
           GROUP BY DATE_TRUNC('month', "appliedAt"), name
           ORDER BY DATE_TRUNC('month', "appliedAt") ASC
+        `,
+        // Niveau 2 : top 7 compétences EN SQL depuis la table normalisée CandidateSkill
+        // (plus besoin de charger tous les candidats ni leur JSON `analysis`).
+        prisma.$queryRaw<Array<{ name: string; count: number }>>`
+          SELECT s."name" AS name, COUNT(*)::int AS count
+          FROM "CandidateSkill" cs
+          JOIN "Skill" s ON s."id" = cs."skillId"
+          JOIN "Candidate" c ON c."id" = cs."candidateId"
+          WHERE c."companyId" = ${companyId}
+          GROUP BY s."name"
+          ORDER BY count DESC
+          LIMIT 7
+        `,
+        // Niveau 1+2 : répartition par expérience EN SQL via la colonne indexée experienceYears.
+        prisma.$queryRaw<Array<{ junior: number; inter: number; senior: number; expert: number }>>`
+          SELECT
+            COUNT(*) FILTER (WHERE COALESCE("experienceYears", 0) <= 2)::int AS junior,
+            COUNT(*) FILTER (WHERE COALESCE("experienceYears", 0) BETWEEN 3 AND 5)::int AS inter,
+            COUNT(*) FILTER (WHERE COALESCE("experienceYears", 0) BETWEEN 6 AND 8)::int AS senior,
+            COUNT(*) FILTER (WHERE COALESCE("experienceYears", 0) > 8)::int AS expert
+          FROM "Candidate"
+          WHERE "companyId" = ${companyId}
         `,
       ]);
 
@@ -1022,36 +1041,18 @@ app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
           return { name: d.toLocaleString("en-US", { month: "short" }), candidatures: 0 };
         });
 
-    // Distribution des compétences (depuis analysis.skills : IT + métier), top 7.
-    const skillCounts: Record<string, number> = {};
-    for (const row of analysisRows) {
-      const s = (row.analysis as any)?.skills;
-      if (s) {
-        for (const name of [...(s.languages || []), ...(s.frameworks || []), ...(s.tools || []), ...(s.cloud || []), ...(s.domain || []), ...(s.certifications || [])]) {
-          skillCounts[name] = (skillCounts[name] || 0) + 1;
-        }
-      }
-    }
-    const skillDistribution = Object.entries(skillCounts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 7);
+    // Top 7 compétences (agrégé en SQL — Niveau 2). Number() par sécurité si le
+    // driver renvoie un BigInt.
+    const skillDistribution = skillRows.map((r) => ({ name: r.name, count: Number(r.count) }));
 
-    // Distribution par niveau d'expérience (analysis.yearsOfExperience).
-    const expRanges = {
-      "Junior (0-2 ans)": 0,
-      "Intermédiaire (3-5 ans)": 0,
-      "Senior (5-8 ans)": 0,
-      "Expert (8 ans +)": 0,
-    };
-    for (const row of analysisRows) {
-      const years = (row.analysis as any)?.yearsOfExperience || 0;
-      if (years <= 2) expRanges["Junior (0-2 ans)"]++;
-      else if (years <= 5) expRanges["Intermédiaire (3-5 ans)"]++;
-      else if (years <= 8) expRanges["Senior (5-8 ans)"]++;
-      else expRanges["Expert (8 ans +)"]++;
-    }
-    const expDistribution = Object.entries(expRanges).map(([name, value]) => ({ name, value }));
+    // Répartition par expérience (agrégée en SQL — Niveau 1+2), mêmes tranches.
+    const e = expRow[0] ?? { junior: 0, inter: 0, senior: 0, expert: 0 };
+    const expDistribution = [
+      { name: "Junior (0-2 ans)", value: Number(e.junior) },
+      { name: "Intermédiaire (3-5 ans)", value: Number(e.inter) },
+      { name: "Senior (5-8 ans)", value: Number(e.senior) },
+      { name: "Expert (8 ans +)", value: Number(e.expert) },
+    ];
 
     res.json({
       kpis: { totalJobs, activeJobs, totalCandidates, hiredCandidates, avgMatchingScore },
@@ -1553,6 +1554,49 @@ app.delete("/api/candidates/:id", requireAuth, async (req, res) => {
 // 5. SERVER-SIDE GEMINI AI ACTIONS
 // ==========================================
 
+// Niveau 2 — normalisation des compétences. Chaque case de analysis.skills est
+// mappée sur une catégorie du référentiel Skill, ce qui permet d'agréger le
+// "top compétences" du tableau de bord EN SQL (sans charger tous les candidats).
+const SKILL_BUCKETS: Array<[string, SkillCategory]> = [
+  ["languages", SkillCategory.Language],
+  ["frameworks", SkillCategory.Framework],
+  ["databases", SkillCategory.Database],
+  ["tools", SkillCategory.Tool],
+  ["cloud", SkillCategory.Cloud],
+  ["softSkills", SkillCategory.SoftSkill],
+  ["domain", SkillCategory.Domain],
+  ["certifications", SkillCategory.Certification],
+];
+
+// Réécrit la table normalisée CandidateSkill depuis analysis.skills : upsert du
+// référentiel Skill (name unique + catégorie) + liens candidat↔compétence.
+// Idempotent : on remplace les liens existants du candidat à chaque analyse.
+async function syncCandidateSkills(
+  tx: Prisma.TransactionClient,
+  candidateId: string,
+  skillsObj: any,
+): Promise<void> {
+  await tx.candidateSkill.deleteMany({ where: { candidateId } });
+  if (!skillsObj || typeof skillsObj !== "object") return;
+  const seen = new Set<string>();
+  for (const [key, category] of SKILL_BUCKETS) {
+    const list = Array.isArray(skillsObj[key]) ? skillsObj[key] : [];
+    for (const raw of list) {
+      const name = String(raw).trim();
+      if (!name) continue;
+      const dedup = name.toLowerCase();
+      if (seen.has(dedup)) continue;
+      seen.add(dedup);
+      const skill = await tx.skill.upsert({
+        where: { name },
+        update: {},
+        create: { name, category },
+      });
+      await tx.candidateSkill.create({ data: { candidateId, skillId: skill.id } });
+    }
+  }
+}
+
 // Parse and evaluate resume with Gemini!
 app.post("/api/candidates/:id/analyze", requireAuth, async (req, res) => {
   const ctx = getContext(req);
@@ -1682,8 +1726,10 @@ Réponds uniquement avec le bloc JSON brut, sans enrobage markdown (sans \`\`\`j
         update: scoreData,
         create: { candidateId: id, ...scoreData },
       });
+      // Niveau 2 : normalise les compétences dans CandidateSkill (agrégation SQL).
+      await syncCandidateSkills(tx, id, analysis.skills);
       return tx.candidate.findUniqueOrThrow({ where: { id }, include: candidateInclude });
-    });
+    }, { timeout: 20000 });
 
     logActionFor(ctx, "Analyse IA complète", `Le CV de '${updated.name}' a été analysé avec succès par l'IA. Score global calculé : ${updated.score?.globalScore}/100.`);
 

@@ -419,6 +419,53 @@ Master Informatique option Réseaux & Cloud - Telecom Paris (2018)`,
     where: { id: { in: jobs.map((j) => j.id) } },
     data: { salaryRange: "3 000 000 Ariary" },
   });
+  // 3. Backfill Niveau 1 — experienceYears depuis analysis.yearsOfExperience,
+  //    pour les candidats déjà analysés (colonne encore NULL). Idempotent.
+  const filledExp = await prisma.$executeRawUnsafe(`
+    UPDATE "Candidate"
+    SET "experienceYears" = (("analysis"->>'yearsOfExperience'))::int
+    WHERE "experienceYears" IS NULL
+      AND "analysis" IS NOT NULL
+      AND ("analysis"->>'yearsOfExperience') ~ '^[0-9]+$'
+  `);
+  if (filledExp) console.log(`   experienceYears rétro-rempli pour ${filledExp} candidat(s)`);
+  // 4. Backfill Niveau 2 — CandidateSkill depuis analysis.skills, pour les
+  //    candidats analysés qui n'ont ENCORE aucun lien de compétence. Idempotent
+  //    (les candidats du seed en ont déjà → non concernés).
+  const SKILL_BUCKETS: Array<[string, SkillCategory]> = [
+    ["languages", SkillCategory.Language],
+    ["frameworks", SkillCategory.Framework],
+    ["databases", SkillCategory.Database],
+    ["tools", SkillCategory.Tool],
+    ["cloud", SkillCategory.Cloud],
+    ["softSkills", SkillCategory.SoftSkill],
+    ["domain", SkillCategory.Domain],
+    ["certifications", SkillCategory.Certification],
+  ];
+  const toBackfill = await prisma.candidate.findMany({
+    where: { analysis: { not: null }, skills: { none: {} } },
+    select: { id: true, analysis: true },
+  });
+  let skillLinks = 0;
+  for (const c of toBackfill) {
+    const skillsObj = c.analysis && typeof c.analysis === "object" ? (c.analysis as any).skills : null;
+    if (!skillsObj || typeof skillsObj !== "object") continue;
+    const seen = new Set<string>();
+    for (const [key, category] of SKILL_BUCKETS) {
+      const list = Array.isArray(skillsObj[key]) ? skillsObj[key] : [];
+      for (const raw of list) {
+        const name = String(raw).trim();
+        if (!name) continue;
+        const dedup = name.toLowerCase();
+        if (seen.has(dedup)) continue;
+        seen.add(dedup);
+        const skill = await prisma.skill.upsert({ where: { name }, update: {}, create: { name, category } });
+        await prisma.candidateSkill.create({ data: { candidateId: c.id, skillId: skill.id } });
+        skillLinks++;
+      }
+    }
+  }
+  if (skillLinks) console.log(`   CandidateSkill : ${skillLinks} lien(s) rétro-remplis`);
 
   const counts = {
     companies: await prisma.company.count(),
