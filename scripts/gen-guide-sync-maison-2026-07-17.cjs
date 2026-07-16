@@ -33,14 +33,16 @@ b.push(p([{ t: "Ce qui a changé aujourd'hui, comment le récupérer chez vous (
 b.push(spacer());
 
 // 1. Résumé des changements
-b.push(h1("1. Ce qui a changé aujourd'hui"));
-b.push(bullet([{ t: "Ajout d'un candidat — import du CV : ", b: true }, { t: "dans l'onglet « Candidats », le bouton « Ajouter un candidat » propose désormais un bouton « Importer » au-dessus du champ CV. On peut y déposer un fichier PDF ou une image (JPG/PNG), comme sur la page publique /postuler. Le texte du CV est extrait automatiquement et rempli dans le champ." }]));
-b.push(bullet([{ t: "Ajout d'un candidat — import de la lettre : ", b: true }, { t: "de la même façon, un bouton « Importer » au-dessus du champ « Lettre de motivation » accepte un fichier PDF ou Word (.docx). Le texte est extrait et rempli automatiquement." }]));
-b.push(bullet([{ t: "Champs toujours éditables : ", b: true }, { t: "après import, le texte extrait apparaît dans la zone de saisie et reste modifiable ; on peut aussi continuer à coller le texte à la main comme avant." }]));
-b.push(bullet([{ t: "OCR des images réutilisé : ", b: true }, { t: "la lecture d'un CV en image passe par l'IA Gemini (déjà en place) ; PDF via pdf-parse et Word via mammoth. Aucune nouvelle bibliothèque." }]));
-b.push(bullet([{ t: "Côté serveur : ", b: true }, { t: "nouvel endpoint POST /api/extract-text (authentifié) qui extrait le texte d'un fichier « à la volée », sans qu'un candidat existe déjà." }]));
-b.push(bullet([{ t: "Aucun changement de base : ", b: true }, { t: "pas de nouvelle migration, seed inchangé, aucune nouvelle dépendance." }]));
-b.push(bullet([{ t: "Prod déjà à jour : ", b: true }, { t: "commit 1420ffb poussé et déployé automatiquement sur Render." }]));
+b.push(h1("1. Ce qui a changé aujourd'hui (17/07)"));
+b.push(bullet([{ t: "Import CV / lettre à l'ajout d'un candidat : ", b: true }, { t: "dans « Candidats » → « Ajouter un candidat », un bouton « Importer » au-dessus des champs CV (PDF ou image) et Lettre (PDF ou Word) extrait le texte automatiquement, comme sur /postuler. Le texte reste éditable." }]));
+b.push(bullet([{ t: "Soft skills sur les offres : ", b: true }, { t: "nouveau champ « Soft skills souhaités » à la création/édition d'une offre. Affichés dans la liste des offres (badges fond noir / texte blanc) et dans le détail. Ils sont aussi transmis à l'analyse IA (le score « savoir-être » est évalué en regard des attentes du poste)." }]));
+b.push(bullet([{ t: "Soft skills sur la fiche candidat : ", b: true }, { t: "nouveau bloc « Savoir-être (soft skills) » dans l'onglet Analyse IA (ces compétences étaient extraites par l'IA mais jamais affichées)." }]));
+b.push(bullet([{ t: "Recherche candidats côté serveur : ", b: true }, { t: "la barre de recherche porte désormais sur TOUTE la base (nom / email / téléphone / localisation), plus seulement sur la page affichée." }]));
+b.push(bullet([{ t: "Composant Button réutilisable : ", b: true }, { t: "nouveau src/components/Button.tsx (un seul endroit pour le style des boutons). Premier écran migré : « Candidats »." }]));
+b.push(bullet([{ t: "Tableau de bord plus rapide (Niveau 0) : ", b: true }, { t: "il ne charge plus toute la base avec les CV/lettres ; chargement nettement allégé." }]));
+b.push(bullet([{ t: "Nouvelle colonne experienceYears (Niveau 1) : ", b: true }, { t: "années d'expérience stockées dans une vraie colonne indexée (renseignée à l'analyse). Prépare les optimisations à venir. → nécessite une migration (voir partie 4)." }]));
+b.push(bullet([{ t: "Base de données — 2 migrations : ", b: true }, { t: "add_candidate_experience_years et add_job_soft_skills_required. Additives (colonnes ajoutées), sans perte de données. AUCUNE nouvelle dépendance npm." }]));
+b.push(bullet([{ t: "Prod déjà à jour : ", b: true }, { t: "dernier commit b0182b5 poussé et déployé automatiquement sur Render (migrations appliquées via migrate deploy)." }]));
 b.push(spacer());
 
 // 2. Méthode A : git pull
@@ -58,9 +60,20 @@ b.push(h1("3. Méthode alternative — copie manuelle des fichiers"));
 b.push(p([{ t: "Si vous copiez à la main (clé USB, etc.), reportez ces fichiers en respectant l'arborescence." }]));
 b.push(h2("Code de l'application (indispensable)"));
 b.push(code("server.ts"));
+b.push(code("src/App.tsx"));
+b.push(code("src/types.ts"));
+b.push(code("src/lib/mappers.ts"));
+b.push(code("src/components/Button.tsx  (nouveau)"));
 b.push(code("src/components/CandidatesView.tsx"));
-b.push(h2("Scripts (facultatif — génère le document)"));
-b.push(code("scripts/gen-guide-sync-maison-2026-07-17.cjs"));
+b.push(code("src/components/JobsView.tsx"));
+b.push(code("src/components/CandidateProfileView.tsx"));
+b.push(h2("Base de données (indispensable)"));
+b.push(code("prisma/schema.prisma"));
+b.push(code("prisma/migrations/20260717120000_add_candidate_experience_years/"));
+b.push(code("prisma/migrations/20260716165929_add_job_soft_skills_required/"));
+b.push(h2("Scripts (facultatif)"));
+b.push(code("scripts/backfill-experience-years.cjs  (backfill experienceYears)"));
+b.push(code("scripts/gen-guide-sync-maison-2026-07-17.cjs  (génère ce document)"));
 b.push(h2("Documentation (facultatif — regénérable via le script)"));
 b.push(code("Guide-Sync-Maison-2026-07-17.docx"));
 b.push(code("RECAP-PROJET-NEXUS.md"));
@@ -69,15 +82,21 @@ b.push(spacer());
 
 // 4. Commandes
 b.push(h1("4. Commandes à lancer après la synchro"));
-b.push(p([{ t: "Pas de migration, pas de re-seed, pas de nouvelle dépendance aujourd'hui.", b: true }]));
-b.push(p([{ t: "1. ", b: true }, { t: "(Si vous aviez déjà tout installé, cette étape est facultative) Installer les dépendances :" }]));
+b.push(p([{ t: "IMPORTANT cette fois : il y a 2 migrations de base. ", b: true }, { t: "Sans elles, l'application plantera en local (colonnes manquantes). Suivez les étapes DANS L'ORDRE." }]));
+b.push(p([{ t: "1. ", b: true }, { t: "ARRÊTER le serveur de dev s'il tourne (fermez le terminal " }, { t: "npm run dev", code: true }, { t: " ou Ctrl+C). Sous Windows, Prisma ne peut pas se régénérer tant que le serveur tient le moteur (erreur EPERM)." }]));
+b.push(p([{ t: "2. ", b: true }, { t: "Installer les dépendances (aucune nouvelle aujourd'hui, mais sans risque) :" }]));
 b.push(code("npm install"));
-b.push(p([{ t: "2. ", b: true }, { t: "Vérifier que le projet compile :" }]));
+b.push(p([{ t: "3. ", b: true }, { t: "Appliquer les 2 migrations à votre base LOCALE (colonnes experienceYears + softSkillsRequired) :" }]));
+b.push(code("npx prisma migrate deploy"));
+b.push(p([{ t: "4. ", b: true }, { t: "Régénérer le client Prisma (pour que le code reconnaisse les nouvelles colonnes) :" }]));
+b.push(code("npx prisma generate"));
+b.push(p([{ t: "5. ", b: true }, { t: "(Optionnel) Remplir experienceYears pour les candidats DÉJÀ analysés — pas urgent :" }]));
+b.push(code("node scripts/backfill-experience-years.cjs"));
+b.push(p([{ t: "6. ", b: true }, { t: "Vérifier que le projet compile :" }]));
 b.push(code("npm run lint"));
-b.push(p([{ t: "3. ", b: true }, { t: "(Optionnel) Regénérer le guide Word du jour :" }]));
-b.push(code("node scripts/gen-guide-sync-maison-2026-07-17.cjs"));
-b.push(p([{ t: "4. ", b: true }, { t: "Relancer le serveur de dev, puis Ctrl+F5 dans le navigateur :" }]));
+b.push(p([{ t: "7. ", b: true }, { t: "Relancer le serveur de dev, puis Ctrl+F5 dans le navigateur :" }]));
 b.push(code("npm run dev"));
+b.push(p([{ t: "Note : ", b: true }, { t: "en production, rien à faire manuellement — Render applique les migrations tout seul (migrate deploy) à chaque push. Ces commandes ne concernent que votre poste maison." }]));
 b.push(spacer());
 
 // 5. Important pour tester l'OCR en local
@@ -87,27 +106,34 @@ b.push(bullet([{ t: "Si la clé est absente : ", b: true }, { t: "l'import d'un 
 b.push(bullet([{ t: "En production : ", b: true }, { t: "la clé est déjà configurée dans Render (Environment), rien à faire." }]));
 b.push(spacer());
 
-// 6. Ce dont vous n'avez PAS besoin
-b.push(h1("6. Ce dont vous n'avez PAS besoin"));
-b.push(bullet([{ t: "Pas de prisma migrate / db seed : ", b: true }, { t: "aucun champ de base ajouté." }]));
-b.push(bullet([{ t: "Pas de npm install obligatoire : ", b: true }, { t: "aucune nouvelle dépendance aujourd'hui (tout réutilise l'existant)." }]));
-b.push(bullet([{ t: "Rien à faire côté production : ", b: true }, { t: "Render redéploie automatiquement à chaque push." }]));
+// 6. Ce dont vous avez / n'avez pas besoin
+b.push(h1("6. Ce dont vous avez (et n'avez pas) besoin cette fois"));
+b.push(bullet([{ t: "Migrations OBLIGATOIRES en local : ", b: true }, { t: "les 2 migrations doivent être appliquées (partie 4, étape 3), sinon l'app plante (colonnes manquantes)." }]));
+b.push(bullet([{ t: "Régénération Prisma OBLIGATOIRE : ", b: true }, { t: "après les migrations (partie 4, étape 4), sinon le code ne « voit » pas les nouvelles colonnes." }]));
+b.push(bullet([{ t: "Pas de re-seed : ", b: true }, { t: "les données de démo ne changent pas ; ne lancez pas prisma db seed (il réécrirait les données)." }]));
+b.push(bullet([{ t: "Pas de nouvelle dépendance : ", b: true }, { t: "npm install n'est pas strictement requis (aucun paquet ajouté)." }]));
+b.push(bullet([{ t: "Backfill facultatif : ", b: true }, { t: "experienceYears se remplit automatiquement aux prochaines analyses ; le script ne sert qu'à rattraper les candidats déjà analysés." }]));
+b.push(bullet([{ t: "Rien à faire côté production : ", b: true }, { t: "Render redéploie et applique les migrations automatiquement à chaque push." }]));
 b.push(spacer());
 
 // 7. Vérifier que tout marche
 b.push(h1("7. Vérifier que tout marche"));
-b.push(bullet([{ t: "Onglet Candidats → Ajouter un candidat : ", b: true }, { t: "au-dessus des champs CV et Lettre de motivation, un bouton « Importer » est visible." }]));
-b.push(bullet([{ t: "Import CV : ", b: true }, { t: "cliquer « Importer (PDF ou image) », choisir un PDF ou une photo/scan de CV → le texte apparaît dans le champ CV." }]));
-b.push(bullet([{ t: "Import lettre : ", b: true }, { t: "cliquer « Importer (PDF ou Word) », choisir un PDF ou un .docx → le texte apparaît dans le champ Lettre." }]));
-b.push(bullet([{ t: "Format refusé : ", b: true }, { t: "choisir un mauvais format (ex. une image pour la lettre) affiche un message d'erreur clair, sans bloquer le reste du formulaire." }]));
+b.push(bullet([{ t: "Listes non vides : ", b: true }, { t: "après les migrations et le redémarrage, les candidats et les offres s'affichent normalement (si vide, c'est souvent que les migrations n'ont pas été appliquées)." }]));
+b.push(bullet([{ t: "Offre — soft skills : ", b: true }, { t: "créez/éditez une offre, ajoutez des soft skills (ex. « Communication, Rigueur ») → ils apparaissent en badges NOIRS dans la liste des offres et dans le détail." }]));
+b.push(bullet([{ t: "Candidat — soft skills : ", b: true }, { t: "ouvrez une fiche déjà analysée → onglet Analyse IA → le bloc « Savoir-être (soft skills) » est présent (si le candidat en a)." }]));
+b.push(bullet([{ t: "Recherche candidats : ", b: true }, { t: "tapez le nom d'un candidat situé sur une autre page → il est trouvé (recherche sur toute la base)." }]));
+b.push(bullet([{ t: "Import CV / lettre : ", b: true }, { t: "« Ajouter un candidat » → boutons « Importer » au-dessus des champs CV et Lettre." }]));
+b.push(bullet([{ t: "Tableau de bord : ", b: true }, { t: "se charge rapidement (plus de chargement de toute la base)." }]));
 b.push(spacer());
 
 // 8. À noter
 b.push(h1("8. À noter"));
-b.push(bullet([{ t: "Formats CV acceptés à l'ajout : ", b: true }, { t: "PDF et images JPG / PNG / WebP." }]));
-b.push(bullet([{ t: "Formats lettre acceptés à l'ajout : ", b: true }, { t: "PDF et Word .docx." }]));
-b.push(bullet([{ t: "OCR d'image : ", b: true }, { t: "ajoute quelques secondes au traitement (~10-15 s) et consomme du quota Gemini ; une image nette donne une meilleure extraction." }]));
-b.push(bullet([{ t: "Uploads : ", b: true }, { t: "le fichier est traité en mémoire (aucune écriture disque) : seul le texte extrait est conservé." }]));
+b.push(bullet([{ t: "Migrations additives : ", b: true }, { t: "les 2 migrations ne font qu'AJOUTER des colonnes (experienceYears sur les candidats, softSkillsRequired sur les offres) — aucune donnée existante n'est modifiée ou supprimée." }]));
+b.push(bullet([{ t: "Soft skills des offres existantes : ", b: true }, { t: "elles démarrent sans soft skills (champ vide) ; éditez une offre pour en ajouter." }]));
+b.push(bullet([{ t: "Soft skills du candidat : ", b: true }, { t: "s'affichent pour les fiches déjà analysées si l'IA en avait extrait ; sinon relancez « Analyser avec l'IA »." }]));
+b.push(bullet([{ t: "experienceYears : ", b: true }, { t: "aucune fonctionnalité visible ne la lit encore ; c'est une base pour de futures optimisations (filtre par expérience côté serveur, tableau de bord)." }]));
+b.push(bullet([{ t: "Formats d'import : ", b: true }, { t: "CV = PDF ou image (JPG/PNG/WebP, OCR Gemini) ; Lettre = PDF ou Word (.docx). L'OCR image nécessite GEMINI_API_KEY (voir partie 5)." }]));
+b.push(bullet([{ t: "Piège Windows (rappel) : ", b: true }, { t: "toujours arrêter npm run dev avant prisma migrate / generate (verrou du moteur, erreur EPERM)." }]));
 b.push(bullet([{ t: "Sécurité (rappel) : ", b: true }, { t: "révoquer l'ancien token GitHub exposé ghp_JLBr… s'il ne l'est pas déjà." }]));
 
 // ---- OOXML ----

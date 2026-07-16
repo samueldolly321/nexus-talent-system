@@ -135,6 +135,22 @@ Commit `061c09c`, poussé.
 2. Généré via **`scripts/gen-manuel-utilisateur.cjs`** (regénérable ; helper de tableau OOXML ajouté au générateur).
 - ⚠️ Doc uniquement — **aucun changement de code**, aucune migration, aucune dépendance.
 
+### 17/07 (suite) — Quick wins : recherche serveur + composant Button
+Commit `25893ce`, poussé et déployé.
+1. **Recherche candidats côté serveur** : `GET /api/candidates` lit `search` et filtre (`OR` sur name/email/phone/location, insensible casse) sur `count` + `findMany` → la recherche porte sur **toute la base**, plus seulement la page. Front : terme ajouté à la requête + **refetch temporisé (debounce 350 ms)** sur la vue Candidats (`App.tsx`).
+2. **Composant `<Button>`** (`src/components/Button.tsx`) : variantes `primary/ghost/outline/danger`, 2 tailles — **un seul endroit** pour le style des boutons. Premier écran migré : `CandidatesView`. Migration des autres écrans = incrémentale.
+- ⚠️ Aucune migration, aucune dépendance.
+
+### 17/07 (suite) — Perf dashboard (Niveau 0) + colonne experienceYears (Niveau 1) + soft skills
+Commit `b0182b5`, poussé et déployé (2 migrations appliquées via `migrate deploy`).
+1. **Soft skills — offres** : nouveau champ **« Soft skills souhaités »** (création/édition), affiché dans la **liste** (badges **fond noir `bg-primary` / texte blanc `text-on-primary`**) et le détail. Nouvelle colonne **`Job.softSkillsRequired String[]`** (calquée sur `languagesRequired`) + migration `add_job_soft_skills_required`. Les soft skills souhaités **alimentent le prompt IA** → le `softSkillsScore` est évalué en regard des attentes du poste. Fichiers : `types.ts`, `schema.prisma`, `server.ts` (create/update/prompt), `mappers.ts` (`mapJob`), `JobsView.tsx`.
+2. **Soft skills — fiche candidat** : nouveau bloc **« Savoir-être (soft skills) »** dans l'onglet Analyse IA (`CandidateProfileView.tsx`). Les soft skills étaient déjà extraits par l'IA (`analysis.skills.softSkills`) mais jamais affichés. (L'export PDF les listait déjà.)
+3. **Niveau 0 — perf dashboard** : `GET /api/dashboard/stats` ne charge plus **toute la base** avec `candidateInclude` (CV/lettre/JSON). Deux requêtes ciblées : **5 fiches complètes** pour « Candidats récents » (`take: 5`) + **`select: { analysis: true }`** pour les distributions → charge transférée ÷5-10.
+4. **Niveau 1 — colonne `Candidate.experienceYears Int?`** (indexée), miroir de `analysis.yearsOfExperience`, renseignée à l'analyse. Migration `add_candidate_experience_years` + script **`scripts/backfill-experience-years.cjs`** (idempotent, remplit les candidats déjà analysés). ⚠️ Le dashboard **ne lit pas encore** cette colonne (elle prépare le Niveau 2 + le futur filtre expérience côté serveur).
+- ⚠️ **2 migrations additives** (colonnes ajoutées, sans perte). **Aucune dépendance npm.**
+- ⚠️ **À la maison** : arrêter `npm run dev` → `npx prisma migrate deploy` → `npx prisma generate` (voir `Guide-Sync-Maison-2026-07-17.docx`). Backfill `experienceYears` = optionnel (pas urgent).
+- ⚠️ **Reste à faire** : Niveau 2 (top compétences en SQL via table normalisée ou cache) ; migration du dashboard experience→SQL ; migration des autres boutons vers `<Button>`.
+
 ---
 
 ## 6. Comment mettre à jour le site (résumé)
