@@ -149,7 +149,7 @@ Commit `b0182b5`, poussé et déployé (2 migrations appliquées via `migrate de
 4. **Niveau 1 — colonne `Candidate.experienceYears Int?`** (indexée), miroir de `analysis.yearsOfExperience`, renseignée à l'analyse. Migration `add_candidate_experience_years` + script **`scripts/backfill-experience-years.cjs`** (idempotent, remplit les candidats déjà analysés). ⚠️ Le dashboard **ne lit pas encore** cette colonne (elle prépare le Niveau 2 + le futur filtre expérience côté serveur).
 - ⚠️ **2 migrations additives** (colonnes ajoutées, sans perte). **Aucune dépendance npm.**
 - ⚠️ **À la maison** : arrêter `npm run dev` → `npx prisma migrate deploy` → `npx prisma generate` (voir `Guide-Sync-Maison-2026-07-17.docx`). Backfill `experienceYears` = optionnel (pas urgent).
-- ⚠️ **Reste à faire** : Niveau 2 (top compétences en SQL via table normalisée ou cache) ; migration du dashboard experience→SQL ; migration des autres boutons vers `<Button>`.
+- ⚠️ **Reste à faire** : ~~Niveau 2~~ (fait, voir plus bas) ; migration des autres boutons vers `<Button>` ; Recherche IA charge encore tous les candidats (`server.ts` ~1670).
 
 ### 17/07 (suite) — Filet de sécurité global (anti-crash)
 Commit à venir. Robustesse serveur, **aucun changement fonctionnel**.
@@ -157,6 +157,15 @@ Commit à venir. Robustesse serveur, **aucun changement fonctionnel**.
 2. **Middleware d'erreur Express** (`errorHandler: express.ErrorRequestHandler`, 4 args) enregistré **en dernier** dans `startServer()` : toute erreur synchrone d'une route → **500 JSON propre** (gère `res.headersSent` pour éviter les doubles réponses).
 - ⚠️ Constat : il n'existe **pas de tests automatisés** ; `build` + `lint` avant push attrapent les erreurs de type, pas la logique — d'où l'intérêt de ce filet.
 - Fichier : `server.ts` uniquement. Aucune migration, aucune dépendance.
+
+### 17/07 (suite) — Niveau 2 : top compétences en SQL (fin du « charge tout »)
+Commit `8174be4`, poussé et déployé.
+1. **Normalisation des compétences** (`server.ts`) : helper `syncCandidateSkills()` — à chaque analyse IA, `analysis.skills` est écrit dans la table normalisée **`CandidateSkill`** (upsert du référentiel `Skill` par catégorie + liens). Idempotent (remplace les liens du candidat). Transaction d'analyse élargie à 20 s. Buckets `SKILL_BUCKETS` (languages→Language, softSkills→SoftSkill, etc.).
+2. **Dashboard réécrit** (`GET /api/dashboard/stats`) : suppression du `findMany` qui chargeait **tout `analysis`**. Le **top 7 compétences** = `groupBy` SQL sur `CandidateSkill` (join `Skill`) ; la **répartition expérience** = `COUNT ... FILTER` SQL sur `experienceYears` (Niveau 1). Le dashboard ne récupère plus que **5 fiches récentes** + des agrégats. Fin du scan.
+3. **Backfills automatisés** : branchés dans la **section réconciliation du seed** (`prisma/seed.ts`, exécuté par Render à chaque déploiement) → `experienceYears` + `CandidateSkill` remplis pour les candidats déjà analysés. Idempotents (`skills: { none: {} }`). Script standalone `scripts/backfill-candidate-skills.cjs` conservé pour usage manuel.
+- ⚠️ **Aucune migration, aucune dépendance, aucune régénération Prisma** (tables `Skill`/`CandidateSkill` déjà existantes).
+- ⚠️ La **Recherche IA** (`server.ts` ~1670) charge encore tous les candidats — même schéma, à migrer plus tard (elle peut réutiliser `CandidateSkill`).
+- Vérifié end-to-end en local (login démo → `/api/dashboard/stats` : top compétences réel + tranches d'expérience correctes).
 
 ---
 
