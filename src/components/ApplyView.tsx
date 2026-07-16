@@ -140,7 +140,7 @@ export default function ApplyView() {
 
   if (success) {
     return (
-      <div className="w-screen h-screen flex items-center justify-center bg-background px-4">
+      <div className="w-full min-h-screen flex items-center justify-center bg-background px-4">
         <div className="max-w-md w-full bg-surface-container-lowest border border-outline-variant rounded-xl p-8 text-center shadow-sm">
           <div className="w-14 h-14 rounded-full bg-secondary-container flex items-center justify-center mx-auto mb-4">
             <CheckCircle2 size={28} className="text-secondary" />
@@ -161,8 +161,8 @@ export default function ApplyView() {
   }
 
   return (
-    <div className="w-screen min-h-screen flex bg-surface-container-lowest overflow-y-auto">
-      <div className="w-full max-w-xl mx-auto px-6 sm:px-10 py-12">
+    <div className="w-full min-h-screen flex bg-surface-container-lowest">
+      <div className="w-full max-w-3xl mx-auto px-6 sm:px-10 py-12">
         <div className="flex items-center gap-3 mb-10">
           <div className="w-10 h-10 rounded-md bg-primary flex items-center justify-center shrink-0">
             <span className="font-mono text-on-primary text-xs font-bold">{appInitials}</span>
@@ -201,6 +201,7 @@ export default function ApplyView() {
             )}
           </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5 font-semibold">
               Nom complet <span className="text-error">*</span>
@@ -234,7 +235,9 @@ export default function ApplyView() {
               />
             </div>
           </div>
+          </div>
 
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label className="block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant mb-1.5 font-semibold">
               Téléphone
@@ -265,6 +268,7 @@ export default function ApplyView() {
                 className="w-full bg-surface-container-low border border-outline-variant rounded-lg py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary-container transition-all"
               />
             </div>
+          </div>
           </div>
 
           <div>
