@@ -1126,20 +1126,34 @@ const toStringArray = (v: unknown, sep: string): string[] =>
 // unique ; catégorie Tool par défaut pour une compétence encore inconnue, comme
 // le fallback du seed) puis création des liens JobSkill. À exécuter dans une
 // transaction (tx) pour rester atomique avec la création/màj du Job.
+//
+// ⚠️ Perf/robustesse : on procède en **3 requêtes constantes** (createMany +
+// findMany + createMany) au lieu de 2×N allers-retours (upsert + create par
+// compétence). Sur Neon (plan gratuit, connexion parfois froide), une boucle de
+// 10-16 round-trips dépassait le timeout de transaction (5 s par défaut) → 500
+// "Erreur base de données" à la publication d'une offre.
 const replaceJobSkills = async (
   tx: Prisma.TransactionClient,
   jobId: string,
   skillNames: string[]
 ) => {
   const clean = [...new Set(skillNames.map((s) => s.trim()).filter(Boolean))];
-  for (const name of clean) {
-    const skill = await tx.skill.upsert({
-      where: { name },
-      update: {},
-      create: { name, category: SkillCategory.Tool },
-    });
-    await tx.jobSkill.create({ data: { jobId, skillId: skill.id, required: true } });
-  }
+  if (clean.length === 0) return;
+  // 1. Insère les compétences encore inconnues (ignore celles déjà au référentiel).
+  await tx.skill.createMany({
+    data: clean.map((name) => ({ name, category: SkillCategory.Tool })),
+    skipDuplicates: true,
+  });
+  // 2. Récupère les ids (existantes + fraîchement créées).
+  const skills = await tx.skill.findMany({
+    where: { name: { in: clean } },
+    select: { id: true },
+  });
+  // 3. Crée tous les liens JobSkill d'un coup.
+  await tx.jobSkill.createMany({
+    data: skills.map((s) => ({ jobId, skillId: s.id, required: true })),
+    skipDuplicates: true,
+  });
 };
 
 // -- Routes --------------------------------------------------------------------
@@ -1194,7 +1208,7 @@ app.post("/api/jobs", requireAuth, async (req, res) => {
       });
       await replaceJobSkills(tx, created.id, skills);
       return tx.job.findUniqueOrThrow({ where: { id: created.id }, include: jobInclude });
-    });
+    }, { timeout: 20000, maxWait: 15000 });
     logActionFor(ctx, "Création d'offre", `Création de l'offre '${full.title}'`);
     res.json(mapJob(full));
   } catch (err) {
@@ -1237,7 +1251,7 @@ app.put("/api/jobs/:id", requireAuth, async (req, res) => {
         await replaceJobSkills(tx, id, toStringArray(b.skillsRequired, ","));
       }
       return tx.job.findUniqueOrThrow({ where: { id }, include: jobInclude });
-    });
+    }, { timeout: 20000, maxWait: 15000 });
     logActionFor(ctx, "Mise à jour d'offre", `Modification de l'offre '${full.title}'`);
     res.json(mapJob(full));
   } catch (err) {
