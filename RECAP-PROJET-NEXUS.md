@@ -1,6 +1,6 @@
 # Récapitulatif projet — Nexus Talent (de A à Z jusqu'à la mise en ligne)
 
-> Document de contexte pour reprendre le projet à froid. Dernière mise à jour : **2026-07-17**.
+> Document de contexte pour reprendre le projet à froid. Dernière mise à jour : **2026-07-20**.
 > Propriétaire : Samuel (digital@salathis.com). Langue de travail : français.
 
 ---
@@ -195,6 +195,16 @@ Commit `64ad61f`, poussé. `src/App.tsx`, **code uniquement**.
 - ⚠️ Rappel : **l'enregistrement d'une offre ne consomme pas de token IA** — seules la génération / analyse / recherche IA utilisent Gemini (quota gratuit : limite par minute → ~1-2 min ; quota journalier → réinit. minuit heure du Pacifique ≈ 10 h à Madagascar).
 - ⚠️ Aucune migration, aucune dépendance.
 
+### 20/07 — Fix : « Erreur base de données » à la publication d'une offre (réveil à froid Neon)
+Commit `c2ea370`, poussé et déployé. `server.ts`, **code uniquement**.
+1. **Symptôme** : à la publication d'une offre (constaté sur une offre « Développeur Java » générée par l'IA), un `alert` **« La création de l'offre a échoué : Erreur base de données. Réessayez dans un instant. »** (500 côté serveur). Le message serveur générique masquait la cause réelle.
+2. **Cause** : `POST /api/jobs` ouvrait une **transaction interactive** dont le helper `replaceJobSkills` faisait **2×N allers-retours** (`upsert` du référentiel Skill + `create` du lien JobSkill, **par compétence**). Pour 5-8 compétences → 10-16 round-trips séquentiels. Ces transactions utilisaient le **timeout Prisma par défaut (5 s)** (contrairement à la transaction d'analyse déjà à 20 s). Sur une **connexion Neon froide** (plan gratuit), les 16 allers-retours dépassaient 5 s → `P2028` → 500.
+3. **Correctifs** (`server.ts`) : (a) `replaceJobSkills` **réécrit en 3 requêtes constantes** — `createMany({ skipDuplicates })` pour insérer les compétences inconnues, `findMany` pour récupérer les ids, `createMany({ skipDuplicates })` pour tous les liens → le nombre d'allers-retours **ne dépend plus** du nombre de compétences. (b) **Timeout élargi à 20 s** (`{ timeout: 20000, maxWait: 15000 }`) sur les transactions de **création ET mise à jour** d'offre, en filet pour les réveils à froid.
+4. **Testé end-to-end en local** (compte démo) : création (8 compétences, 0.27 s), édition (`PUT`, delete+recreate, 0.24 s), 2ᵉ offre réutilisant des compétences existantes (branche `skipDuplicates`, 0.22 s), intégrité du référentiel Skill (1 ligne par compétence, **0 doublon**).
+- ⚠️ Aucune migration, aucune dépendance, aucune régénération Prisma.
+- ⚠️ Note : le front (fix `64ad61f` du 17/07) gérait déjà l'affichage (alerte + arrêt du spinner) ; ce qui manquait, c'est que **l'offre échouait vraiment** au lieu d'être créée — c'est ce chemin serveur qui est corrigé ici.
+- ⚠️ Rappel constaté ce jour : `npm run lint` **échoue** à cause du dossier de sauvegarde non versionné **`maj-2026-07-10/`** déposé à la racine du repo parent (modules introuvables) — **sans rapport** avec le code de `nexus-final`. Le sortir du projet pour retrouver un lint propre.
+
 ---
 
 ## 6. Comment mettre à jour le site (résumé)
@@ -219,6 +229,7 @@ Détail complet : `Guide-Mettre-A-Jour-Le-Site-En-Ligne.docx`.
 - **CORS / FRONTEND_URL** — doit valoir EXACTEMENT l'URL prod (https, sans `/` final).
 - **render.yaml pas relu au simple push** — la `buildCommand` est mémorisée ; les opérations par-déploiement passent par le seed. Un changement de config Render se fait dans le dashboard.
 - **Plan gratuit Render** — serveur endormi après 15 min (réveil 30-60 s) ; **uploads non persistants** (disque éphémère) — c'est pourquoi l'import CV ne garde que le texte extrait, pas le fichier.
+- **Timeout de transaction Prisma (défaut 5 s) + Neon froid** — une `$transaction` interactive qui fait beaucoup d'allers-retours (boucle d'upsert/create) peut dépasser 5 s sur une connexion Neon réveillée à froid → `P2028` → 500 « Erreur base de données ». Parades : **minimiser les round-trips** (`createMany` plutôt qu'une boucle) **et** passer un timeout explicite `{ timeout: 20000, maxWait: 15000 }` (comme les transactions d'analyse et de création/màj d'offre). Vu le 17/07 (analyse) et le 20/07 (offres).
 - **`/uploads` non servi en prod** — en production, seul `dist/` est servi (`server.ts`, branche `NODE_ENV=production`), pas `/uploads`. Combiné au disque éphémère, **toute image stockée en fichier ne s'affiche pas en ligne**. C'est pourquoi les photos (candidat + recruteur) sont désormais stockées **en base64 dans `avatarUrl`** (base Neon), pas sur disque (depuis le 16/07).
 - **OCR CV image = Gemini** — la lecture des CV en JPG/PNG passe par `GEMINI_API_KEY` (ajouter au `.env` en local pour tester). Sans clé, seuls PDF/Word fonctionnent.
 - **Push Git** — fonctionne en direct depuis l'environnement (creds cachés dans Windows Credential Manager) ; si « Repository not found », demander à l'utilisateur de lancer `! git push origin main`.
