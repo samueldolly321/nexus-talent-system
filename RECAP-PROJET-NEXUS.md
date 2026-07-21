@@ -1,6 +1,6 @@
 # Récapitulatif projet — Nexus Talent (de A à Z jusqu'à la mise en ligne)
 
-> Document de contexte pour reprendre le projet à froid. Dernière mise à jour : **2026-07-20**.
+> Document de contexte pour reprendre le projet à froid. Dernière mise à jour : **2026-07-21**.
 > Propriétaire : Samuel (digital@salathis.com). Langue de travail : français.
 
 ---
@@ -204,6 +204,13 @@ Commit `c2ea370`, poussé et déployé. `server.ts`, **code uniquement**.
 - ⚠️ Aucune migration, aucune dépendance, aucune régénération Prisma.
 - ⚠️ Note : le front (fix `64ad61f` du 17/07) gérait déjà l'affichage (alerte + arrêt du spinner) ; ce qui manquait, c'est que **l'offre échouait vraiment** au lieu d'être créée — c'est ce chemin serveur qui est corrigé ici.
 - ⚠️ Rappel constaté ce jour : `npm run lint` **échoue** à cause du dossier de sauvegarde non versionné **`maj-2026-07-10/`** déposé à la racine du repo parent (modules introuvables) — **sans rapport** avec le code de `nexus-final`. Le sortir du projet pour retrouver un lint propre.
+
+### 21/07 — Détail d'offre en ligne sur mobile + grille Rôles & permissions (dernière session)
+Commit `2d935e7`, poussé et déployé sur Render. **Code UI uniquement** (2 fichiers).
+1. **Onglet Offres — détail « inline » sur mobile** (`src/components/JobsView.tsx`) : la page est une grille `grid-cols-1 xl:grid-cols-3` (liste `xl:col-span-2` + panneau détail `xl:col-span-1`). Sous le breakpoint `xl`, tout s'empilait en 1 colonne → le détail de l'offre cliquée apparaissait **tout en bas de la liste**. Correctif : le panneau détail est extrait dans un helper **`renderJobDetail(job, sticky)`** réutilisé à 2 endroits — **desktop (≥ xl)** : colonne latérale collante inchangée (conteneur passé en `hidden xl:block`) ; **mobile (< xl)** : le détail est injecté **en ligne, juste sous la carte cliquée** (`xl:hidden mt-4`, l'élément mappé devient un `React.Fragment`). Aucune logique métier touchée.
+2. **Paramètres — grille « Rôles & permissions »** (`src/components/SettingsView.tsx`) : nouvelle section = **tableau de référence lecture seule** (actions × 5 rôles : Super admin, Admin, Manager, RH, Consultant), ✓ / — par case, colonne du rôle courant surlignée, `overflow-x-auto` (scroll horizontal mobile). Données `PERM_ROLES` + `PERM_MATRIX` au niveau module, **fidèles aux droits réels du code** (`Sidebar.canSee`, `SettingsView.canEditCompany`, gardes `server.ts`). Section **réservée aux Super admin + Admin** (`canEditCompany` = `AdminPlateforme || AdminEntreprise`) → respecte la consigne « seul le super admin et admin ». **Non éditable** (grille documentaire ; la rendre « pilotante » = gros chantier schéma + refonte des checks, à décider ensemble plus tard).
+- ⚠️ **Aucune migration, aucune dépendance, aucune régénération Prisma.** `npm run build` OK avant push ; lint propre sur les 2 fichiers (seules les erreurs `maj-2026-07-10/` subsistent, hors sujet).
+- Doc générée : `Guide-Sync-Maison-2026-07-21.docx` (+ script `scripts/gen-guide-sync-maison-2026-07-21.cjs`).
 
 ---
 
