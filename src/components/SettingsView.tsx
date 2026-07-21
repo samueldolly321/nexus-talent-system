@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { User as UserIcon, Building2, Lock, Loader2 } from "lucide-react";
+import { User as UserIcon, Building2, Lock, Loader2, ShieldCheck, Check, Minus } from "lucide-react";
 import TopBar from "./TopBar";
 import { Company, User, UserRole } from "../types";
 import { apiFetch } from "../lib/api";
@@ -13,6 +13,31 @@ interface SettingsViewProps {
 const LABEL_CLS = "block font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold mb-1.5";
 const INPUT_CLS =
   "w-full bg-surface-container-lowest border border-outline-variant rounded-[8px] px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent transition-all";
+
+// Grille de référence des permissions (lecture seule). Reflète les droits
+// RÉELS appliqués dans le code (Sidebar.canSee, SettingsView.canEditCompany,
+// et les gardes serveur de server.ts). À tenir à jour si les règles changent.
+// Colonnes alignées sur l'enum UserRole ; l'ordre = du plus privilégié au moins.
+const PERM_ROLES: { role: UserRole; label: string }[] = [
+  { role: UserRole.AdminPlateforme, label: "Super admin" },
+  { role: UserRole.AdminEntreprise, label: "Admin" },
+  { role: UserRole.Manager, label: "Manager" },
+  { role: UserRole.RH, label: "RH" },
+  { role: UserRole.ConsultantRecrutement, label: "Consultant" },
+];
+
+// allowed[] est aligné index-par-index sur PERM_ROLES.
+const PERM_MATRIX: { action: string; allowed: boolean[] }[] = [
+  { action: "Tableau de bord & Rapports", allowed: [true, true, true, true, true] },
+  { action: "Offres — créer / éditer / archiver", allowed: [true, true, true, true, true] },
+  { action: "Candidats — ajouter / analyser (IA)", allowed: [true, true, true, true, true] },
+  { action: "Pipeline, Calendrier & Emails", allowed: [true, true, true, true, true] },
+  { action: "Recherche IA", allowed: [true, true, true, true, true] },
+  { action: "Gérer les utilisateurs", allowed: [true, true, true, false, false] },
+  { action: "Accès aux Paramètres", allowed: [true, true, true, false, false] },
+  { action: "Modifier la société / l'application", allowed: [true, true, false, false, false] },
+  { action: "Journal des connexions (IP)", allowed: [true, true, false, false, false] },
+];
 
 export default function SettingsView({ activeUser, activeCompany, onCompanyUpdated }: SettingsViewProps) {
   const [currentPassword, setCurrentPassword] = useState("");
@@ -217,6 +242,58 @@ export default function SettingsView({ activeUser, activeCompany, onCompanyUpdat
             </div>
           )}
         </section>
+
+        {/* Grille des permissions (référence, lecture seule) — réservée aux
+            Super admin / Admin (isCompanyAdmin). Montre qui peut faire quoi. */}
+        {canEditCompany && (
+          <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 mt-6">
+            <div className="flex items-center gap-2 mb-1">
+              <ShieldCheck size={18} className="text-secondary shrink-0" />
+              <h3 className="font-bold text-on-surface font-sans text-sm">Rôles &amp; permissions</h3>
+            </div>
+            <p className="text-xs text-on-surface-variant mb-4">
+              Aperçu des actions autorisées par rôle. Grille de référence — les droits sont
+              appliqués automatiquement selon le rôle de chaque utilisateur.
+            </p>
+            <div className="overflow-x-auto -mx-2 px-2">
+              <table className="w-full min-w-[520px] border-collapse text-sm">
+                <thead>
+                  <tr className="border-b border-outline-variant">
+                    <th className="text-left font-mono text-[10px] uppercase tracking-wider text-on-surface-variant font-semibold py-2 pr-3">
+                      Action
+                    </th>
+                    {PERM_ROLES.map(r => (
+                      <th
+                        key={r.role}
+                        className={`text-center font-mono text-[10px] uppercase tracking-wider font-semibold py-2 px-2 whitespace-nowrap ${
+                          activeUser?.role === r.role ? "text-secondary" : "text-on-surface-variant"
+                        }`}
+                      >
+                        {r.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {PERM_MATRIX.map(row => (
+                    <tr key={row.action} className="border-b border-outline-variant/60 last:border-0">
+                      <td className="py-2 pr-3 text-xs text-on-surface font-medium">{row.action}</td>
+                      {row.allowed.map((ok, i) => (
+                        <td key={PERM_ROLES[i].role} className="text-center py-2 px-2">
+                          {ok ? (
+                            <Check size={15} className="inline text-secondary stroke-[3]" aria-label="Autorisé" />
+                          ) : (
+                            <Minus size={15} className="inline text-on-surface-variant/40" aria-label="Non autorisé" />
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
       </main>
     </div>
   );

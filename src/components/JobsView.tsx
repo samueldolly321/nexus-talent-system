@@ -267,6 +267,127 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
     return result;
   }, [jobs, q, filterPriority, filterDate, filterDeadline]);
 
+  // Panneau détail d'une offre. Réutilisé à deux endroits :
+  //  - desktop (≥ xl) : colonne latérale collante (sticky) à droite de la liste ;
+  //  - mobile (< xl)  : injecté EN LIGNE juste sous la carte cliquée (au lieu
+  //    d'apparaître tout en bas de la liste une fois les colonnes empilées).
+  const renderJobDetail = (job: Job, sticky = false) => (
+    <div className={`bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm p-6 ${sticky ? "sticky top-8" : ""}`}>
+      <div className="border-b border-outline-variant pb-5 mb-5">
+        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-secondary-container/20 text-on-secondary-container uppercase tracking-wider">
+          Fiche de Poste
+        </span>
+        <h3 className="text-lg font-bold text-on-surface mt-2 font-sans leading-snug">
+          {job.title}
+        </h3>
+        <p className="text-xs text-on-surface-variant mt-1">Créée le {new Date(job.createdAt).toLocaleDateString("fr-FR")}</p>
+      </div>
+
+      <div className="space-y-5">
+        <div>
+          <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant mb-2">Description</h4>
+          <p className="text-xs text-on-surface-variant leading-relaxed font-sans">{job.description}</p>
+        </div>
+
+        <div>
+          <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant mb-2">Missions Principales</h4>
+          <ul className="space-y-1.5">
+            {job.missions.map((mission, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs text-on-surface-variant leading-relaxed">
+                <Check size={14} className="text-secondary shrink-0 mt-0.5 stroke-[3]" />
+                <span>{mission}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant mb-2">Compétences attendues</h4>
+          <div className="flex flex-wrap gap-1.5">
+            {job.skillsRequired.map(skill => (
+              <span key={skill} className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-secondary-container text-on-secondary-container">
+                {skill}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant mb-2">Langues requises</h4>
+          <div className="flex flex-wrap gap-1.5">
+            {job.languagesRequired.map(lang => (
+              <span key={lang} className="px-2 py-0.5 rounded text-[10px] font-mono bg-surface-container text-on-surface-variant font-bold">
+                {lang}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {(job.softSkillsRequired?.length ?? 0) > 0 && (
+          <div>
+            <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant mb-2">Soft skills souhaités</h4>
+            <div className="flex flex-wrap gap-1.5">
+              {job.softSkillsRequired.map(s => (
+                <span key={s} className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-primary text-on-primary">
+                  {s}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="pt-4 border-t border-outline-variant grid grid-cols-2 gap-4">
+          <div>
+            <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Localisation</span>
+            <span className="text-xs font-semibold text-on-surface-variant mt-0.5 block">{job.location}</span>
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Rémunération</span>
+            <span className="text-xs font-semibold text-on-surface-variant mt-0.5 block">{job.salaryRange ? formatSalaryDisplay(job.salaryRange) : "Non précisé"}</span>
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Priorité</span>
+            <span className={`inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${PRIORITY_BADGE[job.priority ?? "Normal"] ?? PRIORITY_BADGE.Normal}`}>
+              {job.priority ?? "Normal"}
+            </span>
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Domaine</span>
+            <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-surface-container-high text-on-surface">
+              {job.domain === "Autre" ? "Autre" : "IT"}
+            </span>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-outline-variant flex items-center gap-2">
+          {job.status === "Active" && (
+            <button
+              onClick={() => {
+                if (window.confirm(`Archiver l'offre "${job.title}" ?`)) {
+                  onEditJob(job.id, { status: "Archived" });
+                  setSelectedJob(null);
+                }
+              }}
+              className="flex-1 h-9 px-3 rounded-lg text-sm font-bold text-on-surface-variant border border-outline-variant hover:bg-surface-container-low transition-all"
+            >
+              Archiver
+            </button>
+          )}
+          <button
+            onClick={() => {
+              if (!window.confirm(`Supprimer définitivement "${job.title}" ?`)) return;
+              onDeleteJob(job.id);
+              setSelectedJob(null);
+            }}
+            className="flex-1 h-9 px-3 rounded-lg text-sm font-bold text-red-600 border border-red-200 hover:bg-red-50 transition-all"
+          >
+            Supprimer
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="flex-1 bg-background min-h-screen flex flex-col">
       <TopBar activeUser={activeUser} searchValue={searchQuery} onSearchChange={onSearchChange} searchPlaceholder="Rechercher une offre par titre, description ou compétence..." />
@@ -397,8 +518,8 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
               </div>
             ) : (
               filteredJobs.map(job => (
-                <div 
-                  key={job.id} 
+                <React.Fragment key={job.id}>
+                <div
                   onClick={() => setSelectedJob(job)}
                   className={`bg-surface-container-lowest rounded-xl border p-6 cursor-pointer shadow-sm hover:shadow-md transition-all ${
                     selectedJob?.id === job.id ? "border-secondary ring-2 ring-secondary/10" : "border-outline-variant"
@@ -509,127 +630,24 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
                     </div>
                   )}
                 </div>
+
+                {/* Détail EN LIGNE sur mobile (< xl) : s'ouvre juste sous la carte
+                    cliquée. Masqué ≥ xl, où le détail s'affiche dans la colonne
+                    latérale collante à droite. */}
+                {selectedJob?.id === job.id && (
+                  <div className="xl:hidden mt-4">
+                    {renderJobDetail(job)}
+                  </div>
+                )}
+                </React.Fragment>
               ))
             )}
           </div>
 
-          {/* Right Panel: Selected Job Details */}
-          <div className="xl:col-span-1">
+          {/* Right Panel: Selected Job Details (desktop ≥ xl uniquement) */}
+          <div className="hidden xl:block xl:col-span-1">
             {selectedJob ? (
-              <div className="bg-surface-container-lowest rounded-xl border border-outline-variant shadow-sm p-6 sticky top-8">
-                <div className="border-b border-outline-variant pb-5 mb-5">
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-secondary-container/20 text-on-secondary-container uppercase tracking-wider">
-                    Fiche de Poste
-                  </span>
-                  <h3 className="text-lg font-bold text-on-surface mt-2 font-sans leading-snug">
-                    {selectedJob.title}
-                  </h3>
-                  <p className="text-xs text-on-surface-variant mt-1">Créée le {new Date(selectedJob.createdAt).toLocaleDateString("fr-FR")}</p>
-                </div>
-
-                <div className="space-y-5">
-                  <div>
-                    <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant mb-2">Description</h4>
-                    <p className="text-xs text-on-surface-variant leading-relaxed font-sans">{selectedJob.description}</p>
-                  </div>
-
-                  <div>
-                    <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant mb-2">Missions Principales</h4>
-                    <ul className="space-y-1.5">
-                      {selectedJob.missions.map((mission, i) => (
-                        <li key={i} className="flex items-start gap-2 text-xs text-on-surface-variant leading-relaxed">
-                          <Check size={14} className="text-secondary shrink-0 mt-0.5 stroke-[3]" />
-                          <span>{mission}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div>
-                    <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant mb-2">Compétences attendues</h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedJob.skillsRequired.map(skill => (
-                        <span key={skill} className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-secondary-container text-on-secondary-container">
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant mb-2">Langues requises</h4>
-                    <div className="flex flex-wrap gap-1.5">
-                      {selectedJob.languagesRequired.map(lang => (
-                        <span key={lang} className="px-2 py-0.5 rounded text-[10px] font-mono bg-surface-container text-on-surface-variant font-bold">
-                          {lang}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  {(selectedJob.softSkillsRequired?.length ?? 0) > 0 && (
-                    <div>
-                      <h4 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant mb-2">Soft skills souhaités</h4>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedJob.softSkillsRequired.map(s => (
-                          <span key={s} className="px-2 py-0.5 rounded-full text-[11px] font-mono font-medium bg-primary text-on-primary">
-                            {s}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="pt-4 border-t border-outline-variant grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Localisation</span>
-                      <span className="text-xs font-semibold text-on-surface-variant mt-0.5 block">{selectedJob.location}</span>
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Rémunération</span>
-                      <span className="text-xs font-semibold text-on-surface-variant mt-0.5 block">{selectedJob.salaryRange ? formatSalaryDisplay(selectedJob.salaryRange) : "Non précisé"}</span>
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Priorité</span>
-                      <span className={`inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${PRIORITY_BADGE[selectedJob.priority ?? "Normal"] ?? PRIORITY_BADGE.Normal}`}>
-                        {selectedJob.priority ?? "Normal"}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="block text-[10px] font-mono text-on-surface-variant uppercase tracking-wider">Domaine</span>
-                      <span className="inline-block mt-0.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-surface-container-high text-on-surface">
-                        {selectedJob.domain === "Autre" ? "Autre" : "IT"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="pt-4 border-t border-outline-variant flex items-center gap-2">
-                    {selectedJob.status === "Active" && (
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Archiver l'offre "${selectedJob.title}" ?`)) {
-                            onEditJob(selectedJob.id, { status: "Archived" });
-                            setSelectedJob(null);
-                          }
-                        }}
-                        className="flex-1 h-9 px-3 rounded-lg text-sm font-bold text-on-surface-variant border border-outline-variant hover:bg-surface-container-low transition-all"
-                      >
-                        Archiver
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        if (!window.confirm(`Supprimer définitivement "${selectedJob.title}" ?`)) return;
-                        onDeleteJob(selectedJob.id);
-                        setSelectedJob(null);
-                      }}
-                      className="flex-1 h-9 px-3 rounded-lg text-sm font-bold text-red-600 border border-red-200 hover:bg-red-50 transition-all"
-                    >
-                      Supprimer
-                    </button>
-                  </div>
-                </div>
-              </div>
+              renderJobDetail(selectedJob, true)
             ) : (
               <div className="bg-surface-container rounded-xl border border-dashed border-outline-variant p-8 text-center text-on-surface-variant">
                 <Briefcase size={28} className="mx-auto mb-2 opacity-50" />
