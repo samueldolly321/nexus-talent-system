@@ -6,6 +6,25 @@ export enum UserRole {
   ConsultantRecrutement = "Consultant recrutement"
 }
 
+// Libellé FR d'un rôle (valeur de l'enum) → clé stable (nom d'enum = clé Prisma).
+// Les colonnes de la matrice de permissions sont indexées par ces clés.
+export const roleKeyOf = (role?: string): string | undefined => {
+  if (!role) return undefined;
+  if (role in UserRole) return role; // déjà une clé
+  return (Object.keys(UserRole) as string[]).find(k => (UserRole as Record<string, string>)[k] === role);
+};
+
+// Grille "Rôles & permissions" (globale). Renvoyée par GET /api/permissions.
+export interface PermissionMeta {
+  key: string;
+  label: string;
+}
+export interface PermissionsData {
+  actions: PermissionMeta[];
+  roles: PermissionMeta[];
+  matrix: Record<string, Record<string, boolean>>; // matrix[action][roleKey] = bool
+}
+
 export interface Company {
   id: string;
   name: string;

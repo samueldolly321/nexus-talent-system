@@ -808,12 +808,105 @@ app.get("/api/auth/sso/callback", async (req, res) => {
 // ==========================================
 // Every route below requires a valid access token (requireAuth).
 
-// Autorisation par rôle : la gestion des utilisateurs et les paramètres sont
-// réservés aux admins (plateforme/entreprise) et aux managers ; le rôle RH est
-// exclu (miroir du masquage des onglets côté front — ici c'est la vraie barrière).
+// Autorisation par rôle. `isCompanyAdmin` (Super admin / Admin) reste codé en
+// DUR : il garde l'éditeur de permissions lui-même → un admin ne peut jamais
+// se verrouiller dehors en décochant ses propres droits. Les autres barrières
+// passent désormais par la matrice éditable `hasPermission` (voir ci-dessous).
 const isCompanyAdmin = (role: string) =>
   role === PrismaUserRole.AdminPlateforme || role === PrismaUserRole.AdminEntreprise;
-const canManageOrg = (role: string) => isCompanyAdmin(role) || role === PrismaUserRole.Manager;
+
+// ==========================================
+// PERMISSIONS — grille "Rôles & permissions" (globale, éditable dans Paramètres)
+// ==========================================
+// Clés d'action stables = lignes de la grille. L'ordre pilote l'affichage.
+const PERMISSION_ACTIONS: { key: string; label: string }[] = [
+  { key: "dashboard", label: "Tableau de bord & Rapports" },
+  { key: "jobs", label: "Offres — créer / éditer / archiver" },
+  { key: "candidates", label: "Candidats — ajouter / analyser (IA)" },
+  { key: "pipeline", label: "Pipeline, Calendrier & Emails" },
+  { key: "ai_search", label: "Recherche IA" },
+  { key: "manage_users", label: "Gérer les utilisateurs" },
+  { key: "settings", label: "Accès aux Paramètres" },
+  { key: "edit_company", label: "Modifier la société / l'application" },
+  { key: "connections", label: "Journal des connexions (IP)" },
+];
+const PERMISSION_ACTION_KEYS = new Set(PERMISSION_ACTIONS.map((a) => a.key));
+
+// Rôles en colonnes, du plus privilégié au moins (clés d'enum Prisma).
+const PERMISSION_ROLES: { key: PrismaUserRole; label: string }[] = [
+  { key: PrismaUserRole.AdminPlateforme, label: "Super admin" },
+  { key: PrismaUserRole.AdminEntreprise, label: "Admin" },
+  { key: PrismaUserRole.Manager, label: "Manager" },
+  { key: PrismaUserRole.RH, label: "RH" },
+  { key: PrismaUserRole.ConsultantRecrutement, label: "Consultant" },
+];
+
+// Matrice par défaut (repli si aucune ligne en base). allowed[] aligné sur
+// PERMISSION_ROLES : [Super admin, Admin, Manager, RH, Consultant]. Reflète les
+// droits historiques codés en dur avant que la grille ne devienne éditable.
+const DEFAULT_PERMISSIONS: Record<string, boolean[]> = {
+  dashboard:    [true, true, true, true, true],
+  jobs:         [true, true, true, true, true],
+  candidates:   [true, true, true, true, true],
+  pipeline:     [true, true, true, true, true],
+  ai_search:    [true, true, true, true, true],
+  manage_users: [true, true, true, false, false],
+  settings:     [true, true, true, false, false],
+  edit_company: [true, true, false, false, false],
+  connections:  [true, true, false, false, false],
+};
+
+const defaultAllowed = (action: string, role: string): boolean => {
+  const idx = PERMISSION_ROLES.findIndex((r) => r.key === role);
+  const row = DEFAULT_PERMISSIONS[action];
+  return idx >= 0 && row ? row[idx] : false;
+};
+
+// Cache mémoire : action -> role -> allowed. Rempli au démarrage (loadPermissions)
+// et rechargé après chaque modification. Repli sur le défaut si non chargé.
+let permissionCache: Record<string, Record<string, boolean>> | null = null;
+
+async function loadPermissions(): Promise<void> {
+  const cache: Record<string, Record<string, boolean>> = {};
+  for (const { key: action } of PERMISSION_ACTIONS) {
+    cache[action] = {};
+    for (const { key: role } of PERMISSION_ROLES) cache[action][role] = defaultAllowed(action, role);
+  }
+  try {
+    const rows = await prisma.rolePermission.findMany();
+    for (const r of rows) if (cache[r.action]) cache[r.action][r.role] = r.allowed;
+  } catch (err) {
+    console.error("[loadPermissions] repli sur les défauts:", err);
+  }
+  permissionCache = cache;
+}
+
+// Autorisation effective. Le Super admin (AdminPlateforme) est omnipotent et NON
+// éditable → toujours true (garde-fou anti-verrouillage). Les autres rôles lisent
+// la matrice (repli sur le défaut tant que le cache n'est pas chargé).
+const hasPermission = (role: string, action: string): boolean => {
+  if (role === PrismaUserRole.AdminPlateforme) return true;
+  const cached = permissionCache?.[action]?.[role];
+  return cached !== undefined ? cached : defaultAllowed(action, role);
+};
+
+// Sérialise la matrice courante pour l'API : matrix[action][roleKey] = boolean.
+const serializeMatrix = (): Record<string, Record<string, boolean>> =>
+  Object.fromEntries(
+    PERMISSION_ACTIONS.map(({ key: action }) => [
+      action,
+      Object.fromEntries(PERMISSION_ROLES.map(({ key: role }) => [role, hasPermission(role, action)])),
+    ])
+  );
+
+// Middleware : exige une permission d'action. À placer APRÈS requireAuth.
+const requirePermission = (action: string): express.RequestHandler => (req, res, next) => {
+  const ctx = getContext(req);
+  if (!hasPermission(ctx.user.role, action)) {
+    return res.status(403).json({ error: "Accès refusé. Droit insuffisant pour cette action." });
+  }
+  next();
+};
 
 // 1. TENANT CONTEXT
 // [Prisma] Migré vers la base. companies/users ne sont jamais mutés par l'app
@@ -834,9 +927,8 @@ app.put("/api/companies/:id", requireAuth, async (req, res) => {
   const ctx = getContext(req);
   const { id } = req.params;
   const b = req.body ?? {};
-  const callerRole = ctx.user.role;
-  if (callerRole !== PrismaUserRole.AdminPlateforme && callerRole !== PrismaUserRole.AdminEntreprise) {
-    return res.status(403).json({ error: "Accès refusé. Rôle insuffisant." });
+  if (!hasPermission(ctx.user.role, "edit_company")) {
+    return res.status(403).json({ error: "Accès refusé. Droit insuffisant." });
   }
   if (id !== ctx.companyId) {
     return res.status(403).json({ error: "Vous ne pouvez modifier que votre propre société." });
@@ -854,11 +946,63 @@ app.put("/api/companies/:id", requireAuth, async (req, res) => {
   }
 });
 
+// Grille "Rôles & permissions" (globale). Lecture ouverte à tout utilisateur
+// authentifié : le front en a besoin pour piloter la navigation (onglets visibles).
+app.get("/api/permissions", requireAuth, (_req, res) => {
+  res.json({ actions: PERMISSION_ACTIONS, roles: PERMISSION_ROLES, matrix: serializeMatrix() });
+});
+
+// Mise à jour de la grille. Réservé en DUR aux Super admin / Admin (isCompanyAdmin) :
+// ce gardien N'EST PAS piloté par la matrice → impossible de se verrouiller dehors.
+// La colonne Super admin est ignorée (toujours omnipotent, non éditable).
+app.put("/api/permissions", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  if (!isCompanyAdmin(ctx.user.role)) {
+    return res.status(403).json({ error: "Accès refusé. Seuls les administrateurs peuvent modifier les permissions." });
+  }
+  const updates = Array.isArray(req.body?.updates) ? req.body.updates : null;
+  if (!updates) {
+    return res.status(400).json({ error: "Format invalide : 'updates' (tableau) attendu." });
+  }
+  // Valide + filtre : action connue, rôle connu, hors Super admin (verrouillé).
+  const valid: { action: string; role: PrismaUserRole; allowed: boolean }[] = [];
+  for (const u of updates) {
+    const action = String(u?.action ?? "");
+    const role = String(u?.role ?? "");
+    if (!PERMISSION_ACTION_KEYS.has(action)) continue;
+    if (!PERMISSION_ROLES.some((r) => r.key === role)) continue;
+    if (role === PrismaUserRole.AdminPlateforme) continue; // omnipotent, non éditable
+    valid.push({ action, role: role as PrismaUserRole, allowed: Boolean(u?.allowed) });
+  }
+  try {
+    // Transaction interactive (timeout élargi en filet pour un réveil à froid
+    // Neon). Le front n'envoie que les cases MODIFIÉES → nombre d'upserts borné.
+    await prisma.$transaction(
+      async (tx) => {
+        for (const v of valid) {
+          await tx.rolePermission.upsert({
+            where: { action_role: { action: v.action, role: v.role } },
+            update: { allowed: v.allowed },
+            create: { action: v.action, role: v.role, allowed: v.allowed },
+          });
+        }
+      },
+      { timeout: 20000, maxWait: 15000 }
+    );
+    await loadPermissions();
+    logActionFor(ctx, "Mise à jour permissions", `Grille rôles & permissions mise à jour (${valid.length} case(s)).`);
+    res.json({ ok: true, matrix: serializeMatrix() });
+  } catch (err) {
+    console.error("[PUT /api/permissions]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
 app.get("/api/users", requireAuth, async (req, res) => {
   const ctx = getContext(req);
-  // Réservé aux rôles de gestion (admins/manager) ; interdit aux RH.
-  if (!canManageOrg(ctx.user.role)) {
-    return res.status(403).json({ error: "Accès refusé. Rôle insuffisant." });
+  // Réservé aux rôles autorisés par la grille (action "manage_users").
+  if (!hasPermission(ctx.user.role, "manage_users")) {
+    return res.status(403).json({ error: "Accès refusé. Droit insuffisant." });
   }
   try {
     // Isolation multi-entreprise : ne renvoyer que les utilisateurs de la société active.
@@ -882,8 +1026,8 @@ app.get("/api/context", requireAuth, async (req, res) => {
       activeCompany: company ? mapCompany(company) : null,
       activeUser: mapUser(ctx.user),
       allCompanies: allCompanies.map(mapCompany),
-      // La liste des utilisateurs n'est exposée qu'aux rôles de gestion (RH exclu).
-      allUsers: canManageOrg(ctx.user.role) ? allUsers.map(mapUser) : [],
+      // La liste des utilisateurs n'est exposée qu'aux rôles autorisés (manage_users).
+      allUsers: hasPermission(ctx.user.role, "manage_users") ? allUsers.map(mapUser) : [],
     });
   } catch (err) {
     console.error("[GET /api/context]", err);
@@ -937,11 +1081,9 @@ app.post("/api/users", requireAuth, async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
 
-  // Contrôle de rôle : seuls les administrateurs (plateforme ou entreprise)
-  // peuvent créer des utilisateurs. Le rôle de l'appelant est la clé d'enum Prisma.
-  const callerRole = ctx.user.role;
-  if (callerRole !== PrismaUserRole.AdminPlateforme && callerRole !== PrismaUserRole.AdminEntreprise) {
-    return res.status(403).json({ error: "Accès refusé. Rôle insuffisant pour créer un utilisateur." });
+  // Contrôle de rôle piloté par la grille (action "manage_users").
+  if (!hasPermission(ctx.user.role, "manage_users")) {
+    return res.status(403).json({ error: "Accès refusé. Droit insuffisant pour créer un utilisateur." });
   }
 
   const b = req.body ?? {};
@@ -1180,7 +1322,7 @@ app.get("/api/jobs", requireAuth, async (req, res) => {
   }
 });
 
-app.post("/api/jobs", requireAuth, async (req, res) => {
+app.post("/api/jobs", requireAuth, requirePermission("jobs"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
   const b = req.body ?? {};
@@ -1217,7 +1359,7 @@ app.post("/api/jobs", requireAuth, async (req, res) => {
   }
 });
 
-app.put("/api/jobs/:id", requireAuth, async (req, res) => {
+app.put("/api/jobs/:id", requireAuth, requirePermission("jobs"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
   const { id } = req.params;
@@ -1261,7 +1403,7 @@ app.put("/api/jobs/:id", requireAuth, async (req, res) => {
 });
 
 // Suppression = archivage (soft delete), fidèle au comportement d'origine.
-app.delete("/api/jobs/:id", requireAuth, async (req, res) => {
+app.delete("/api/jobs/:id", requireAuth, requirePermission("jobs"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
   const { id } = req.params;
@@ -1347,7 +1489,7 @@ app.get("/api/candidates/:id", requireAuth, async (req, res) => {
   }
 });
 
-app.post("/api/candidates", requireAuth, async (req, res) => {
+app.post("/api/candidates", requireAuth, requirePermission("candidates"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
   const b = req.body ?? {};
@@ -1398,7 +1540,7 @@ app.post("/api/candidates", requireAuth, async (req, res) => {
   }
 });
 
-app.put("/api/candidates/:id/stage", requireAuth, async (req, res) => {
+app.put("/api/candidates/:id/stage", requireAuth, requirePermission("pipeline"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
   const { id } = req.params;
@@ -1426,7 +1568,7 @@ app.put("/api/candidates/:id/stage", requireAuth, async (req, res) => {
 
 // Mise à jour du profil candidat (édition du CV depuis la fiche, entre autres).
 // Chemin distinct de "/:id/stage" → pas de collision de route Express.
-app.put("/api/candidates/:id", requireAuth, async (req, res) => {
+app.put("/api/candidates/:id", requireAuth, requirePermission("candidates"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
   const { id } = req.params;
@@ -1474,7 +1616,7 @@ app.put("/api/candidates/:id", requireAuth, async (req, res) => {
 // Upload de la photo d'un candidat (fichier image). Sauvegarde locale dans
 // /uploads/avatars et renvoie l'URL publique. Le front enchaîne avec un
 // PUT /api/candidates/:id pour persister avatarUrl.
-app.post("/api/candidates/:id/avatar", requireAuth, (req, res) => {
+app.post("/api/candidates/:id/avatar", requireAuth, requirePermission("candidates"), (req, res) => {
   uploadAvatar.single("avatar")(req, res, async (err: unknown) => {
     if (err) {
       return res.status(400).json({ error: err instanceof Error ? err.message : "Upload invalide." });
@@ -1515,7 +1657,7 @@ const uploadCandidateCv = multer({
   },
 });
 
-app.post("/api/candidates/:id/cv", requireAuth, (req, res) => {
+app.post("/api/candidates/:id/cv", requireAuth, requirePermission("candidates"), (req, res) => {
   uploadCandidateCv.single("cv")(req, res, async (err: unknown) => {
     if (err) {
       return res.status(400).json({ error: err instanceof Error ? err.message : "Upload invalide." });
@@ -1551,7 +1693,7 @@ app.post("/api/candidates/:id/cv", requireAuth, (req, res) => {
 // formulaire "Ajouter un candidat" pour importer le CV (PDF/image) et la lettre
 // (PDF/Word) avant que la fiche n'existe. Renvoie { text } ; le front remplit
 // ensuite le champ correspondant. Réutilise extractCvText (image OCR/docx/PDF).
-app.post("/api/extract-text", requireAuth, (req, res) => {
+app.post("/api/extract-text", requireAuth, requirePermission("candidates"), (req, res) => {
   uploadCandidateCv.single("file")(req, res, async (err: unknown) => {
     if (err) {
       return res.status(400).json({ error: err instanceof Error ? err.message : "Upload invalide." });
@@ -1578,7 +1720,7 @@ app.post("/api/extract-text", requireAuth, (req, res) => {
 });
 
 // Suppression DÉFINITIVE (fidèle à l'origine). Cascade : CandidateScore + CandidateSkill.
-app.delete("/api/candidates/:id", requireAuth, async (req, res) => {
+app.delete("/api/candidates/:id", requireAuth, requirePermission("candidates"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
   const { id } = req.params;
@@ -1643,7 +1785,7 @@ async function syncCandidateSkills(
 }
 
 // Parse and evaluate resume with Gemini!
-app.post("/api/candidates/:id/analyze", requireAuth, async (req, res) => {
+app.post("/api/candidates/:id/analyze", requireAuth, requirePermission("candidates"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
   const { id } = req.params;
@@ -1787,7 +1929,7 @@ Réponds uniquement avec le bloc JSON brut, sans enrobage markdown (sans \`\`\`j
 });
 
 // AI Search candidates using natural language query
-app.post("/api/candidates/ai-search", requireAuth, async (req, res) => {
+app.post("/api/candidates/ai-search", requireAuth, requirePermission("ai_search"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
   const { query } = req.body;
@@ -1919,7 +2061,7 @@ Réponds uniquement avec le bloc JSON brut. Pas de markdown.`;
 // brouillon structuré (description, missions, compétences, soft skills, langues,
 // formation, expérience, contrat, domaine) qui pré-remplit le formulaire ; le
 // recruteur garde la main (tout reste éditable). Réutilise Gemini + parse tolérant.
-app.post("/api/jobs/generate", requireAuth, async (req, res) => {
+app.post("/api/jobs/generate", requireAuth, requirePermission("jobs"), async (req, res) => {
   const ctx = getContext(req);
   const title = String(req.body?.title ?? "").trim();
   const domainHint = req.body?.domain === "Autre" ? "Autre" : req.body?.domain === "IT" ? "IT" : null;
@@ -2041,7 +2183,7 @@ app.get("/api/emails", requireAuth, async (req, res) => {
 
 // Import : crée un candidat depuis l'email (→ Prisma, ce qui résorbe la
 // divergence candidates) et marque l'email comme importé, en transaction.
-app.post("/api/emails/:id/import", requireAuth, async (req, res) => {
+app.post("/api/emails/:id/import", requireAuth, requirePermission("pipeline"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
   const { id } = req.params;
@@ -2115,9 +2257,9 @@ app.get("/api/audit-logs", requireAuth, async (req, res) => {
         take: limit,
       }),
     ]);
-    // IP et navigateur réservés aux admins entreprise/plateforme ; masqués sinon.
-    const admin = isCompanyAdmin(ctx.user.role);
-    const mapped = rows.map(mapAuditLog).map((r) => (admin ? r : { ...r, ip: null, userAgent: null }));
+    // IP et navigateur réservés aux rôles autorisés (action "connections") ; masqués sinon.
+    const canSeeIp = hasPermission(ctx.user.role, "connections");
+    const mapped = rows.map(mapAuditLog).map((r) => (canSeeIp ? r : { ...r, ip: null, userAgent: null }));
     res.json(paginated(mapped, total, page, limit));
   } catch (err) {
     console.error("[GET /api/audit-logs]", err);
@@ -2250,7 +2392,7 @@ app.get("/api/reports/sourcing", requireAuth, async (req, res) => {
 // ==========================================
 // INTERVIEWS (entretiens planifiés)
 // ==========================================
-app.post("/api/interviews", requireAuth, async (req, res) => {
+app.post("/api/interviews", requireAuth, requirePermission("pipeline"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId, userId } = ctx;
   const b = req.body ?? {};
@@ -2306,7 +2448,7 @@ app.get("/api/interviews", requireAuth, async (req, res) => {
   }
 });
 
-app.delete("/api/interviews/:id", requireAuth, async (req, res) => {
+app.delete("/api/interviews/:id", requireAuth, requirePermission("pipeline"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
   const { id } = req.params;
@@ -2323,7 +2465,7 @@ app.delete("/api/interviews/:id", requireAuth, async (req, res) => {
 });
 
 // Envoi d'un email au candidat depuis sa fiche (via Resend, best-effort).
-app.post("/api/candidates/:id/send-email", requireAuth, async (req, res) => {
+app.post("/api/candidates/:id/send-email", requireAuth, requirePermission("pipeline"), async (req, res) => {
   const ctx = getContext(req);
   const { companyId } = ctx;
   const b = req.body ?? {};
@@ -2611,6 +2753,10 @@ app.post("/api/public/apply", (req, res) => {
 // ==========================================
 
 async function startServer() {
+  // Charge la matrice de permissions en cache dès le démarrage (repli sur les
+  // défauts si la table est vide/injoignable). Rechargée après chaque édition.
+  await loadPermissions();
+
   // Integrate Vite Dev Server in dev mode, else static assets
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

@@ -467,6 +467,35 @@ Master Informatique option Réseaux & Cloud - Telecom Paris (2018)`,
   }
   if (skillLinks) console.log(`   CandidateSkill : ${skillLinks} lien(s) rétro-remplis`);
 
+  // 5. Grille "Rôles & permissions" (globale, éditable dans Paramètres). On sème
+  //    UNIQUEMENT les cases absentes (create-only via skipDuplicates) → ne JAMAIS
+  //    écraser les choix faits par un admin. Doit rester aligné sur
+  //    DEFAULT_PERMISSIONS / PERMISSION_ROLES de server.ts.
+  //    Colonnes : [Super admin, Admin, Manager, RH, Consultant].
+  const PERM_ROLE_ORDER: UserRole[] = [
+    UserRole.AdminPlateforme,
+    UserRole.AdminEntreprise,
+    UserRole.Manager,
+    UserRole.RH,
+    UserRole.ConsultantRecrutement,
+  ];
+  const PERM_DEFAULTS: Record<string, boolean[]> = {
+    dashboard:    [true, true, true, true, true],
+    jobs:         [true, true, true, true, true],
+    candidates:   [true, true, true, true, true],
+    pipeline:     [true, true, true, true, true],
+    ai_search:    [true, true, true, true, true],
+    manage_users: [true, true, true, false, false],
+    settings:     [true, true, true, false, false],
+    edit_company: [true, true, false, false, false],
+    connections:  [true, true, false, false, false],
+  };
+  const permRows = Object.entries(PERM_DEFAULTS).flatMap(([action, allowedByRole]) =>
+    PERM_ROLE_ORDER.map((role, i) => ({ action, role, allowed: allowedByRole[i] }))
+  );
+  const permSeeded = await prisma.rolePermission.createMany({ data: permRows, skipDuplicates: true });
+  if (permSeeded.count) console.log(`   RolePermission : ${permSeeded.count} case(s) par défaut semée(s)`);
+
   const counts = {
     companies: await prisma.company.count(),
     users: await prisma.user.count(),

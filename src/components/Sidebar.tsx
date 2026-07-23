@@ -18,7 +18,26 @@ import {
   Moon,
   X
 } from "lucide-react";
-import { Company, User, UserRole } from "../types";
+import { Company, User } from "../types";
+
+// Association onglet (vue) → clé d'action de la grille "Rôles & permissions".
+// Un onglet n'est visible que si le rôle courant a le droit correspondant.
+// Exporté pour qu'App applique la même règle (redirection si la vue courante
+// devient interdite après un changement de permissions).
+export const VIEW_PERMISSION: Record<string, string> = {
+  dashboard: "dashboard",
+  jobs: "jobs",
+  archivedJobs: "jobs",
+  candidates: "candidates",
+  pipeline: "pipeline",
+  calendar: "pipeline",
+  emails: "pipeline",
+  "ai-search": "ai_search",
+  reports: "dashboard",
+  users: "manage_users",
+  connections: "connections",
+  settings: "settings",
+};
 
 interface SidebarProps {
   activeView: string;
@@ -26,6 +45,8 @@ interface SidebarProps {
   // Conservé pour afficher le nom de l'application (appName) dans le bandeau.
   activeCompany: Company | null;
   activeUser: User | null;
+  // Droit effectif du rôle courant pour une action (piloté par la matrice).
+  can: (action: string) => boolean;
   onCreateJob?: () => void;
   onLogout?: () => void;
   // Drawer mobile : contrôlé par App (statique ≥ md, coulissant < md).
@@ -40,6 +61,7 @@ export default function Sidebar({
   setActiveView,
   activeCompany,
   activeUser,
+  can,
   onCreateJob,
   onLogout,
   isOpen = false,
@@ -47,16 +69,12 @@ export default function Sidebar({
   darkMode = false,
   onToggleDarkMode
 }: SidebarProps) {
-  // Visibilité par rôle :
-  //  - "Utilisateurs" / "Paramètres" : admins (plateforme/entreprise) + Managers ; masqués pour RH.
-  //  - "Connexions" (journal IP/navigateur) : admins entreprise/plateforme UNIQUEMENT.
-  const isCompanyAdmin =
-    activeUser?.role === UserRole.AdminPlateforme || activeUser?.role === UserRole.AdminEntreprise;
-  const canManage = isCompanyAdmin || activeUser?.role === UserRole.Manager;
+  // Visibilité des onglets pilotée par la grille "Rôles & permissions" (éditable
+  // dans Paramètres). Chaque onglet est mappé à une action via VIEW_PERMISSION ;
+  // un onglet sans mapping reste visible par défaut.
   const canSee = (id: string) => {
-    if (id === "connections") return isCompanyAdmin;
-    if (id === "users" || id === "settings") return canManage;
-    return true;
+    const action = VIEW_PERMISSION[id];
+    return action ? can(action) : true;
   };
 
   const menuItems = [
@@ -167,16 +185,18 @@ export default function Sidebar({
         </div>
       )}
 
-      {/* CTA */}
-      <div className="px-6 mt-4">
-        <button
-          onClick={onCreateJob}
-          className="w-full bg-accent text-white py-2.5 rounded-lg font-bold text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-sm"
-        >
-          <Plus size={18} />
-          Nouvelle Offre
-        </button>
-      </div>
+      {/* CTA — masqué si le rôle n'a pas le droit de créer une offre. */}
+      {can("jobs") && (
+        <div className="px-6 mt-4">
+          <button
+            onClick={onCreateJob}
+            className="w-full bg-accent text-white py-2.5 rounded-lg font-bold text-sm hover:brightness-110 transition-all flex items-center justify-center gap-2 shadow-sm"
+          >
+            <Plus size={18} />
+            Nouvelle Offre
+          </button>
+        </div>
+      )}
 
       {/* Identity footer */}
       <div className="px-6 mt-6 pt-4 border-t border-outline-variant flex items-center gap-3">

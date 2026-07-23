@@ -1,6 +1,6 @@
 # Récapitulatif projet — Nexus Talent (de A à Z jusqu'à la mise en ligne)
 
-> Document de contexte pour reprendre le projet à froid. Dernière mise à jour : **2026-07-21**.
+> Document de contexte pour reprendre le projet à froid. Dernière mise à jour : **2026-07-23**.
 > Propriétaire : Samuel (digital@salathis.com). Langue de travail : français.
 
 ---
@@ -212,6 +212,18 @@ Commit `2d935e7`, poussé et déployé sur Render. **Code UI uniquement** (2 fic
 - ⚠️ **Aucune migration, aucune dépendance, aucune régénération Prisma.** `npm run build` OK avant push ; lint propre sur les 2 fichiers (seules les erreurs `maj-2026-07-10/` subsistent, hors sujet).
 - Doc générée : `Guide-Sync-Maison-2026-07-21.docx` (+ script `scripts/gen-guide-sync-maison-2026-07-21.cjs`).
 
+### 23/07 — Grille « Rôles & permissions » ÉDITABLE et réellement appliquée (dernière session)
+Commit à venir, poussé et déployé sur Render. **1 migration additive** (`add_role_permissions`), aucune dépendance.
+1. **La grille des Paramètres devient éditable et PILOTANTE** (avant : tableau documentaire en lecture seule). Un admin coche/décoche les droits par rôle → l'accès change **réellement**, en navigation **et** côté serveur (403). Répond à la demande : *éditable, mais uniquement par le Super admin et l'Admin*.
+2. **Base** : nouveau modèle **`RolePermission`** (`action`, `role`, `allowed`, clé composite `@@id([action, role])`) + migration `add_role_permissions`. Matrice **GLOBALE** (pas de `companyId` → une seule grille pour toute la plateforme, choix acté). Défauts (9 actions × 5 rôles = les droits historiques) **semés dans `prisma/seed.ts`** en `createMany({ skipDuplicates })` → n'écrase jamais les choix d'un admin, rejoué à chaque déploiement Render.
+3. **Serveur (`server.ts`)** : cache mémoire de la matrice + helper **`hasPermission(role, action)`** (chargé au démarrage via `loadPermissions()`, rechargé après chaque édition). Nouveaux endpoints **`GET /api/permissions`** (tout user connecté — pilote la nav) et **`PUT /api/permissions`**. Gardes en dur remplacées par la matrice : `manage_users` (users + contexte), `edit_company` (société), `connections` (masquage IP audit) ; middleware **`requirePermission(action)`** ajouté à **toutes les routes de mutation** offres / candidats / pipeline / recherche IA. Actions ↔ clés : `dashboard`, `jobs`, `candidates`, `pipeline`, `ai_search`, `manage_users`, `settings`, `edit_company`, `connections`.
+4. **Front** : `/api/permissions` chargé au login (`App.tsx`), passé à **`Sidebar`** (onglets masqués selon la matrice via `VIEW_PERMISSION`) et **`SettingsView`** (grille = cases à cocher + bouton « Enregistrer », n'envoie que les cases modifiées → transaction serveur minimale). Redirection auto si la vue courante devient interdite. Helper `roleKeyOf` ajouté à `types.ts` (libellé FR → clé Prisma, sans importer `mappers` côté front).
+5. **Garde-fous anti-verrouillage** (vérifiés par smoke test) : l'éditeur de permissions reste gated **en dur** sur `isCompanyAdmin` (Super admin / Admin) → **impossible de se verrouiller dehors** ; la **colonne Super admin est toujours cochée et verrouillée** (omnipotent), côté UI **et** serveur (`hasPermission` renvoie `true` pour `AdminPlateforme` sans lire la matrice).
+- Fichiers : `prisma/schema.prisma`, `prisma/seed.ts`, `server.ts`, `src/App.tsx`, `src/components/Sidebar.tsx`, `src/components/SettingsView.tsx`, `src/types.ts` + migration.
+- ⚠️ **1 migration additive** → à la maison : arrêter `npm run dev` → `npx prisma migrate deploy` → `npx prisma generate` (piège EPERM Windows). Render l'applique via `migrate deploy` + le seed pose les défauts.
+- ✅ Vérifié : `tsc` propre (hors `maj-2026-07-10/`), `npm run build` OK, **smoke test end-to-end 8/8** (défauts → toggle → accès accordé en direct → RH bloqué sur l'éditeur → colonne Super admin verrouillée → revert).
+- Doc générée : `Guide-Sync-Maison-2026-07-23.docx` (+ script `scripts/gen-guide-sync-maison-2026-07-23.cjs`).
+
 ---
 
 ## 6. Comment mettre à jour le site (résumé)
@@ -249,6 +261,7 @@ Détail complet : `Guide-Mettre-A-Jour-Le-Site-En-Ligne.docx`.
 - ⚠️ **Révoquer l'ancien token GitHub exposé** `ghp_JLBr…` (GitHub → Settings → Developer settings → PAT) — toujours ouvert.
 - (Optionnel) Supprimer la route serveur SSO inutilisée (`/api/auth/sso`) et la config `SSO_*` de `.env.example`.
 - Migration backend en cours : passage progressif, route par route, de `server.ts` des tableaux en mémoire vers Prisma.
+- (Optionnel, si besoin un jour) **Cloisonner la matrice de permissions par entreprise** : aujourd'hui elle est GLOBALE (un Admin d'un tenant modifie les droits de tous). Ajouter un `companyId` à `RolePermission` + adapter `loadPermissions`/`hasPermission`/le seed pour la rendre par-tenant. ~~Rendre la grille pilotante~~ (fait le 23/07).
 
 ---
 

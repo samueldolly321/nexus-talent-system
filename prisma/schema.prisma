@@ -295,6 +295,22 @@ model Email {
   @@index([status])
 }
 
+// ============================================================================
+// PERMISSIONS (matrice rôle × action, GLOBALE à la plateforme)
+// ============================================================================
+// Grille "Rôles & permissions" éditable depuis Paramètres (Super admin / Admin).
+// Une ligne = un droit (action) accordé ou non à un rôle. GLOBALE : pas de
+// companyId → une seule grille partagée par tous les tenants (choix produit).
+// L'absence de ligne pour un couple (action, role) = repli sur le défaut codé.
+model RolePermission {
+  action    String // clé stable d'action (ex. "manage_users") — voir PERMISSION_ACTIONS (server.ts)
+  role      UserRole
+  allowed   Boolean  @default(false)
+  updatedAt DateTime @updatedAt
+
+  @@id([action, role])
+}
+
 model AuditLog {
   id        String   @id @default(uuid())
   companyId String

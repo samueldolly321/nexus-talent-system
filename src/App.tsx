@@ -1,5 +1,5 @@
 import React, { useState, useEffect, lazy, Suspense } from "react";
-import Sidebar from "./components/Sidebar";
+import Sidebar, { VIEW_PERMISSION } from "./components/Sidebar";
 import TopBar from "./components/TopBar";
 import LoginView from "./components/LoginView";
 import DashboardView from "./components/DashboardView";
@@ -18,7 +18,7 @@ import ConnectionsView from "./components/ConnectionsView";
 const ReportsView = lazy(() => import("./components/ReportsView"));
 const AiSearchView = lazy(() => import("./components/AiSearchView"));
 const DevCenterView = lazy(() => import("./components/DevCenterView"));
-import { Company, User, Job, Candidate, EmailItem, PipelineStage, UserRole } from "./types";
+import { Company, User, Job, Candidate, EmailItem, PipelineStage, UserRole, PermissionsData, roleKeyOf } from "./types";
 import { apiFetch, apiJson, setAccessToken } from "./lib/api";
 import { SidebarContext } from "./SidebarContext";
 
@@ -63,6 +63,17 @@ export default function App() {
   const [activeCompany, setActiveCompany] = useState<Company | null>(null);
   const [activeUser, setActiveUser] = useState<User | null>(null);
   const [allUsers, setAllUsers] = useState<User[]>([]);
+  // Grille "Rôles & permissions" (globale) — pilote la navigation et l'éditeur.
+  const [permissions, setPermissions] = useState<PermissionsData | null>(null);
+
+  // Droit effectif du rôle courant pour une action. Le Super admin est omnipotent.
+  // Repli permissif tant que la grille n'est pas chargée (évite un flash de nav vide).
+  const can = (action: string): boolean => {
+    const roleKey = roleKeyOf(activeUser?.role);
+    if (roleKey === "AdminPlateforme") return true;
+    if (!permissions || !roleKey) return true;
+    return permissions.matrix[action]?.[roleKey] ?? false;
+  };
 
   // Titre de l'onglet + persistance du nom de l'app (réutilisé par les pages
   // publiques : login, /confidentialite, /support, qui n'ont pas la société).
@@ -71,6 +82,20 @@ export default function App() {
     if (activeCompany?.appName) localStorage.setItem("nexus-app-name", activeCompany.appName);
     document.title = `${appName} — Espace Recruteur`;
   }, [activeCompany]);
+
+  // Si la vue courante devient interdite (permissions modifiées, ou rôle sans
+  // droit), rediriger vers le premier onglet autorisé (dashboard en priorité).
+  useEffect(() => {
+    if (!permissions || !activeUser) return;
+    const action = VIEW_PERMISSION[activeView];
+    if (action && !can(action)) {
+      const fallback = ["dashboard", "jobs", "candidates", "pipeline", "settings"].find(v => {
+        const a = VIEW_PERMISSION[v];
+        return !a || can(a);
+      });
+      setActiveView(fallback ?? "dashboard");
+    }
+  }, [permissions, activeUser, activeView]);
 
   const [jobs, setJobs] = useState<Job[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
@@ -111,6 +136,9 @@ export default function App() {
       setActiveCompany(contextData.activeCompany);
       setActiveUser(contextData.activeUser);
       setAllUsers(contextData.allUsers);
+
+      // Grille de permissions (globale) — chargée avant le rendu des onglets.
+      setPermissions(await apiJson<PermissionsData>("/api/permissions"));
 
       setJobs(await apiJson("/api/jobs"));
 
@@ -776,7 +804,16 @@ export default function App() {
       case "connections":
         return <ConnectionsView activeUser={activeUser} />;
       case "settings":
-        return <SettingsView activeUser={activeUser} activeCompany={activeCompany} onCompanyUpdated={setActiveCompany} />;
+        return (
+          <SettingsView
+            activeUser={activeUser}
+            activeCompany={activeCompany}
+            onCompanyUpdated={setActiveCompany}
+            can={can}
+            permissions={permissions}
+            onPermissionsUpdated={setPermissions}
+          />
+        );
       case "dev-center":
         return <DevCenterView />;
       default:
@@ -792,6 +829,7 @@ export default function App() {
           setActiveView={navigateTo}
           activeCompany={activeCompany}
           activeUser={activeUser}
+          can={can}
           onCreateJob={() => { navigateTo("jobs"); setOpenJobCreateSignal(s => s + 1); }}
           onLogout={handleLogout}
           isOpen={sidebarOpen}
