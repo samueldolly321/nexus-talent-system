@@ -224,6 +224,16 @@ Commit à venir, poussé et déployé sur Render. **1 migration additive** (`add
 - ✅ Vérifié : `tsc` propre (hors `maj-2026-07-10/`), `npm run build` OK, **smoke test end-to-end 8/8** (défauts → toggle → accès accordé en direct → RH bloqué sur l'éditeur → colonne Super admin verrouillée → revert).
 - Doc générée : `Guide-Sync-Maison-2026-07-23.docx` (+ script `scripts/gen-guide-sync-maison-2026-07-23.cjs`).
 
+### 23/07 (suite) — Paramètres : grille Rôles & permissions en colonne de droite
+Commit `8373875`, poussé et déployé. `src/components/SettingsView.tsx`, **code UI uniquement (mise en page)**.
+1. **Grille déplacée à droite** : au lieu d'être empilée sous « Entreprise », la grille « Rôles & permissions » passe dans une **2ᵉ colonne à droite** de profil / sécurité / entreprise sur grand écran (`lg+`). La vue bascule en `grid grid-cols-1 lg:grid-cols-2` et le conteneur s'élargit (`max-w-2xl` → `max-w-6xl`) **uniquement quand la grille est visible** (flag `showPerms = isAdmin && !!permissions`).
+2. **Responsive préservé** : sur mobile / < lg, tout s'empile en une colonne (la grille repasse dessous). Pour les rôles **sans** la grille (Manager / RH / Consultant), mise en page **inchangée** (colonne étroite `max-w-2xl`).
+- ⚠️ Aucune migration, aucune dépendance, aucune régénération Prisma. `tsc` + `npm run build` OK.
+
+### 23/07 (suite) — Guide de synchro maison consolidé (20 + 21 + 23)
+Commit `853f537`, poussé. **Doc uniquement.**
+- **`Guide-Sync-Maison-2026-07-20-au-23.docx`** : un seul document qui réunit les guides des trois sessions (vue d'ensemble, récupération du code, **commandes consolidées** — dont les commandes Prisma imposées par la migration du 23/07 —, détail par session, vérifications, rappels). Généré par `scripts/gen-guide-sync-maison-2026-07-20-au-23.cjs`. Les 3 guides d'origine (20/21/23) sont **conservés**.
+
 ---
 
 ## 6. Comment mettre à jour le site (résumé)
