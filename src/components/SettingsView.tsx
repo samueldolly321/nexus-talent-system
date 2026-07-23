@@ -49,6 +49,8 @@ export default function SettingsView({
     activeUser?.role === UserRole.AdminPlateforme || activeUser?.role === UserRole.AdminEntreprise;
   // Clé Prisma du rôle courant (pour surligner sa colonne dans la grille).
   const currentRoleKey = roleKeyOf(activeUser?.role);
+  // Affiche la grille des permissions → bascule en 2 colonnes (grille à droite).
+  const showPerms = isAdmin && !!permissions;
   const [companyName, setCompanyName] = useState(activeCompany?.name ?? "");
   const [appName, setAppName] = useState(activeCompany?.appName ?? "Nexus Talent");
   const [companySaving, setCompanySaving] = useState(false);
@@ -184,11 +186,17 @@ export default function SettingsView({
   return (
     <div className="flex-1 bg-background min-h-screen flex flex-col">
       <TopBar activeUser={activeUser} />
-      <main className="p-4 md:p-8 max-w-2xl w-full">
+      <main className={`p-4 md:p-8 w-full ${showPerms ? "max-w-6xl" : "max-w-2xl"}`}>
         <h2 className="font-sans text-2xl font-semibold text-on-surface mb-6">Paramètres</h2>
 
+        {/* Sur grand écran, quand la grille des permissions est visible, on
+            passe en 2 colonnes : profil / sécurité / entreprise à gauche, et
+            la grille « Rôles & permissions » à DROITE (plutôt qu'empilée en bas). */}
+        <div className={showPerms ? "grid grid-cols-1 lg:grid-cols-2 gap-6 items-start" : ""}>
+          <div className="space-y-6">
+
         {/* Mon profil (lecture seule) */}
-        <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 mb-6">
+        <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
           <div className="flex items-center gap-2 mb-4">
             <UserIcon size={18} className="text-secondary shrink-0" />
             <h3 className="font-bold text-on-surface font-sans text-sm">Mon profil</h3>
@@ -210,7 +218,7 @@ export default function SettingsView({
         </section>
 
         {/* Sécurité — changer le mot de passe */}
-        <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 mb-6">
+        <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
           <div className="flex items-center gap-2 mb-4">
             <Lock size={18} className="text-secondary shrink-0" />
             <h3 className="font-bold text-on-surface font-sans text-sm">Sécurité — Changer le mot de passe</h3>
@@ -297,12 +305,13 @@ export default function SettingsView({
             </div>
           )}
         </section>
+          </div>{/* fin colonne gauche */}
 
-        {/* Grille "Rôles & permissions" — ÉDITABLE, réservée aux Super admin /
-            Admin (isAdmin, codé en dur → pas de verrouillage possible). La
-            colonne Super admin est toujours cochée et non modifiable. */}
-        {isAdmin && permissions && (
-          <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6 mt-6">
+        {/* Grille "Rôles & permissions" — ÉDITABLE (colonne de droite sur grand
+            écran), réservée aux Super admin / Admin (isAdmin, codé en dur → pas
+            de verrouillage). La colonne Super admin est toujours cochée. */}
+        {showPerms && (
+          <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
             <div className="flex items-center gap-2 mb-1">
               <ShieldCheck size={18} className="text-secondary shrink-0" />
               <h3 className="font-bold text-on-surface font-sans text-sm">Rôles &amp; permissions</h3>
@@ -372,6 +381,7 @@ export default function SettingsView({
             </div>
           </section>
         )}
+        </div>{/* fin grille 2 colonnes */}
       </main>
     </div>
   );
