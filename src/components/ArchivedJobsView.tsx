@@ -54,7 +54,7 @@ export default function ArchivedJobsView({ activeUser, onRestoreJob, onDeleteJob
   const formatDate = (iso?: string) => (iso ? new Date(iso).toLocaleDateString("fr-FR") : "—");
 
   return (
-    <div className="flex-1 bg-background min-h-screen flex flex-col">
+    <div className="flex-1 bg-transparent min-h-screen flex flex-col">
       <TopBar activeUser={activeUser} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="mb-8">

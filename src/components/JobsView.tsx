@@ -389,7 +389,7 @@ export default function JobsView({ jobs, activeUser, searchQuery, onSearchChange
   );
 
   return (
-    <div className="flex-1 bg-background min-h-screen flex flex-col">
+    <div className="flex-1 bg-transparent min-h-screen flex flex-col">
       <TopBar activeUser={activeUser} searchValue={searchQuery} onSearchChange={onSearchChange} searchPlaceholder="Rechercher une offre par titre, description ou compétence..." />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
       {/* Upper header block */}

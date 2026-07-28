@@ -63,7 +63,7 @@ export default function AiSearchView({ candidates, jobs, onSelectCandidate }: Ai
     : [];
 
   return (
-    <div className="flex-1 bg-background min-h-screen p-8 overflow-y-auto font-sans">
+    <div className="flex-1 bg-transparent min-h-screen p-8 overflow-y-auto font-sans">
       {/* Header */}
       <div className="mb-8">
         <h2 className="text-2xl font-bold tracking-tight text-on-surface flex items-center gap-2">

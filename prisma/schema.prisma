@@ -311,6 +311,24 @@ model RolePermission {
   @@id([action, role])
 }
 
+// ============================================================================
+// COMPTE DE DÉMONSTRATION (singleton, global)
+// ============================================================================
+// Identifiants du compte démo affichés sur la page de connexion, administrables
+// depuis Paramètres (Super admin / Admin). `userId` ancre le vrai User modifié
+// (id stable "user-samuel-demo"). `password` est stocké EN CLAIR VOLONTAIREMENT :
+// c'est un identifiant de démonstration PUBLIC (déjà en clair côté client
+// aujourd'hui) — nécessaire pour l'afficher au login. Aucun autre mot de passe
+// n'est stocké en clair dans la base.
+model DemoCredential {
+  id        String   @id @default("singleton") // ligne unique
+  userId    String // User cible dont on met à jour email + passwordHash
+  email     String
+  password  String // EN CLAIR — identifiant démo public, par conception
+  visible   Boolean  @default(true) // afficher l'astuce sur la page de connexion
+  updatedAt DateTime @updatedAt
+}
+
 model AuditLog {
   id        String   @id @default(uuid())
   companyId String

@@ -89,7 +89,7 @@ export default function PipelineView({ candidates, jobs, activeUser, onSelectCan
   };
 
   return (
-    <div className="flex-1 bg-background min-h-screen flex flex-col">
+    <div className="flex-1 bg-transparent min-h-screen flex flex-col">
       <TopBar activeUser={activeUser} searchValue={searchQuery} onSearchChange={onSearchChange} searchPlaceholder="Rechercher candidats, postes ou scores..." />
 
       <main className="flex-1 p-4 md:p-6 overflow-hidden flex flex-col min-h-0">

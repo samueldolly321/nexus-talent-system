@@ -25,6 +25,13 @@ export interface PermissionsData {
   matrix: Record<string, Record<string, boolean>>; // matrix[action][roleKey] = bool
 }
 
+// Identifiants du compte de démonstration (administrables depuis Paramètres).
+export interface DemoCredentialData {
+  email: string;
+  password: string;
+  visible: boolean; // afficher l'astuce sur la page de connexion
+}
+
 export interface Company {
   id: string;
   name: string;

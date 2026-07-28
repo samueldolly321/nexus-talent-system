@@ -232,6 +232,15 @@ async function main() {
     });
   }
 
+  // 2c. Compte de démonstration (singleton) — create-only : pose les identifiants
+  // démo par défaut (samuel@test.io / password123) sans jamais écraser un choix
+  // admin ultérieur. Ancré sur l'user de démo (id stable). Rejoué à chaque déploiement.
+  await prisma.demoCredential.upsert({
+    where: { id: "singleton" },
+    update: {},
+    create: { id: "singleton", userId: "user-samuel-demo", email: "samuel@test.io", password: DEMO_PASSWORD, visible: true },
+  });
+
   // 3. Référentiel Skill : collecte jobs.skillsRequired + candidates skills, normalise, exclut langues.
   const skillSet = new Set<string>();
   for (const j of jobs) for (const s of j.skillsRequired) { if (!isSpokenLanguage(s)) skillSet.add(canon(s)); }

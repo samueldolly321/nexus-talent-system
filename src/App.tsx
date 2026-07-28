@@ -22,6 +22,12 @@ import { Company, User, Job, Candidate, EmailItem, PipelineStage, UserRole, Perm
 import { apiFetch, apiJson, setAccessToken } from "./lib/api";
 import { SidebarContext } from "./SidebarContext";
 
+// Filigrane : URL de l'image de fond (autorisée par la CSP : img-src https:).
+// Posée sur une couche position:fixed indépendante du défilement interne des
+// onglets → elle ne se coupe jamais au scroll. Changer l'URL suffit à la remplacer.
+const APP_BG_IMAGE =
+  "https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1920&q=60";
+
 export default function App() {
   // null = not yet known (checking for an existing session), false = confirmed logged out
   const [authenticated, setAuthenticated] = useState<boolean | null>(null);
@@ -656,7 +662,7 @@ export default function App() {
           .filter(u => u.companyId === activeCompany?.id)
           .filter(u => !usersQuery || u.name.toLowerCase().includes(usersQuery) || u.email.toLowerCase().includes(usersQuery));
         return (
-          <div className="flex-1 bg-background min-h-screen flex flex-col">
+          <div className="flex-1 bg-transparent min-h-screen flex flex-col">
             <TopBar activeUser={activeUser} searchValue={searchQuery} onSearchChange={setSearchQuery} />
             <main className="p-4 md:p-8">
               <div className="flex justify-between items-center mb-6 gap-3 flex-wrap">
@@ -823,7 +829,16 @@ export default function App() {
 
   return (
     <SidebarContext.Provider value={{ openSidebar: () => setSidebarOpen(true) }}>
-      <div className="flex w-screen h-screen overflow-hidden bg-background font-sans text-on-background antialiased">
+      {/* Filigrane : couche fixée au viewport, HORS du conteneur overflow-hidden
+          et INDÉPENDANTE du défilement interne des onglets (donc jamais tronquée
+          au scroll). -z-10 → derrière tout le contenu ; les vues translucides
+          (bg-transparent) la laissent transparaître discrètement dans les marges. */}
+      <div
+        aria-hidden
+        className="fixed inset-0 -z-10 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: `url(${APP_BG_IMAGE})` }}
+      />
+      <div className="flex w-screen h-screen overflow-hidden font-sans text-on-background antialiased">
         <Sidebar
           activeView={activeView}
           setActiveView={navigateTo}
@@ -837,7 +852,11 @@ export default function App() {
           darkMode={darkMode}
           onToggleDarkMode={() => setDarkMode(d => !d)}
         />
-        <div className="flex-1 flex flex-col h-screen overflow-y-auto">
+        {/* Voile du filigrane posé sur le CONTENEUR scrollable : le fond d'un
+            conteneur overflow-y-auto reste collé à sa zone visible (il ne défile
+            pas avec le contenu) → il couvre tout, à toute position de scroll, sans
+            se couper. Les vues à l'intérieur sont transparentes (voir plus haut). */}
+        <div className="flex-1 flex flex-col h-screen overflow-y-auto bg-background/90">
           <Suspense
             fallback={
               <div className="flex-1 flex items-center justify-center">

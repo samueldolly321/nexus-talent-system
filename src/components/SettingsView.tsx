@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { User as UserIcon, Building2, Lock, Loader2, ShieldCheck } from "lucide-react";
+import { User as UserIcon, Building2, Lock, Loader2, ShieldCheck, KeyRound } from "lucide-react";
 import TopBar from "./TopBar";
-import { Company, User, UserRole, PermissionsData, roleKeyOf } from "../types";
+import { Company, User, UserRole, PermissionsData, DemoCredentialData, roleKeyOf } from "../types";
 import { apiFetch } from "../lib/api";
 
 interface SettingsViewProps {
@@ -69,9 +69,62 @@ export default function SettingsView({
   const [permError, setPermError] = useState<string | null>(null);
   const [permSuccess, setPermSuccess] = useState<string | null>(null);
 
+  // Compte de démonstration — administrable par les Super admin / Admin (isAdmin).
+  const [demoEmail, setDemoEmail] = useState("");
+  const [demoPassword, setDemoPassword] = useState("");
+  const [demoVisible, setDemoVisible] = useState(true);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [demoSaving, setDemoSaving] = useState(false);
+  const [demoError, setDemoError] = useState<string | null>(null);
+  const [demoSuccess, setDemoSuccess] = useState<string | null>(null);
+
   useEffect(() => {
     if (permissions) setPermDraft(cloneMatrix(permissions.matrix));
   }, [permissions]);
+
+  // Charge les identifiants démo à l'ouverture (admin uniquement).
+  useEffect(() => {
+    if (!isAdmin) return;
+    let cancelled = false;
+    setDemoLoading(true);
+    apiFetch("/api/demo-credential")
+      .then(r => (r.ok ? r.json() : Promise.reject()))
+      .then((d: DemoCredentialData) => {
+        if (cancelled) return;
+        setDemoEmail(d.email ?? "");
+        setDemoPassword(d.password ?? "");
+        setDemoVisible(d.visible ?? true);
+      })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setDemoLoading(false); });
+    return () => { cancelled = true; };
+  }, [isAdmin]);
+
+  const handleDemoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (demoSaving) return;
+    setDemoError(null);
+    setDemoSuccess(null);
+    if (!demoEmail.trim()) { setDemoError("L'email de démo est requis."); return; }
+    if (demoPassword.length < 6) { setDemoError("Le mot de passe démo doit contenir au moins 6 caractères."); return; }
+    setDemoSaving(true);
+    try {
+      const res = await apiFetch("/api/demo-credential", {
+        method: "PUT",
+        body: JSON.stringify({ email: demoEmail.trim(), password: demoPassword, visible: demoVisible }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Échec de la mise à jour.");
+      setDemoEmail(data.email ?? demoEmail);
+      setDemoPassword(data.password ?? demoPassword);
+      setDemoVisible(data.visible ?? demoVisible);
+      setDemoSuccess("Compte de démonstration mis à jour.");
+    } catch (err: any) {
+      setDemoError(err?.message || "Une erreur est survenue.");
+    } finally {
+      setDemoSaving(false);
+    }
+  };
 
   const toggleCell = (action: string, roleKey: string) => {
     setPermSuccess(null);
@@ -184,7 +237,7 @@ export default function SettingsView({
   };
 
   return (
-    <div className="flex-1 bg-background min-h-screen flex flex-col">
+    <div className="flex-1 bg-transparent min-h-screen flex flex-col">
       <TopBar activeUser={activeUser} />
       <main className={`p-4 md:p-8 w-full ${showPerms ? "max-w-6xl" : "max-w-2xl"}`}>
         <h2 className="font-sans text-2xl font-semibold text-on-surface mb-6">Paramètres</h2>
@@ -305,6 +358,56 @@ export default function SettingsView({
             </div>
           )}
         </section>
+
+        {/* Compte de démonstration — réservé aux Super admin / Admin (isAdmin).
+            Modifier ces identifiants change le VRAI compte démo (email + mot de
+            passe) et le texte affiché sur la page de connexion. */}
+        {isAdmin && (
+          <section className="bg-surface-container-lowest border border-outline-variant rounded-xl p-6">
+            <div className="flex items-center gap-2 mb-1">
+              <KeyRound size={18} className="text-secondary shrink-0" />
+              <h3 className="font-bold text-on-surface font-sans text-sm">Compte de démonstration</h3>
+            </div>
+            <p className="text-xs text-on-surface-variant mb-4">
+              Identifiants affichés sur la page de connexion. Les modifier change le
+              <strong> vrai compte démo</strong> (email et mot de passe) et le texte du login.
+            </p>
+            {demoLoading ? (
+              <div className="flex items-center gap-2 text-sm text-on-surface-variant">
+                <Loader2 size={16} className="animate-spin" /> Chargement…
+              </div>
+            ) : (
+              <form onSubmit={handleDemoSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="demo-email" className={LABEL_CLS}>Email de démo</label>
+                    <input id="demo-email" type="email" autoComplete="off" value={demoEmail} onChange={e => setDemoEmail(e.target.value)} className={INPUT_CLS} placeholder="demo@exemple.com" />
+                  </div>
+                  <div>
+                    <label htmlFor="demo-pass" className={LABEL_CLS}>Mot de passe de démo</label>
+                    <input id="demo-pass" type="text" autoComplete="off" value={demoPassword} onChange={e => setDemoPassword(e.target.value)} className={INPUT_CLS} placeholder="au moins 6 caractères" />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-sm text-on-surface-variant cursor-pointer select-none">
+                  <input type="checkbox" checked={demoVisible} onChange={e => setDemoVisible(e.target.checked)} className="h-4 w-4 accent-secondary" />
+                  Afficher ces identifiants sur la page de connexion
+                </label>
+                {demoError && <p className="text-error text-sm">{demoError}</p>}
+                {demoSuccess && <p className="text-secondary text-sm font-medium">{demoSuccess}</p>}
+                <div className="flex justify-end">
+                  <button
+                    type="submit"
+                    disabled={demoSaving}
+                    className="h-10 px-4 bg-accent hover:bg-accent-dark text-white rounded-[8px] text-sm font-bold flex items-center gap-2 transition-all disabled:opacity-50"
+                  >
+                    {demoSaving && <Loader2 size={16} className="animate-spin" />}
+                    {demoSaving ? "Enregistrement…" : "Enregistrer"}
+                  </button>
+                </div>
+              </form>
+            )}
+          </section>
+        )}
           </div>{/* fin colonne gauche */}
 
         {/* Grille "Rôles & permissions" — ÉDITABLE (colonne de droite sur grand

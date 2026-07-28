@@ -227,7 +227,7 @@ export default function ReportsView({ stats, companyName, onNavigateToView }: Re
   };
 
   return (
-    <div className="flex-1 bg-background min-h-screen p-8 overflow-y-auto font-sans">
+    <div className="flex-1 bg-transparent min-h-screen p-8 overflow-y-auto font-sans">
       {/* Header */}
       <div className="mb-8 flex justify-between items-start gap-4 flex-wrap">
         <div>

@@ -199,7 +199,7 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
 
   if (loading || !stats) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-background min-h-screen">
+      <div className="flex-1 flex items-center justify-center bg-transparent min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-secondary mx-auto" />
           <p className="mt-4 font-mono text-xs text-on-surface-variant">Chargement des indicateurs clés...</p>
@@ -213,7 +213,7 @@ export default function DashboardView({ stats, onNavigateToView, onSelectCandida
   const radarData = skillDistribution.slice(0, 6).map(s => ({ subject: s.name, value: s.count }));
 
   return (
-    <div className="flex-1 bg-background min-h-screen flex flex-col">
+    <div className="flex-1 bg-transparent min-h-screen flex flex-col">
       <TopBar activeUser={activeUser} hideSearch />
 
       <main className="px-4 md:px-8 pt-6 md:pt-8 pb-12 flex-1">

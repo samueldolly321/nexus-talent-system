@@ -51,7 +51,7 @@ export default function ConnectionsView({ activeUser }: ConnectionsViewProps) {
   );
 
   return (
-    <div className="flex-1 bg-background min-h-screen flex flex-col">
+    <div className="flex-1 bg-transparent min-h-screen flex flex-col">
       <TopBar activeUser={activeUser} searchValue={search} onSearchChange={setSearch} />
       <main className="p-4 md:p-8">
         <div className="flex items-center gap-3 mb-6">

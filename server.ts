@@ -639,6 +639,20 @@ app.get("/api/auth/providers", (_req, res) => {
   res.json({ google: googleConfigured, sso: ssoConfigured });
 });
 
+// GET /api/auth/demo — identifiants du compte démo affichés sur la page de
+// connexion (public, comme /api/auth/providers). N'expose rien si masqué. Ne
+// bloque jamais la page de connexion en cas d'erreur base.
+app.get("/api/auth/demo", async (_req, res) => {
+  try {
+    const demo = await prisma.demoCredential.findUnique({ where: { id: "singleton" } });
+    if (!demo || !demo.visible) return res.json({ visible: false });
+    res.json({ visible: true, email: demo.email, password: demo.password });
+  } catch (err) {
+    console.error("[GET /api/auth/demo]", err);
+    res.json({ visible: false });
+  }
+});
+
 // State anti-CSRF : JWT court-vécu qui lie le provider au cycle OAuth.
 const signOAuthState = (provider: string) =>
   jwt.sign({ provider, n: crypto.randomBytes(8).toString("hex") }, JWT_ACCESS_SECRET, { expiresIn: "10m" });
@@ -994,6 +1008,67 @@ app.put("/api/permissions", requireAuth, async (req, res) => {
     res.json({ ok: true, matrix: serializeMatrix() });
   } catch (err) {
     console.error("[PUT /api/permissions]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
+// ── Compte de démonstration (identifiants affichés sur la page de connexion) ──
+// Lecture + écriture réservées en DUR aux Super admin / Admin (isCompanyAdmin),
+// comme /api/permissions. L'affichage public passe par GET /api/auth/demo.
+const DEMO_CREDENTIAL_ID = "singleton";
+
+app.get("/api/demo-credential", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  if (!isCompanyAdmin(ctx.user.role)) {
+    return res.status(403).json({ error: "Accès refusé. Seuls les administrateurs peuvent voir le compte de démonstration." });
+  }
+  try {
+    const demo = await prisma.demoCredential.findUnique({ where: { id: DEMO_CREDENTIAL_ID } });
+    if (!demo) return res.json({ email: "", password: "", visible: true });
+    res.json({ email: demo.email, password: demo.password, visible: demo.visible });
+  } catch (err) {
+    console.error("[GET /api/demo-credential]", err);
+    res.status(500).json({ error: "Erreur base de données." });
+  }
+});
+
+// Met à jour le VRAI compte démo (email + mot de passe hashé bcrypt sur l'user
+// ancré) ET la ligne affichée au login. Transaction élargie (filet réveil à
+// froid Neon). Refuse un email déjà pris par un autre compte (User.email @unique).
+app.put("/api/demo-credential", requireAuth, async (req, res) => {
+  const ctx = getContext(req);
+  if (!isCompanyAdmin(ctx.user.role)) {
+    return res.status(403).json({ error: "Accès refusé. Seuls les administrateurs peuvent modifier le compte de démonstration." });
+  }
+  const email = String(req.body?.email ?? "").trim().toLowerCase();
+  const password = String(req.body?.password ?? "");
+  const visible = Boolean(req.body?.visible);
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: "Email invalide." });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Le mot de passe démo doit contenir au moins 6 caractères." });
+  }
+  try {
+    const demo = await prisma.demoCredential.findUnique({ where: { id: DEMO_CREDENTIAL_ID } });
+    if (!demo) return res.status(404).json({ error: "Compte de démonstration introuvable." });
+    // Contrainte User.email @unique : refuse un email déjà porté par un AUTRE user.
+    const clash = await prisma.user.findUnique({ where: { email } });
+    if (clash && clash.id !== demo.userId) {
+      return res.status(409).json({ error: "Cet email est déjà utilisé par un autre compte." });
+    }
+    const passwordHash = await bcrypt.hash(password, 10);
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.user.update({ where: { id: demo.userId }, data: { email, passwordHash } });
+        await tx.demoCredential.update({ where: { id: DEMO_CREDENTIAL_ID }, data: { email, password, visible } });
+      },
+      { timeout: 20000, maxWait: 15000 }
+    );
+    logActionFor(ctx, "Mise à jour compte démo", `Identifiants du compte de démonstration mis à jour (${email}).`);
+    res.json({ email, password, visible });
+  } catch (err) {
+    console.error("[PUT /api/demo-credential]", err);
     res.status(500).json({ error: "Erreur base de données." });
   }
 });

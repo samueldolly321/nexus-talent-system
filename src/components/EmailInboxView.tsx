@@ -75,7 +75,7 @@ export default function EmailInboxView({
   };
 
   return (
-    <div className="flex-1 bg-background min-h-screen p-8 overflow-y-auto">
+    <div className="flex-1 bg-transparent min-h-screen p-8 overflow-y-auto">
       {/* Header */}
       <div className="mb-8">
         <h2 className="text-2xl font-bold tracking-tight text-on-surface font-sans">Boite aux Lettres Sourcing (Email Sorter)</h2>

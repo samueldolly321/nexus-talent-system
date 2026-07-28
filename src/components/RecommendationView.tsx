@@ -119,7 +119,7 @@ export default function RecommendationView({ candidate, job, activeUser, onBack 
     : [];
 
   return (
-    <div className="flex-1 bg-background min-h-screen flex flex-col">
+    <div className="flex-1 bg-transparent min-h-screen flex flex-col">
       <TopBar
         activeUser={activeUser}
         breadcrumb={

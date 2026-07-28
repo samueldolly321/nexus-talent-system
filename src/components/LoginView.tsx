@@ -24,6 +24,10 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
   // Fournisseurs OAuth réellement configurés côté serveur.
   const [providers, setProviders] = useState<{ google: boolean }>({ google: false });
 
+  // Identifiants du compte démo (administrables depuis Paramètres). Masqués si
+  // l'admin a décoché « Afficher sur la page de connexion ».
+  const [demo, setDemo] = useState<{ visible: boolean; email?: string; password?: string }>({ visible: false });
+
   // Modal "Mot de passe oublié".
   const [showForgot, setShowForgot] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
@@ -36,6 +40,10 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
     fetch("/api/auth/providers")
       .then(r => (r.ok ? r.json() : null))
       .then(data => data && setProviders(data))
+      .catch(() => {});
+    fetch("/api/auth/demo")
+      .then(r => (r.ok ? r.json() : null))
+      .then(data => data && setDemo(data))
       .catch(() => {});
   }, []);
 
@@ -171,9 +179,11 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
             />
           </div>
 
-          <p className="mt-6 text-center font-mono text-[10px] text-on-surface-variant bg-surface-container-low rounded-lg py-2 px-3">
-            Démo : samuel@test.io / password123
-          </p>
+          {demo.visible && demo.email && (
+            <p className="mt-6 text-center font-mono text-[10px] text-on-surface-variant bg-surface-container-low rounded-lg py-2 px-3">
+              Démo : {demo.email} / {demo.password}
+            </p>
+          )}
 
           <a
             href="/postuler"
