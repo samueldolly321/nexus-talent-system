@@ -1,6 +1,6 @@
 # Récapitulatif projet — Nexus Talent (de A à Z jusqu'à la mise en ligne)
 
-> Document de contexte pour reprendre le projet à froid. Dernière mise à jour : **2026-07-23**.
+> Document de contexte pour reprendre le projet à froid. Dernière mise à jour : **2026-07-28**.
 > Propriétaire : Samuel (digital@salathis.com). Langue de travail : français.
 
 ---
@@ -233,6 +233,19 @@ Commit `8373875`, poussé et déployé. `src/components/SettingsView.tsx`, **cod
 ### 23/07 (suite) — Guide de synchro maison consolidé (20 + 21 + 23)
 Commit `853f537`, poussé. **Doc uniquement.**
 - **`Guide-Sync-Maison-2026-07-20-au-23.docx`** : un seul document qui réunit les guides des trois sessions (vue d'ensemble, récupération du code, **commandes consolidées** — dont les commandes Prisma imposées par la migration du 23/07 —, détail par session, vérifications, rappels). Généré par `scripts/gen-guide-sync-maison-2026-07-20-au-23.cjs`. Les 3 guides d'origine (20/21/23) sont **conservés**.
+
+### 28/07 — Compte démo administrable + image de fond (filigrane) des onglets (dernière session)
+Commit `35b4e60`, poussé et déployé sur Render. **1 migration additive** (`add_demo_credential`), aucune dépendance.
+1. **Compte de démonstration administrable** (Paramètres → réservé **Super admin / Admin**). Avant : les identifiants démo étaient un **texte en dur** dans `LoginView.tsx` et le compte venait du seed. Désormais un admin édite l'email **et** le mot de passe depuis Paramètres → ça change **le vrai compte `User`** (email + `passwordHash` bcrypt, ancré sur l'id stable **`user-samuel-demo`**) **et** le texte affiché sur la page de connexion. Case « Afficher sur la page de connexion » (masquable).
+2. **Base** : nouveau modèle **singleton `DemoCredential`** (`id "singleton"`, `userId`, `email`, `password` **en clair — volontaire**, c'est un identifiant démo public déjà exposé côté client, `visible`) + migration `add_demo_credential`. Défaut (`user-samuel-demo` / `samuel@test.io` / `password123`, visible) **semé** dans `prisma/seed.ts` en `upsert` **create-only** → n'écrase jamais un choix admin, rejoué à chaque déploiement.
+3. **Serveur (`server.ts`)** : `GET /api/auth/demo` (**public**, comme `/api/auth/providers` ; n'expose rien si masqué, ne bloque jamais le login en cas d'erreur) ; `GET`/`PUT /api/demo-credential` gated **en dur** `isCompanyAdmin` (miroir de l'éditeur de permissions). Le `PUT` valide email/mot de passe (≥ 6), **refuse un email déjà pris** par un autre compte (409, contrainte `User.email @unique`), met à jour `User` + `DemoCredential` dans une **transaction Neon-safe** (`timeout 20000`).
+4. **Front** : `SettingsView.tsx` — nouvelle section « Compte de démonstration » (visible si `isAdmin`) ; `LoginView.tsx` — texte démo chargé via `fetch("/api/auth/demo")` (masqué si `visible=false`) ; `types.ts` — `DemoCredentialData`.
+5. **Image de fond (filigrane) sur les onglets** : couche **`position: fixed`** portant l'image (URL Unsplash, autorisée par la CSP `img-src https:` ; constante `APP_BG_IMAGE` dans `App.tsx`), placée **hors** du conteneur `overflow-hidden` → indépendante du scroll. Le **voile `bg-background/90`** est porté par le **conteneur scrollable** (`App.tsx`, le `div` `overflow-y-auto`) : le fond d'un conteneur scrollable reste **collé à sa zone visible** (il ne défile pas avec le contenu) → il couvre tout à toute position de scroll. Les **racines des 15 vues** sont passées en **`bg-transparent`** (elles étaient `bg-background`) pour laisser transparaître le filigrane ; les cartes restent opaques → lisibilité intacte, clair **et** sombre.
+   - ⚠️ **Piège résolu** (2 itérations) : ne PAS mettre le voile sur l'élément `flex-1 min-h-screen` d'une vue (plafonné à `100vh` alors que le contenu déborde → **cassure** du filigrane au scroll) ; ni sur le `body` avec `background-attachment: fixed` (calé sur la fenêtre, pas sur le scroller interne → se coupe aussi). La bonne cible est le **conteneur scrollable** (fond collé à la zone visible).
+- Fichiers : `prisma/schema.prisma`, `prisma/seed.ts`, `server.ts`, `src/App.tsx`, `src/types.ts`, `src/components/LoginView.tsx`, `src/components/SettingsView.tsx`, les 13 autres vues (passage `bg-transparent`) + migration.
+- ⚠️ **1 migration additive** → à la maison : arrêter `npm run dev` → `npx prisma migrate deploy` → `npx prisma generate` (piège EPERM Windows) → `npx prisma db seed` (pose la ligne démo). Render applique tout automatiquement.
+- ✅ Vérifié : `npm run lint` propre (hors `maj-2026-07-10/`), `npm run build` OK, filigrane continu au scroll validé (clair + sombre).
+- Doc générée : `Guide-Sync-Maison-2026-07-28.docx` (+ script `scripts/gen-guide-sync-maison-2026-07-28.cjs`).
 
 ---
 
