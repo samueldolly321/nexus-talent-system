@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Lock, ArrowLeft, CheckCircle2, Loader2, ShieldAlert } from "lucide-react";
+import { Lock, ArrowLeft, CheckCircle2, Loader2, ShieldAlert, Eye, EyeOff } from "lucide-react";
 
 const appName = localStorage.getItem("nexus-app-name") || "Nexus Talent";
 
@@ -9,6 +9,8 @@ export default function ResetPasswordView() {
   const [token, setToken] = useState<string | null>(null);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -91,14 +93,23 @@ export default function ResetPasswordView() {
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   autoFocus
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-surface-container-low border border-outline-variant rounded-lg py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary-container transition-all"
+                  className="w-full bg-surface-container-low border border-outline-variant rounded-lg py-3 pl-10 pr-11 text-sm focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary-container transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  title={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
               <p className="mt-1.5 font-mono text-[10px] text-on-surface-variant">8 caractères minimum.</p>
             </div>
@@ -108,13 +119,22 @@ export default function ResetPasswordView() {
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
                 <input
-                  type="password"
+                  type={showConfirm ? "text" : "password"}
                   required
                   value={confirm}
                   onChange={e => setConfirm(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-surface-container-low border border-outline-variant rounded-lg py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary-container transition-all"
+                  className="w-full bg-surface-container-low border border-outline-variant rounded-lg py-3 pl-10 pr-11 text-sm focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary-container transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(v => !v)}
+                  aria-label={showConfirm ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  title={showConfirm ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
+                >
+                  {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
