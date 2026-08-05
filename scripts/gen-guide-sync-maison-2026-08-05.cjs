@@ -1,6 +1,7 @@
 /* Génère "Guide-Sync-Maison-2026-08-05.docx" : comment récupérer chez soi les
    changements de la session du 05/08/2026 (mot de passe du compte de
-   démonstration masqué sur la page de connexion → « contactez Samuel »).
+   démonstration masqué sur la page de connexion → « contactez Samuel » +
+   bouton « œil » afficher/masquer sur TOUS les champs de mot de passe).
    Point clé : CODE UNIQUEMENT. Aucune migration, aucune nouvelle dépendance
    → un simple git pull suffit. */
 const fs = require("fs");
@@ -40,6 +41,7 @@ b.push(h1("1. Vue d'ensemble — ce qui a changé"));
 b.push(bullet([{ t: "Nouveau mot de passe du compte de démonstration : ", b: true }, { t: "le mot de passe du compte démo (samuel@test.io) est désormais password123*** (modifié depuis « Paramètres » → « Compte de démonstration »)." }]));
 b.push(bullet([{ t: "Mot de passe masqué sur la page de connexion : ", b: true }, { t: "la page de connexion n'affiche PLUS le mot de passe. La ligne indique maintenant « Démo : samuel@test.io — mot de passe : contactez Samuel ». L'email reste visible, le mot de passe non." }]));
 b.push(bullet([{ t: "Mot de passe plus exposé côté serveur : ", b: true }, { t: "l'adresse publique qui alimente cette ligne (/api/auth/demo) ne renvoie plus le mot de passe. Il n'est donc plus visible dans les outils du navigateur. Il reste consultable et modifiable par un administrateur dans « Paramètres »." }]));
+b.push(bullet([{ t: "Bouton « œil » sur tous les champs de mot de passe : ", b: true }, { t: "une icône œil permet désormais d'afficher ou de masquer le mot de passe saisi. Ajoutée sur la page de connexion, dans Paramètres (compte de démonstration + les 3 champs de la section Sécurité) et sur la page de réinitialisation. Les champs sont masqués par défaut." }]));
 b.push(bullet([{ t: "Prod déjà à jour : ", b: true }, { t: "les changements sont poussés et déployés automatiquement sur Render. Rien à faire côté site en ligne." }]));
 b.push(spacer());
 
@@ -52,9 +54,11 @@ b.push(p([{ t: "Vérifiez qu'il n'y a pas de modifications locales non enregistr
 b.push(code("git pull origin main"));
 b.push(p([{ t: "En cas de modifications locales gênantes : " }, { t: "git stash", code: true }, { t: " puis " }, { t: "git pull origin main", code: true }, { t: " (et " }, { t: "git stash pop", code: true }, { t: " pour les récupérer)." }]));
 b.push(h2("Méthode alternative — copie manuelle (liste des fichiers)"));
-b.push(p([{ t: "Si vous copiez à la main, reportez ces deux fichiers en respectant l'arborescence." }]));
+b.push(p([{ t: "Si vous copiez à la main, reportez ces fichiers en respectant l'arborescence." }]));
 b.push(code("server.ts"));
 b.push(code("src/components/LoginView.tsx"));
+b.push(code("src/components/SettingsView.tsx"));
+b.push(code("src/components/ResetPasswordView.tsx"));
 b.push(p([{ t: "Documentation (facultatif — regénérable) : RECAP-PROJET-NEXUS.md et ce guide." }]));
 b.push(spacer());
 
@@ -81,15 +85,23 @@ b.push(bullet([{ t: "Masquer entièrement la ligne démo : ", b: true }, { t: "t
 b.push(bullet([{ t: "Pourquoi c'est plus sûr : ", b: true }, { t: "avant, le mot de passe partait jusqu'au navigateur et était lisible dans les outils de développement. Il n'est désormais plus envoyé sur la page de connexion." }]));
 b.push(spacer());
 
-// 5. Vérifier
-b.push(h1("5. Vérifier que tout marche"));
-b.push(bullet([{ t: "Page de connexion : ", b: true }, { t: "ouvrez la page de connexion (déconnecté) : la ligne démo affiche l'email suivi de « mot de passe : contactez Samuel », sans mot de passe visible." }]));
-b.push(bullet([{ t: "Connexion démo : ", b: true }, { t: "connectez-vous avec samuel@test.io et password123*** : la connexion fonctionne." }]));
-b.push(bullet([{ t: "Administration : ", b: true }, { t: "en admin (admin@techcorp.io / admin123), « Paramètres » → « Compte de démonstration » montre toujours le mot de passe et permet de le modifier." }]));
+// 5. Détail — bouton œil
+b.push(h1("5. Détail — bouton œil (afficher/masquer le mot de passe)"));
+b.push(bullet([{ t: "Où : ", b: true }, { t: "sur tous les champs de mot de passe du site — page de connexion, Paramètres (compte de démonstration + « Mot de passe actuel / Nouveau / Confirmation » de la section Sécurité) et page de réinitialisation." }]));
+b.push(bullet([{ t: "Comment ça marche : ", b: true }, { t: "une petite icône œil est placée à droite du champ. Un clic affiche le mot de passe en clair (l'icône devient un œil barré) ; un nouveau clic le remasque. Chaque champ a son propre bouton indépendant." }]));
+b.push(bullet([{ t: "Masqués par défaut : ", b: true }, { t: "tous les champs démarrent masqués (points). Nouveauté à noter : dans Paramètres, le mot de passe du compte de démonstration était auparavant toujours affiché en clair ; il est maintenant masqué par défaut, révélable via l'œil." }]));
 b.push(spacer());
 
-// 6. À noter
-b.push(h1("6. À noter (rappels)"));
+// 6. Vérifier
+b.push(h1("6. Vérifier que tout marche"));
+b.push(bullet([{ t: "Page de connexion : ", b: true }, { t: "ouvrez la page de connexion (déconnecté) : la ligne démo affiche l'email suivi de « mot de passe : contactez Samuel », sans mot de passe visible." }]));
+b.push(bullet([{ t: "Connexion démo : ", b: true }, { t: "connectez-vous avec samuel@test.io et password123*** : la connexion fonctionne." }]));
+b.push(bullet([{ t: "Bouton œil : ", b: true }, { t: "sur chaque champ de mot de passe (connexion, Paramètres, réinitialisation), tapez du texte puis cliquez sur l'œil : le mot de passe devient lisible, puis se remasque au second clic." }]));
+b.push(bullet([{ t: "Administration : ", b: true }, { t: "en admin (admin@techcorp.io / admin123), « Paramètres » → « Compte de démonstration » montre toujours le mot de passe (via l'œil) et permet de le modifier." }]));
+b.push(spacer());
+
+// 7. À noter
+b.push(h1("7. À noter (rappels)"));
 b.push(bullet([{ t: "Réveil à froid de la base (rappel) : ", b: true }, { t: "sur le plan gratuit, le premier appel après une veille peut être lent (30-60 s). Ce n'est pas un bug." }]));
 b.push(bullet([{ t: "Sécurité (rappel) : ", b: true }, { t: "révoquer l'ancien token GitHub exposé ghp_JLBr… s'il ne l'est pas déjà." }]));
 

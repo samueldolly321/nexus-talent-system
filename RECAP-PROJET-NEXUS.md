@@ -247,12 +247,13 @@ Commit `35b4e60`, poussé et déployé sur Render. **1 migration additive** (`ad
 - ✅ Vérifié : `npm run lint` propre (hors `maj-2026-07-10/`), `npm run build` OK, filigrane continu au scroll validé (clair + sombre).
 - Doc générée : `Guide-Sync-Maison-2026-07-28.docx` (+ script `scripts/gen-guide-sync-maison-2026-07-28.cjs`).
 
-### 05/08 — Mot de passe démo masqué sur la page de connexion (dernière session)
+### 05/08 — Mot de passe démo masqué + bouton « œil » sur tous les champs mot de passe (dernière session)
 **Code UI + serveur, aucune migration, aucune dépendance.**
 1. **Nouveau mot de passe du compte de démonstration** (`samuel@test.io`) : **`password123***`** (modifié par l'admin depuis Paramètres → Compte de démonstration ; met à jour le vrai `User` + la ligne `DemoCredential`). ⚠️ Consigné ici volontairement — ce mot de passe n'est **plus affiché publiquement**.
 2. **Page de connexion (`LoginView.tsx`)** : la ligne démo n'affiche **plus le mot de passe**. Elle indique désormais **« Démo : {email} — mot de passe : contactez Samuel »** (l'email reste visible, le mot de passe est masqué).
 3. **Serveur (`server.ts`, `GET /api/auth/demo`)** : l'endpoint **public** ne renvoie **plus** le champ `password` (avant : `{ visible, email, password }` → désormais `{ visible, email }`). Le mot de passe n'est donc plus exposé dans l'onglet réseau du navigateur. Il reste consultable/éditable par un admin via la route **gated** `/api/demo-credential` (Paramètres).
-- Fichiers : `src/components/LoginView.tsx`, `server.ts`. Doc générée : `Guide-Sync-Maison-2026-08-05.docx`.
+4. **Bouton « œil » (afficher/masquer) sur TOUS les champs de mot de passe** (icônes `Eye`/`EyeOff` de `lucide-react`, déjà présent) : (a) **Page de connexion** — champ « Mot de passe » (commit `8647b92`) ; (b) **Paramètres → Compte de démonstration** — le champ passe de `type="text"` (toujours en clair) à **masqué par défaut** avec œil (commit `0d4914a`) ; (c) **Paramètres → Sécurité** — 3 champs « Actuel / Nouveau / Confirmation », chacun son toggle indépendant (commit `d60b71f`) ; (d) **`/reset-password`** — « Nouveau / Confirmation » (commit `7cd05af`). Chaque bouton est accessible (`aria-label` + `title`).
+- Fichiers : `src/components/LoginView.tsx`, `server.ts`, `src/components/SettingsView.tsx`, `src/components/ResetPasswordView.tsx`. Doc générée : `Guide-Sync-Maison-2026-08-05.docx`.
 
 ---
 
