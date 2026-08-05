@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { User as UserIcon, Building2, Lock, Loader2, ShieldCheck, KeyRound } from "lucide-react";
+import { User as UserIcon, Building2, Lock, Loader2, ShieldCheck, KeyRound, Eye, EyeOff } from "lucide-react";
 import TopBar from "./TopBar";
 import { Company, User, UserRole, PermissionsData, DemoCredentialData, roleKeyOf } from "../types";
 import { apiFetch } from "../lib/api";
@@ -72,6 +72,7 @@ export default function SettingsView({
   // Compte de démonstration — administrable par les Super admin / Admin (isAdmin).
   const [demoEmail, setDemoEmail] = useState("");
   const [demoPassword, setDemoPassword] = useState("");
+  const [showDemoPassword, setShowDemoPassword] = useState(false);
   const [demoVisible, setDemoVisible] = useState(true);
   const [demoLoading, setDemoLoading] = useState(false);
   const [demoSaving, setDemoSaving] = useState(false);
@@ -385,7 +386,18 @@ export default function SettingsView({
                   </div>
                   <div>
                     <label htmlFor="demo-pass" className={LABEL_CLS}>Mot de passe de démo</label>
-                    <input id="demo-pass" type="text" autoComplete="off" value={demoPassword} onChange={e => setDemoPassword(e.target.value)} className={INPUT_CLS} placeholder="au moins 6 caractères" />
+                    <div className="relative">
+                      <input id="demo-pass" type={showDemoPassword ? "text" : "password"} autoComplete="off" value={demoPassword} onChange={e => setDemoPassword(e.target.value)} className={`${INPUT_CLS} pr-10`} placeholder="au moins 6 caractères" />
+                      <button
+                        type="button"
+                        onClick={() => setShowDemoPassword(v => !v)}
+                        aria-label={showDemoPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                        title={showDemoPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
+                      >
+                        {showDemoPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <label className="flex items-center gap-2 text-sm text-on-surface-variant cursor-pointer select-none">
