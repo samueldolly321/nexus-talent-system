@@ -37,6 +37,9 @@ export default function SettingsView({
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -280,16 +283,31 @@ export default function SettingsView({
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             <div>
               <label htmlFor="cur-pass" className={LABEL_CLS}>Mot de passe actuel</label>
-              <input id="cur-pass" type="password" autoComplete="current-password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} className={INPUT_CLS} placeholder="••••••••" />
+              <div className="relative">
+                <input id="cur-pass" type={showCurrentPassword ? "text" : "password"} autoComplete="current-password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} className={`${INPUT_CLS} pr-10`} placeholder="••••••••" />
+                <button type="button" onClick={() => setShowCurrentPassword(v => !v)} aria-label={showCurrentPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"} title={showCurrentPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors">
+                  {showCurrentPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="new-pass" className={LABEL_CLS}>Nouveau mot de passe</label>
-                <input id="new-pass" type="password" autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className={INPUT_CLS} placeholder="••••••••" />
+                <div className="relative">
+                  <input id="new-pass" type={showNewPassword ? "text" : "password"} autoComplete="new-password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className={`${INPUT_CLS} pr-10`} placeholder="••••••••" />
+                  <button type="button" onClick={() => setShowNewPassword(v => !v)} aria-label={showNewPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"} title={showNewPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors">
+                    {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label htmlFor="conf-pass" className={LABEL_CLS}>Confirmation</label>
-                <input id="conf-pass" type="password" autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className={INPUT_CLS} placeholder="••••••••" />
+                <div className="relative">
+                  <input id="conf-pass" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className={`${INPUT_CLS} pr-10`} placeholder="••••••••" />
+                  <button type="button" onClick={() => setShowConfirmPassword(v => !v)} aria-label={showConfirmPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"} title={showConfirmPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors">
+                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
             </div>
             {error && <p className="text-error text-sm">{error}</p>}
