@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Mail, Lock, ArrowRight, Radar, TrendingUp, Users2, Sparkles, Target, BarChart3, Zap, CheckCircle2, X, Loader2 } from "lucide-react";
+import { Mail, Lock, ArrowRight, Radar, TrendingUp, Users2, Sparkles, Target, BarChart3, Zap, CheckCircle2, X, Loader2, Eye, EyeOff } from "lucide-react";
 
 interface LoginViewProps {
   onLogin: (email: string, password: string) => void;
@@ -19,6 +19,7 @@ const HERO_IMAGE =
 export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
 
   // Fournisseurs OAuth réellement configurés côté serveur.
@@ -136,13 +137,22 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
               <div className="relative">
                 <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant" />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-surface-container-low border border-outline-variant rounded-lg py-3 pl-10 pr-4 text-sm focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary-container transition-all"
+                  className="w-full bg-surface-container-low border border-outline-variant rounded-lg py-3 pl-10 pr-11 text-sm focus:outline-none focus:border-secondary focus:ring-2 focus:ring-secondary-container transition-all"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  title={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant hover:text-on-surface transition-colors"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
               </div>
             </div>
 
