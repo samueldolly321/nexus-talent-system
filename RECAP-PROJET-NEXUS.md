@@ -1,6 +1,6 @@
 # Récapitulatif projet — Nexus Talent (de A à Z jusqu'à la mise en ligne)
 
-> Document de contexte pour reprendre le projet à froid. Dernière mise à jour : **2026-07-28**.
+> Document de contexte pour reprendre le projet à froid. Dernière mise à jour : **2026-08-05**.
 > Propriétaire : Samuel (digital@salathis.com). Langue de travail : français.
 
 ---
@@ -67,7 +67,7 @@ render.yaml          # blueprint de déploiement Render
 |------|-------|--------------|
 | Admin plateforme | `samuel@techcorp.io` | `admin123` |
 | Admin entreprise | `admin@techcorp.io` | `admin123` |
-| RH | `samuel@test.io` | `password123` |
+| RH (compte démo) | `samuel@test.io` | `password123***` |
 
 ---
 
@@ -246,6 +246,13 @@ Commit `35b4e60`, poussé et déployé sur Render. **1 migration additive** (`ad
 - ⚠️ **1 migration additive** → à la maison : arrêter `npm run dev` → `npx prisma migrate deploy` → `npx prisma generate` (piège EPERM Windows) → `npx prisma db seed` (pose la ligne démo). Render applique tout automatiquement.
 - ✅ Vérifié : `npm run lint` propre (hors `maj-2026-07-10/`), `npm run build` OK, filigrane continu au scroll validé (clair + sombre).
 - Doc générée : `Guide-Sync-Maison-2026-07-28.docx` (+ script `scripts/gen-guide-sync-maison-2026-07-28.cjs`).
+
+### 05/08 — Mot de passe démo masqué sur la page de connexion (dernière session)
+**Code UI + serveur, aucune migration, aucune dépendance.**
+1. **Nouveau mot de passe du compte de démonstration** (`samuel@test.io`) : **`password123***`** (modifié par l'admin depuis Paramètres → Compte de démonstration ; met à jour le vrai `User` + la ligne `DemoCredential`). ⚠️ Consigné ici volontairement — ce mot de passe n'est **plus affiché publiquement**.
+2. **Page de connexion (`LoginView.tsx`)** : la ligne démo n'affiche **plus le mot de passe**. Elle indique désormais **« Démo : {email} — mot de passe : contactez Samuel »** (l'email reste visible, le mot de passe est masqué).
+3. **Serveur (`server.ts`, `GET /api/auth/demo`)** : l'endpoint **public** ne renvoie **plus** le champ `password` (avant : `{ visible, email, password }` → désormais `{ visible, email }`). Le mot de passe n'est donc plus exposé dans l'onglet réseau du navigateur. Il reste consultable/éditable par un admin via la route **gated** `/api/demo-credential` (Paramètres).
+- Fichiers : `src/components/LoginView.tsx`, `server.ts`. Doc générée : `Guide-Sync-Maison-2026-08-05.docx`.
 
 ---
 

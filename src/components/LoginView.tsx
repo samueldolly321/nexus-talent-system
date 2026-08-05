@@ -25,8 +25,9 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
   const [providers, setProviders] = useState<{ google: boolean }>({ google: false });
 
   // Identifiants du compte démo (administrables depuis Paramètres). Masqués si
-  // l'admin a décoché « Afficher sur la page de connexion ».
-  const [demo, setDemo] = useState<{ visible: boolean; email?: string; password?: string }>({ visible: false });
+  // l'admin a décoché « Afficher sur la page de connexion ». Le mot de passe
+  // n'est PLUS exposé côté public : la page invite à « contacter Samuel ».
+  const [demo, setDemo] = useState<{ visible: boolean; email?: string }>({ visible: false });
 
   // Modal "Mot de passe oublié".
   const [showForgot, setShowForgot] = useState(false);
@@ -181,7 +182,7 @@ export default function LoginView({ onLogin, loading, error }: LoginViewProps) {
 
           {demo.visible && demo.email && (
             <p className="mt-6 text-center font-mono text-[10px] text-on-surface-variant bg-surface-container-low rounded-lg py-2 px-3">
-              Démo : {demo.email} / {demo.password}
+              Démo : {demo.email} — mot de passe : contactez Samuel
             </p>
           )}
 

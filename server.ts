@@ -642,11 +642,14 @@ app.get("/api/auth/providers", (_req, res) => {
 // GET /api/auth/demo — identifiants du compte démo affichés sur la page de
 // connexion (public, comme /api/auth/providers). N'expose rien si masqué. Ne
 // bloque jamais la page de connexion en cas d'erreur base.
+// ⚠️ Le mot de passe n'est PLUS renvoyé ici (endpoint public) : la page de
+// connexion affiche « contactez Samuel » à la place. Le mot de passe reste
+// consultable/éditable par un admin via /api/demo-credential (route gated).
 app.get("/api/auth/demo", async (_req, res) => {
   try {
     const demo = await prisma.demoCredential.findUnique({ where: { id: "singleton" } });
     if (!demo || !demo.visible) return res.json({ visible: false });
-    res.json({ visible: true, email: demo.email, password: demo.password });
+    res.json({ visible: true, email: demo.email });
   } catch (err) {
     console.error("[GET /api/auth/demo]", err);
     res.json({ visible: false });
